@@ -1,6 +1,7 @@
 package com.launcherkit
 
 import com.launcherkit.managers.AppEventManager
+import com.launcherkit.managers.BatteryEventManager
 import com.launcherkit.utils.AppLauncher
 import com.launcherkit.utils.LauncherHelper
 import com.launcherkit.providers.AppInfoProvider
@@ -11,12 +12,19 @@ import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReadableMap
 import com.facebook.react.module.annotations.ReactModule
 
+/**
+ * Legacy bridge implementation of [LauncherKitModule] for the old React Native architecture.
+ *
+ * Delegates all operations to dedicated utility and manager classes. Used when
+ * the new architecture (TurboModules) is not enabled.
+ */
 @ReactModule(name = LauncherKitModule.NAME)
 class LauncherKitModuleLegacy(
   reactContext: ReactApplicationContext
 ) : LauncherKitModule(reactContext) {
 
   private val appEventManager = AppEventManager(reactContext)
+  private val batteryEventManager = BatteryEventManager(reactContext)
   private val appLauncher = AppLauncher(reactContext)
   private val appInfoProvider = AppInfoProvider(reactContext)
   private val systemUtility = SystemUtility(reactContext)
@@ -36,9 +44,7 @@ class LauncherKitModuleLegacy(
 
   @ReactMethod
   override fun isPackageInstalled(packageName: String, promise: Promise) {
-    appInfoProvider.isPackageInstalled(packageName) { isInstalled ->
-      promise.resolve(isInstalled)
-    }
+    promise.resolve(appInfoProvider.isPackageInstalled(packageName))
   }
 
   @ReactMethod
@@ -89,5 +95,20 @@ class LauncherKitModuleLegacy(
   @ReactMethod
   override fun stopListeningForAppRemovals() {
     appEventManager.stopListeningForAppRemovals()
+  }
+
+  @ReactMethod
+  override fun startListeningForBatteryChanges() {
+    batteryEventManager.startListening()
+  }
+
+  @ReactMethod
+  override fun stopListeningForBatteryChanges() {
+    batteryEventManager.stopListening()
+  }
+
+  @ReactMethod
+  override fun requestDefaultLauncher(promise: Promise) {
+    launcherHelper.requestDefaultLauncher(promise)
   }
 }

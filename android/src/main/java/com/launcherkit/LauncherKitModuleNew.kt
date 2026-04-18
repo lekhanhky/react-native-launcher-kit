@@ -6,17 +6,25 @@ import com.facebook.react.bridge.ReadableMap
 import com.facebook.react.module.annotations.ReactModule
 import com.facebook.react.turbomodule.core.interfaces.TurboModule
 import com.launcherkit.managers.AppEventManager
+import com.launcherkit.managers.BatteryEventManager
 import com.launcherkit.utils.AppLauncher
 import com.launcherkit.utils.LauncherHelper
 import com.launcherkit.providers.AppInfoProvider
 import com.launcherkit.utils.SystemUtility
 
+/**
+ * TurboModule implementation of [LauncherKitModule] for the new React Native architecture.
+ *
+ * Implements [TurboModule] for synchronous native module access via JSI. Delegates all
+ * operations to dedicated utility and manager classes. Used when the new architecture is enabled.
+ */
 @ReactModule(name = LauncherKitModule.NAME)
 class LauncherKitModuleNew(
   reactContext: ReactApplicationContext
 ) : LauncherKitModule(reactContext), TurboModule {
 
   private val appEventManager = AppEventManager(reactContext)
+  private val batteryEventManager = BatteryEventManager(reactContext)
   private val appLauncher = AppLauncher(reactContext)
   private val appInfoProvider = AppInfoProvider(reactContext)
   private val systemUtility = SystemUtility(reactContext)
@@ -33,9 +41,7 @@ class LauncherKitModuleNew(
   }
 
   override fun isPackageInstalled(packageName: String, promise: Promise) {
-    appInfoProvider.isPackageInstalled(packageName) { isInstalled ->
-      promise.resolve(isInstalled)
-    }
+    promise.resolve(appInfoProvider.isPackageInstalled(packageName))
   }
 
   override fun getDefaultLauncherPackageName(promise: Promise) {
@@ -76,5 +82,17 @@ class LauncherKitModuleNew(
 
   override fun stopListeningForAppRemovals() {
     appEventManager.stopListeningForAppRemovals()
+  }
+
+  override fun startListeningForBatteryChanges() {
+    batteryEventManager.startListening()
+  }
+
+  override fun stopListeningForBatteryChanges() {
+    batteryEventManager.stopListening()
+  }
+
+  override fun requestDefaultLauncher(promise: Promise) {
+    launcherHelper.requestDefaultLauncher(promise)
   }
 }
