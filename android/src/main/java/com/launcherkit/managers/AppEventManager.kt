@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.util.Log
 import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
 import com.facebook.react.bridge.ReactContext
@@ -13,6 +14,17 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
+/**
+ * Manages real-time app installation and removal monitoring via BroadcastReceivers.
+ *
+ * Emits the following events to the JS layer:
+ * - `"onAppInstalled"` — when a new launchable app is installed; payload is a JSON string of [AppDetail].
+ * - `"onAppRemoved"` — when an app is uninstalled; payload is the removed package name.
+ *
+ * Receivers are registered/unregistered on demand to avoid unnecessary background processing.
+ * Event emission is performed on [Dispatchers.IO] to avoid blocking the main thread during
+ * package manager queries.
+ */
 class AppEventManager(private val reactContext: ReactContext) {
   private var appInstallReceiver: BroadcastReceiver? = null
   private var appRemovalReceiver: BroadcastReceiver? = null
@@ -64,15 +76,29 @@ class AppEventManager(private val reactContext: ReactContext) {
   }
 
   private fun emitAppInstalled(appDetails: String) {
-    reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
-      .emit("onAppInstalled", appDetails)
+    if (!reactContext.hasActiveReactInstance()) return
+    try {
+      reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
+        .emit("onAppInstalled", appDetails)
+    } catch (e: Exception) {
+      Log.e(TAG, "Failed to emit onAppInstalled event", e)
+    }
   }
 
   private fun emitAppRemoved(packageName: String) {
-    reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
-      .emit("onAppRemoved", packageName)
+    if (!reactContext.hasActiveReactInstance()) return
+    try {
+      reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
+        .emit("onAppRemoved", packageName)
+    } catch (e: Exception) {
+      Log.e(TAG, "Failed to emit onAppRemoved event", e)
+    }
   }
 
+  /**
+   * Registers a BroadcastReceiver for [Intent.ACTION_PACKAGE_ADDED] events.
+   * Must be balanced with a call to [stopListeningForAppInstallations].
+   */
   fun startListeningForAppInstallations() {
     IntentFilter(Intent.ACTION_PACKAGE_ADDED).apply {
       addDataScheme("package")
@@ -82,6 +108,10 @@ class AppEventManager(private val reactContext: ReactContext) {
     }
   }
 
+  /**
+   * Unregisters the app installation BroadcastReceiver.
+   * Safe to call even if the receiver was never registered.
+   */
   fun stopListeningForAppInstallations() {
     try {
       appInstallReceiver?.let { receiver ->
@@ -92,6 +122,10 @@ class AppEventManager(private val reactContext: ReactContext) {
     }
   }
 
+  /**
+   * Registers a BroadcastReceiver for [Intent.ACTION_PACKAGE_REMOVED] events.
+   * Must be balanced with a call to [stopListeningForAppRemovals].
+   */
   fun startListeningForAppRemovals() {
     IntentFilter(Intent.ACTION_PACKAGE_REMOVED).apply {
       addDataScheme("package")
@@ -101,6 +135,10 @@ class AppEventManager(private val reactContext: ReactContext) {
     }
   }
 
+  /**
+   * Unregisters the app removal BroadcastReceiver.
+   * Safe to call even if the receiver was never registered.
+   */
   fun stopListeningForAppRemovals() {
     try {
       appRemovalReceiver?.let { receiver ->

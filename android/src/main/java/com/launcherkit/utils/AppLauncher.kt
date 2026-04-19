@@ -12,7 +12,11 @@ import com.facebook.react.bridge.ReadableMap
 import com.launcherkit.R
 
 /**
- * Utility class for launching applications and handling intents
+ * Utility class for launching applications and handling Android intents.
+ *
+ * Supports launching apps with custom actions, data URIs (geo, file, web), extras,
+ * and categories. Launches are performed with a slide-up animation. Falls back gracefully
+ * when a launch intent cannot be resolved.
  */
 class AppLauncher(private val reactContext: ReactContext) {
 

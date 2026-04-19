@@ -14,7 +14,18 @@ import java.io.FileOutputStream
 import java.io.IOException
 
 /**
- * Class representing details of an installed application
+ * Represents the details of an installed launchable application.
+ *
+ * Extracts label, package name, icon (persisted to cache as a PNG file), optional version name,
+ * and optional dominant accent color from the app icon using the AndroidX Palette API.
+ *
+ * The [toString] method produces a JSON string suitable for passing across the React Native bridge.
+ *
+ * @param ri The [ResolveInfo] for the app's launcher activity.
+ * @param pManager The system [PackageManager] used to query app metadata.
+ * @param context Android context for file I/O and resource access.
+ * @param includeVersion Whether to include the app's version name in the output.
+ * @param includeAccentColor Whether to compute and include the dominant icon color.
  */
 class AppDetail(
   ri: ResolveInfo,
