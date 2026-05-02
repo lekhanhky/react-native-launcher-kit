@@ -1,18 +1,8 @@
-import type { TurboModule } from 'react-native';
-import type { LaunchParams } from './helper';
+/**
+ * Re-exports the TurboModule spec type for use across the library.
+ * @module interfaces/turboModule
+ */
+import type { Spec } from '../NativeLauncherKit';
 
-export interface LauncherKitSpec extends TurboModule {
-  getApps(includeVersion: boolean, includeAccentColor: boolean): Promise<any>;
-  launchApplication(packageName: string, params?: LaunchParams): void;
-  isPackageInstalled(packageName: string): Promise<boolean>;
-  getDefaultLauncherPackageName(): Promise<string>;
-  setAsDefaultLauncher(): void;
-  getBatteryStatus(): Promise<any>;
-  goToSettings(): void;
-  openAlarmApp(): void;
-  openSetDefaultLauncher(): Promise<boolean>;
-  startListeningForAppInstallations(): void;
-  stopListeningForAppInstallations(): void;
-  startListeningForAppRemovals(): void;
-  stopListeningForAppRemovals(): void;
-}
+/** Type alias for the LauncherKit native module specification. */
+export type LauncherKitSpec = Spec;
