@@ -9,14 +9,15 @@
  * @copyright Copyright (c) 2024 Louay Sleman. All rights reserved.
  */
 
-import { Defaults, ErrorMessages } from '../constants';
+import { Defaults, ErrorMessages, AppEvents } from '../constants';
 import type {
+  BatteryStatusCallback,
   LauncherKitHelperProps,
   LaunchParams,
-} from '../Interfaces/helper';
-import { initializeModule } from '../Utils/moduleInitializer';
-import { handleError } from '../Utils/helper';
-import type { BatteryStatus } from '../Interfaces/battery';
+} from '../interfaces/helper';
+import { initializeModule } from '../utils/moduleInitializer';
+import { createEventListener, handleError } from '../utils/helper';
+import type { BatteryStatus } from '../interfaces/battery';
 
 // Initialize the LauncherKit module
 const LauncherKit = initializeModule();
@@ -28,6 +29,10 @@ const LauncherKit = initializeModule();
 const LauncherKitHelper: LauncherKitHelperProps = {
   /**
    * Launches an application with optional intent parameters.
+   *
+   * @param bundleId - The package name of the app to launch.
+   * @param params - Optional intent parameters (action, data, type, extras).
+   * @returns `true` if launched successfully, `false` otherwise.
    */
   launchApplication: (bundleId: string, params?: LaunchParams): boolean => {
     if (!bundleId) {
@@ -51,6 +56,7 @@ const LauncherKitHelper: LauncherKitHelperProps = {
     }
   },
 
+  /** Opens the Android system settings screen. */
   goToSettings: (): void => {
     try {
       LauncherKit.goToSettings();
@@ -59,6 +65,11 @@ const LauncherKitHelper: LauncherKitHelperProps = {
     }
   },
 
+  /**
+   * Checks whether a package is installed on the device.
+   * @param bundleId - The package name to check.
+   * @returns `true` if installed, `false` otherwise.
+   */
   checkIfPackageInstalled: async (bundleId: string): Promise<boolean> => {
     try {
       return await LauncherKit.isPackageInstalled(bundleId);
@@ -71,6 +82,7 @@ const LauncherKitHelper: LauncherKitHelperProps = {
     }
   },
 
+  /** Returns the package name of the device's current default launcher. */
   getDefaultLauncherPackageName: async (): Promise<string> => {
     try {
       return await LauncherKit.getDefaultLauncherPackageName();
@@ -83,6 +95,7 @@ const LauncherKitHelper: LauncherKitHelperProps = {
     }
   },
 
+  /** Opens the system alarm/clock app. Returns `true` on success, `false` on failure. */
   openAlarmApp: (): boolean => {
     try {
       LauncherKit.openAlarmApp();
@@ -92,9 +105,10 @@ const LauncherKitHelper: LauncherKitHelperProps = {
     }
   },
 
+  /** Retrieves the current battery level and charging state. */
   getBatteryStatus: async (): Promise<BatteryStatus> => {
     try {
-      return await LauncherKit.getBatteryStatus();
+      return (await LauncherKit.getBatteryStatus()) as BatteryStatus;
     } catch (error) {
       return handleError(
         error,
@@ -104,6 +118,23 @@ const LauncherKitHelper: LauncherKitHelperProps = {
     }
   },
 
+  /**
+   * Starts listening for battery status changes via DeviceEventEmitter.
+   * @param callback - Invoked each time the battery status changes.
+   */
+  startListeningForBatteryChanges: (callback: BatteryStatusCallback): void => {
+    createEventListener(AppEvents.BATTERY_STATUS_CHANGED, callback);
+    LauncherKit.startListeningForBatteryChanges();
+  },
+
+  /** Stops listening for battery status changes and removes all associated listeners. */
+  stopListeningForBatteryChanges: (): void => {
+    const { DeviceEventEmitter } = require('react-native');
+    DeviceEventEmitter.removeAllListeners(AppEvents.BATTERY_STATUS_CHANGED);
+    LauncherKit.stopListeningForBatteryChanges();
+  },
+
+  /** Opens the system UI that allows the user to choose a default launcher. */
   openSetDefaultLauncher: async (): Promise<boolean> => {
     try {
       return await LauncherKit.openSetDefaultLauncher();
@@ -112,6 +143,19 @@ const LauncherKitHelper: LauncherKitHelperProps = {
         error,
         ErrorMessages.SET_DEFAULT_LAUNCHER_ERROR,
         error as Error
+      );
+    }
+  },
+
+  /** Requests the system to set this app as the default launcher via a system dialog. */
+  requestDefaultLauncher: async (): Promise<boolean> => {
+    try {
+      return await LauncherKit.requestDefaultLauncher();
+    } catch (error) {
+      return handleError(
+        error,
+        'Failed to request default launcher',
+        false
       );
     }
   },
