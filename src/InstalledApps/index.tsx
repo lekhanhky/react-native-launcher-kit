@@ -12,22 +12,28 @@ import type {
   AppEventCallback,
   GetAppsOptions,
   InstalledApps,
-} from '../Interfaces/InstalledApps';
+} from '../interfaces/InstalledApps';
 import { AppConfig, AppEvents } from '../constants';
 import {
   createEventListener,
   handleError,
   safeJsonParse,
-} from '../Utils/helper';
-import { initializeModule } from '../Utils/moduleInitializer';
+} from '../utils/helper';
+import { initializeModule } from '../utils/moduleInitializer';
 
 // Initialize the LauncherKit LauncherKit
 const LauncherKit = initializeModule();
 
 /**
- * Object containing functions to retrieve information about installed apps.
+ * Object containing functions to retrieve information about installed apps,
+ * including event-based listeners for installations and removals.
  */
 const installedApps: InstalledApps = {
+  /**
+   * Retrieves all launchable apps installed on the device.
+   * @param options - Controls whether version and accent color are included.
+   * @returns An array of app details, or an empty array on failure.
+   */
   async getApps(options?: GetAppsOptions): Promise<AppDetail[]> {
     try {
       const { includeVersion, includeAccentColor } = {
@@ -44,6 +50,10 @@ const installedApps: InstalledApps = {
     }
   },
 
+  /**
+   * Retrieves all installed apps sorted alphabetically by label.
+   * @param options - Controls whether version and accent color are included.
+   */
   async getSortedApps(options?: GetAppsOptions): Promise<AppDetail[]> {
     try {
       const apps = await this.getApps(options);
@@ -57,6 +67,10 @@ const installedApps: InstalledApps = {
     }
   },
 
+  /**
+   * Registers a listener that fires when a new app is installed.
+   * @param callback - Receives the details of the newly installed app.
+   */
   startListeningForAppInstallations(callback: AppEventCallback): void {
     const handler = (app: string) =>
       callback(safeJsonParse<AppDetail>(app, {} as AppDetail));
@@ -64,16 +78,22 @@ const installedApps: InstalledApps = {
     LauncherKit.startListeningForAppInstallations();
   },
 
+  /** Stops listening for app installation events. */
   stopListeningForAppInstallations(): void {
     DeviceEventEmitter.removeAllListeners(AppEvents.APP_INSTALLED);
     LauncherKit.stopListeningForAppInstallations();
   },
 
+  /**
+   * Registers a listener that fires when an app is uninstalled.
+   * @param callback - Receives the package name of the removed app.
+   */
   startListeningForAppRemovals(callback: (packageName: string) => void): void {
     createEventListener(AppEvents.APP_REMOVED, callback);
     LauncherKit.startListeningForAppRemovals();
   },
 
+  /** Stops listening for app removal events. */
   stopListeningForAppRemovals(): void {
     DeviceEventEmitter.removeAllListeners(AppEvents.APP_REMOVED);
     LauncherKit.stopListeningForAppRemovals();
