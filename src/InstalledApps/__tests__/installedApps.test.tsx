@@ -1,6 +1,6 @@
 import { NativeModules, DeviceEventEmitter } from 'react-native';
-import installedApps from '../InstalledApps';
-import type { AppDetail } from '../Interfaces/InstalledApps';
+import installedApps from '..';
+import type { AppDetail } from '../../interfaces/InstalledApps';
 
 // Mock DeviceEventEmitter
 jest.mock('react-native', () => ({
@@ -29,10 +29,15 @@ describe('installedApps', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.spyOn(console, 'error').mockImplementation(() => {});
     mockLauncherKit = NativeModules.LauncherKit;
     mockDeviceEventEmitter = DeviceEventEmitter as jest.Mocked<
       typeof DeviceEventEmitter
     >;
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   describe('getApps', () => {

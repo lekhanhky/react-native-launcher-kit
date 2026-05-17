@@ -1,6 +1,6 @@
-import { NativeModules } from 'react-native';
-import LauncherKitHelper from '../Helper';
-import type { BatteryStatus } from '../Interfaces/battery';
+import { NativeModules, DeviceEventEmitter } from 'react-native';
+import LauncherKitHelper from '..';
+import type { BatteryStatus } from '../../interfaces/battery';
 
 // Define mock types
 type MockLauncherKit = {
@@ -11,6 +11,9 @@ type MockLauncherKit = {
   openAlarmApp: jest.Mock;
   getBatteryStatus: jest.Mock;
   openSetDefaultLauncher: jest.Mock;
+  startListeningForBatteryChanges: jest.Mock;
+  stopListeningForBatteryChanges: jest.Mock;
+  requestDefaultLauncher: jest.Mock;
 };
 
 // Mock the NativeModules
@@ -24,7 +27,14 @@ jest.mock('react-native', () => ({
       openAlarmApp: jest.fn(),
       getBatteryStatus: jest.fn(),
       openSetDefaultLauncher: jest.fn(),
+      startListeningForBatteryChanges: jest.fn(),
+      stopListeningForBatteryChanges: jest.fn(),
+      requestDefaultLauncher: jest.fn(),
     },
+  },
+  DeviceEventEmitter: {
+    addListener: jest.fn(),
+    removeAllListeners: jest.fn(),
   },
   Platform: {
     select: jest.fn((obj) => obj.default),
@@ -39,11 +49,12 @@ describe('LauncherKitHelper', () => {
   beforeEach(() => {
     originalLauncherKit = NativeModules.LauncherKit;
     jest.clearAllMocks();
+    jest.spyOn(console, 'error').mockImplementation(() => {});
     mockLauncherKit = NativeModules.LauncherKit as MockLauncherKit;
   });
   afterEach(() => {
-    // Restore LauncherKit after each test
     NativeModules.LauncherKit = originalLauncherKit;
+    jest.restoreAllMocks();
   });
   describe('launchApplication', () => {
     it('should launch application successfully', () => {
@@ -186,6 +197,54 @@ describe('LauncherKitHelper', () => {
       await expect(LauncherKitHelper.openSetDefaultLauncher()).rejects.toBe(
         error
       );
+    });
+  });
+
+  describe('startListeningForBatteryChanges', () => {
+    it('should register an event listener and call native method', () => {
+      const callback = jest.fn();
+
+      LauncherKitHelper.startListeningForBatteryChanges(callback);
+
+      expect(
+        (DeviceEventEmitter.addListener as jest.Mock)
+      ).toHaveBeenCalledWith('onBatteryStatusChanged', callback);
+      expect(
+        mockLauncherKit.startListeningForBatteryChanges
+      ).toHaveBeenCalled();
+    });
+  });
+
+  describe('stopListeningForBatteryChanges', () => {
+    it('should remove all listeners and call native method', () => {
+      LauncherKitHelper.stopListeningForBatteryChanges();
+
+      expect(
+        (DeviceEventEmitter.removeAllListeners as jest.Mock)
+      ).toHaveBeenCalledWith('onBatteryStatusChanged');
+      expect(
+        mockLauncherKit.stopListeningForBatteryChanges
+      ).toHaveBeenCalled();
+    });
+  });
+
+  describe('requestDefaultLauncher', () => {
+    it('should resolve with true when successful', async () => {
+      mockLauncherKit.requestDefaultLauncher.mockResolvedValue(true);
+
+      const result = await LauncherKitHelper.requestDefaultLauncher();
+
+      expect(result).toBe(true);
+    });
+
+    it('should return false on error', async () => {
+      mockLauncherKit.requestDefaultLauncher.mockRejectedValue(
+        new Error('Failed')
+      );
+
+      const result = await LauncherKitHelper.requestDefaultLauncher();
+
+      expect(result).toBe(false);
     });
   });
 });
