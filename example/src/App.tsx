@@ -1,12 +1,22 @@
+/**
+ * LauncherKit Example App
+ *
+ * Demonstrates all features of the react-native-launcher-kit library:
+ * - Installed apps listing with accent color extraction
+ * - Real-time battery monitoring (event-driven)
+ * - App launching with custom intent parameters
+ * - System launcher management (request default, settings)
+ * - System utilities (alarm, settings)
+ */
 import React, {useEffect, useState} from 'react';
 import {
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   View,
-  Pressable,
+  StatusBar,
 } from 'react-native';
+import {SafeAreaView} from 'react-native-safe-area-context';
 import {
   InstalledApps,
   RNLauncherKitHelper,
@@ -16,18 +26,16 @@ import {AppState} from './interfaces';
 import {LOCATIONS} from './static/locations';
 import AppButton from './components/AppButton';
 import AppGrid from './components/AppGrid';
+import AppDetail from './components/AppDetail';
 import BatteryInfo from './components/BatteryInfo';
 import Loading from './components/Loading';
 
-/**
- * Main application component demonstrating LauncherKit functionality
- */
+/** Main application component showcasing LauncherKit functionality. */
 const App: React.FC = () => {
-  // State declarations
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [showWithAccent, setShowWithAccent] = useState<boolean>(true);
   const [apps, setApps] = useState<AppState['apps']>([]);
   const [firstApp, setFirstApp] = useState<AppState['firstApp']>(undefined);
+  const [selectedApp, setSelectedApp] = useState<AppState['firstApp']>(undefined);
   const [defaultLauncherPackageName, setDefaultLauncherPackageName] =
     useState<string>('Unknown');
   const [battery, setBattery] = useState<AppState['battery']>({
@@ -35,9 +43,6 @@ const App: React.FC = () => {
     level: 0,
   });
 
-  /**
-   * Initialize app data and set up app installation listeners
-   */
   useEffect(() => {
     const initApp = async () => {
       setIsLoading(true);
@@ -55,6 +60,7 @@ const App: React.FC = () => {
         setBattery(batteryStatus);
         setApps(installedApps);
         setFirstApp(installedApps[0]);
+        setSelectedApp(installedApps[0]);
         setDefaultLauncherPackageName(defaultLauncher);
       } catch (error) {
         console.error('Error initializing app:', error);
@@ -65,7 +71,10 @@ const App: React.FC = () => {
 
     initApp();
 
-    // Set up app installation/removal listeners
+    RNLauncherKitHelper.startListeningForBatteryChanges((status) => {
+      setBattery(status);
+    });
+
     InstalledApps.startListeningForAppInstallations(
       (app: AppState['apps'][0]) => {
         setApps(prev => [app, ...prev]);
@@ -76,43 +85,32 @@ const App: React.FC = () => {
       setApps(prev => prev.filter(item => item.packageName !== packageName));
     });
 
-    // Cleanup listeners
     return () => {
+      RNLauncherKitHelper.stopListeningForBatteryChanges();
       InstalledApps.stopListeningForAppInstallations();
       InstalledApps.stopListeningForAppRemovals();
     };
   }, []);
 
-  // App launch handlers
   const handlers = {
     openApplication: (packageName: string) => {
       RNLauncherKitHelper.launchApplication(packageName);
     },
-
     openFirstApp: () => {
-      if (!firstApp) {
-        console.warn('No apps available to open');
-        return;
-      }
+      if (!firstApp) return;
       RNLauncherKitHelper.launchApplication(firstApp.packageName);
     },
-
     openSettings: () => RNLauncherKitHelper.goToSettings(),
-
     openSetDefault: () => RNLauncherKitHelper.openSetDefaultLauncher(),
-
+    requestDefault: () => RNLauncherKitHelper.requestDefaultLauncher(),
     openAlarm: () => RNLauncherKitHelper.openAlarmApp(),
-
     openMapLocation: () => {
       const {latitude, longitude, label} = LOCATIONS.TIMES_SQUARE;
       RNLauncherKitHelper.launchApplication('com.google.android.apps.maps', {
         action: IntentAction.VIEW,
-        data: `geo:${latitude},${longitude}?q=${latitude},${longitude}(${encodeURIComponent(
-          label,
-        )})&z=16`,
+        data: `geo:${latitude},${longitude}?q=${latitude},${longitude}(${encodeURIComponent(label)})&z=16`,
       });
     },
-
     openMapNavigation: () => {
       const {latitude, longitude} = LOCATIONS.EIFFEL_TOWER;
       RNLauncherKitHelper.launchApplication('com.google.android.apps.maps', {
@@ -120,7 +118,6 @@ const App: React.FC = () => {
         data: `google.navigation:q=${latitude},${longitude}&mode=driving`,
       });
     },
-
     openYouTube: () => {
       RNLauncherKitHelper.launchApplication('com.android.chrome', {
         action: IntentAction.VIEW,
@@ -135,115 +132,78 @@ const App: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView}>
-        {/* Installed Apps Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Installed Applications</Text>
-            <Text style={styles.sectionSubtitle}>
-              Total Apps: {apps.length}
-            </Text>
-          </View>
+      <StatusBar barStyle="dark-content" backgroundColor="#F8F8FC" />
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>LauncherKit</Text>
+          <Text style={styles.headerSubtitle}>React Native Launcher Demo</Text>
+        </View>
 
-          <View style={styles.toggleContainer}>
-            <Pressable
-              style={[
-                styles.toggleButton,
-                showWithAccent ? styles.toggleButtonActive : {},
-              ]}
-              onPress={() => setShowWithAccent(true)}>
-              <Text
-                style={[
-                  styles.toggleButtonText,
-                  showWithAccent ? styles.toggleButtonTextActive : {},
-                ]}>
-                With Accent
-              </Text>
-            </Pressable>
-            <Pressable
-              style={[
-                styles.toggleButton,
-                !showWithAccent ? styles.toggleButtonActive : {},
-              ]}
-              onPress={() => setShowWithAccent(false)}>
-              <Text
-                style={[
-                  styles.toggleButtonText,
-                  !showWithAccent ? styles.toggleButtonTextActive : {},
-                ]}>
-                Without Accent
-              </Text>
-            </Pressable>
-          </View>
+        {/* Battery Card */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Battery Status</Text>
+          <BatteryInfo battery={battery} />
+        </View>
 
+        {/* System Info */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>System Info</Text>
+          <View style={styles.infoItem}>
+            <Text style={styles.infoLabel}>Default Launcher</Text>
+            <Text style={styles.infoValue} numberOfLines={1}>{defaultLauncherPackageName}</Text>
+          </View>
+          <View style={styles.infoItem}>
+            <Text style={styles.infoLabel}>Installed Apps</Text>
+            <Text style={styles.infoValue}>{apps.length}</Text>
+          </View>
+        </View>
+
+        {/* Accent Color Demo */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Accent Color</Text>
+          <Text style={styles.description}>
+            Each app's dominant icon color is extracted and available as{' '}
+            <Text style={styles.code}>accentColor</Text>. Use it as a themed background for app detail cards, notifications, or launcher pages.
+            Long-press any app icon below to preview its accent.
+          </Text>
+          {selectedApp && <AppDetail app={selectedApp} />}
+        </View>
+
+        {/* Installed Apps */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Installed Apps</Text>
+          <Text style={styles.description}>
+            Tap to launch. Long-press to see accent color preview above.
+          </Text>
           <AppGrid
             apps={apps}
-            showWithAccent={showWithAccent}
             onAppPress={handlers.openApplication}
+            onAppLongPress={setSelectedApp}
           />
         </View>
 
-        {/* System Info Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>System Information</Text>
-          </View>
-          <BatteryInfo battery={battery} />
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Default Launcher:</Text>
-            <Text style={styles.infoValue}>{defaultLauncherPackageName}</Text>
-          </View>
+        {/* Actions */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Actions</Text>
+
+          <Text style={styles.groupLabel}>Launcher</Text>
+          <AppButton onPress={handlers.requestDefault} title="Set as Default Launcher" />
+          <AppButton onPress={handlers.openSetDefault} title="Launcher Settings" variant="secondary" />
+
+          <Text style={styles.groupLabel}>System</Text>
+          <AppButton onPress={handlers.openSettings} title="Open Settings" />
+          <AppButton onPress={handlers.openAlarm} title="Open Alarm" />
+          <AppButton onPress={handlers.openFirstApp} title={`Launch ${firstApp?.label || 'First App'}`} variant="secondary" />
+
+          <Text style={styles.groupLabel}>Intent Demos</Text>
+          <AppButton onPress={handlers.openMapLocation} title="Open Map: Times Square" />
+          <AppButton onPress={handlers.openMapNavigation} title="Navigate: Eiffel Tower" />
+          <AppButton onPress={handlers.openYouTube} title="Open YouTube in Chrome" variant="secondary" />
         </View>
 
-        {/* Demo Actions Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Launch Apps Demo</Text>
-            <Text style={styles.sectionSubtitle}>
-              Examples of launching apps with parameters
-            </Text>
-          </View>
-
-          <View style={styles.actionGroup}>
-            <Text style={styles.groupTitle}>💻 Basic Controls</Text>
-            <AppButton
-              onPress={handlers.openFirstApp}
-              title={`📱 Launch ${firstApp?.label || 'First App'}`}
-            />
-            <AppButton
-              onPress={handlers.openSettings}
-              title="⚙️ System Settings"
-            />
-          </View>
-
-          <View style={styles.actionGroup}>
-            <Text style={styles.groupTitle}>🛠️ System Utilities</Text>
-            <AppButton
-              onPress={handlers.openSetDefault}
-              title="🏠 Set Default Launcher"
-            />
-            <AppButton onPress={handlers.openAlarm} title="⏰ Open Alarm" />
-          </View>
-
-          <View style={styles.actionGroup}>
-            <Text style={styles.groupTitle}>🗺️ Location Services</Text>
-            <AppButton
-              onPress={handlers.openMapLocation}
-              title="🗽 View Times Square Location"
-            />
-            <AppButton
-              onPress={handlers.openMapNavigation}
-              title="🗼 Navigate to Eiffel Tower"
-            />
-          </View>
-
-          <View style={styles.actionGroup}>
-            <Text style={styles.groupTitle}>🌐 Web Applications</Text>
-            <AppButton
-              onPress={handlers.openYouTube}
-              title="📺 Launch YouTube in Browser"
-            />
-          </View>
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>react-native-launcher-kit v2.1.0</Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -253,84 +213,89 @@ const App: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f1f1f1',
+    backgroundColor: '#F8F8FC',
   },
   scrollView: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
   },
-  section: {
-    marginVertical: 20,
+  header: {
+    paddingTop: 20,
+    paddingBottom: 8,
+    paddingHorizontal: 4,
+  },
+  headerTitle: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#1C1C1E',
+  },
+  headerSubtitle: {
+    fontSize: 15,
+    color: '#8E8E93',
+    marginTop: 2,
+  },
+  card: {
     backgroundColor: '#fff',
-    borderRadius: 15,
-    padding: 16,
+    borderRadius: 16,
+    padding: 18,
+    marginTop: 16,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 1},
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  sectionHeader: {
-    marginBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-    paddingBottom: 12,
-  },
-  sectionTitle: {
-    fontSize: 24,
+  cardTitle: {
+    fontSize: 18,
     fontWeight: '700',
-    color: '#2d3748',
-    marginBottom: 4,
+    color: '#1C1C1E',
+    marginBottom: 12,
   },
-  sectionSubtitle: {
-    fontSize: 14,
-    color: '#718096',
-    fontWeight: '500',
+  description: {
+    fontSize: 13,
+    color: '#636366',
+    lineHeight: 18,
+    marginBottom: 14,
   },
-  toggleContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginVertical: 10,
-  },
-  toggleButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 30,
-    borderWidth: 2,
-    borderColor: '#DDD',
-    marginHorizontal: 5,
-  },
-  toggleButtonActive: {
-    backgroundColor: '#9261E2',
-  },
-  toggleButtonText: {
-    fontSize: 16,
-    color: '#666',
-  },
-  toggleButtonTextActive: {
-    color: 'white',
-  },
-  actionGroup: {
-    marginBottom: 16,
-  },
-  groupTitle: {
-    fontSize: 16,
+  code: {
+    fontFamily: 'monospace',
+    fontSize: 12,
+    color: '#6C3FBF',
     fontWeight: '600',
-    color: '#4a5568',
-    marginBottom: 8,
-    marginLeft: 4,
   },
-  infoRow: {
+  infoItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-    flexWrap: 'wrap',
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#E5E5EA',
   },
   infoLabel: {
-    fontSize: 16,
-    color: '#4a5568',
-    fontWeight: '500',
+    fontSize: 15,
+    color: '#3C3C43',
   },
   infoValue: {
-    fontSize: 16,
-    color: '#718096',
+    fontSize: 15,
+    color: '#8E8E93',
+    fontWeight: '500',
+    maxWidth: '60%',
+  },
+  groupLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#8E8E93',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  footer: {
+    alignItems: 'center',
+    paddingVertical: 24,
+  },
+  footerText: {
+    fontSize: 12,
+    color: '#C7C7CC',
   },
 });
 
