@@ -13,7 +13,10 @@ import { TurboModuleRegistry } from 'react-native';
  */
 export interface Spec extends TurboModule {
   /** Retrieves installed applications as a JSON string. */
-  getApps(includeVersion: boolean, includeAccentColor: boolean): Promise<string>;
+  getApps(
+    includeVersion: boolean,
+    includeAccentColor: boolean
+  ): Promise<string>;
 
   /** Launches an application by package name with optional intent parameters. */
   launchApplication(packageName: string, params?: Object): void;

@@ -26,7 +26,7 @@
     "build:dist": "bash scripts/build-dist.sh",
     "test": "jest",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint \"**/*.{js,ts,tsx}\"",
+    "lint": "eslint \"src/**/*.{js,ts,tsx}\"",
     "prepack": "npm run build",
     "release": "release-it",
     "format": "prettier --write \"src/**/*.tsx\"",
@@ -100,6 +100,7 @@
     "modulePathIgnorePatterns": [
       "<rootDir>/example",
       "<rootDir>/example-0.80",
+      "<rootDir>/dist",
       "<rootDir>/lib/"
     ]
   },
@@ -146,7 +147,9 @@
   },
   "eslintIgnore": [
     "node_modules/",
-    "lib/"
+    "lib/",
+    "dist/",
+    "example/"
   ],
   "prettier": {
     "quoteProps": "consistent",

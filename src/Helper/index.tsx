@@ -152,11 +152,7 @@ const LauncherKitHelper: LauncherKitHelperProps = {
     try {
       return await LauncherKit.requestDefaultLauncher();
     } catch (error) {
-      return handleError(
-        error,
-        'Failed to request default launcher',
-        false
-      );
+      return handleError(error, 'Failed to request default launcher', false);
     }
   },
 };

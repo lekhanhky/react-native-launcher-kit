@@ -49,7 +49,11 @@ describe('handleError', () => {
   });
 
   it('should return the fallback value', () => {
-    const result = handleError(new Error('test'), 'Something failed', 'fallback');
+    const result = handleError(
+      new Error('test'),
+      'Something failed',
+      'fallback'
+    );
     expect(result).toBe('fallback');
   });
 
@@ -80,12 +84,9 @@ describe('handleError', () => {
   });
 
   it('should log additional info when provided', () => {
-    handleError(
-      new Error('test error'),
-      'Operation failed',
-      null,
-      { key: 'value' }
-    );
+    handleError(new Error('test error'), 'Operation failed', null, {
+      key: 'value',
+    });
     expect(consoleSpy).toHaveBeenCalledWith(
       'Operation failed',
       expect.stringContaining('Additional Info:'),

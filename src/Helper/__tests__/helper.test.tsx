@@ -206,9 +206,10 @@ describe('LauncherKitHelper', () => {
 
       LauncherKitHelper.startListeningForBatteryChanges(callback);
 
-      expect(
-        (DeviceEventEmitter.addListener as jest.Mock)
-      ).toHaveBeenCalledWith('onBatteryStatusChanged', callback);
+      expect(DeviceEventEmitter.addListener as jest.Mock).toHaveBeenCalledWith(
+        'onBatteryStatusChanged',
+        callback
+      );
       expect(
         mockLauncherKit.startListeningForBatteryChanges
       ).toHaveBeenCalled();
@@ -220,11 +221,9 @@ describe('LauncherKitHelper', () => {
       LauncherKitHelper.stopListeningForBatteryChanges();
 
       expect(
-        (DeviceEventEmitter.removeAllListeners as jest.Mock)
+        DeviceEventEmitter.removeAllListeners as jest.Mock
       ).toHaveBeenCalledWith('onBatteryStatusChanged');
-      expect(
-        mockLauncherKit.stopListeningForBatteryChanges
-      ).toHaveBeenCalled();
+      expect(mockLauncherKit.stopListeningForBatteryChanges).toHaveBeenCalled();
     });
   });
 
