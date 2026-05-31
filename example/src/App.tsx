@@ -203,7 +203,7 @@ const App: React.FC = () => {
         </View>
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>react-native-launcher-kit v2.1.0</Text>
+          <Text style={styles.footerText}>react-native-launcher-kit v3.0.0</Text>
         </View>
       </ScrollView>
     </SafeAreaView>

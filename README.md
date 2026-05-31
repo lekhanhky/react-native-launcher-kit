@@ -1,12 +1,22 @@
 # react-native-launcher-kit
 
-A React Native package for Android that provides helper functions for building launchers and interacting with the system. Supports both New Architecture (TurboModules) and Legacy Architecture.
+A React Native library for building custom Android home screen launchers. Get installed apps, launch apps with intents, monitor battery, request default launcher status, and listen for app installs/removals. Fully supports React Native New Architecture (TurboModules) and Legacy Bridge. Works with Expo (dev client) and bare React Native projects.
 
 <p align="left">
-  <a href="https://www.npmjs.com/package/react-native-launcher-kit"><img src="https://img.shields.io/badge/npm-v2.1.0-blue"></a>
+  <a href="https://www.npmjs.com/package/react-native-launcher-kit"><img src="https://img.shields.io/badge/npm-v3.0.0-blue"></a>
  <a href="https://github.com/prettier/prettier"><img src="https://img.shields.io/badge/styled_with-prettier-ff69b4.svg"></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-blue.svg"></a>
 </p>
+
+## Use Cases
+
+- Build a custom Android home screen launcher in React Native
+- List all installed apps on the device with icons, versions, and accent colors
+- Launch any app programmatically with Android intents (deep links, navigation, URLs)
+- Monitor battery level and charging state in real time
+- Detect when users install or uninstall apps
+- Prompt users to set your app as the default launcher
+- Create app drawers, app managers, or parental control apps
 
 ## Compatibility
 
@@ -77,10 +87,14 @@ If your app is a launcher and you want to use `requestDefaultLauncher()`, you mu
 11. Listen for app installations and removals
 12. Get app version and accent color for each installed app
 
-## Demo
+## Screenshots
 
 <p>
-   <img width="200" src="https://raw.githubusercontent.com/louaySleman/react-native-launcher-kit/main/screenshots/1.gif" />
+   <img width="220" src="https://raw.githubusercontent.com/louaySleman/react-native-launcher-kit/main/screenshots/1.png" alt="Battery status, system info, and accent color extraction" />
+   &nbsp;&nbsp;
+   <img width="220" src="https://raw.githubusercontent.com/louaySleman/react-native-launcher-kit/main/screenshots/2.png" alt="Installed apps grid and set default launcher" />
+   &nbsp;&nbsp;
+   <img width="220" src="https://raw.githubusercontent.com/louaySleman/react-native-launcher-kit/main/screenshots/3.png" alt="Launcher actions, system settings, and intent demos" />
 </p>
 
 ## API Reference
@@ -334,7 +348,84 @@ cd example-0.80 && npm install && npm run android
 
 > After making changes to the library source, just run `npm install` inside the example to rebuild `dist/` and pick up changes.
 
+## What's New in 3.0.0
+
+- **React Native New Architecture (TurboModules)** full support while keeping the legacy bridge working
+- **Android native layer migrated to Kotlin** with dual module implementations (Legacy + Turbo)
+- **Real-time battery monitoring** via `BatteryEventManager` with event-driven updates
+- **Native default-launcher request flow** using Android `RoleManager` API
+- **App installation/removal listeners** for real-time app change detection
+- **App version and accent color** support in installed apps queries
+- **Library toolchain upgraded to React Native 0.85**
+- **GitHub Actions CI pipeline** added
+- **Expanded test coverage** and refreshed example app
+
+## Breaking Changes (3.0.0)
+
+- **Node.js:** Minimum version is now **20.19.4** (required by `@react-native/babel-preset@0.85`)
+- **Dev toolchain:** Library dev dependencies upgraded to React Native **0.85.3** -- consumers on older RN versions remain supported via the compatibility matrix
+- **Source layout:** `src/` module folders renamed to lowercase (`helper/`, `installedApps/`, `interfaces/`, `utils/`) for cross-platform consistency. If you import from internal paths, update them accordingly.
+
+## Using with Expo
+
+This library contains native Android code and **cannot run in Expo Go**. However, it works with Expo projects using **development builds** (via `expo-dev-client`).
+
+### Setup
+
+1. Install the library and dev client:
+
+```sh
+npx expo install react-native-launcher-kit expo-dev-client
+```
+
+2. Add the required permission to your `app.json` or `app.config.js`:
+
+```json
+{
+  "expo": {
+    "android": {
+      "permissions": ["android.permission.QUERY_ALL_PACKAGES"]
+    }
+  }
+}
+```
+
+3. If your app is a launcher, add the home intent filter via the `expo-build-properties` plugin or a config plugin in `app.json`:
+
+```json
+{
+  "expo": {
+    "android": {
+      "intentFilters": [
+        {
+          "action": "MAIN",
+          "category": ["HOME", "DEFAULT"]
+        }
+      ]
+    }
+  }
+}
+```
+
+4. Build your development client:
+
+```sh
+npx expo prebuild
+npx expo run:android
+```
+
+> **Note:** Since this is an Android-only library, iOS builds will not include any functionality from this package. All API calls are no-ops or will throw on iOS.
+
 ## Breaking History
+
+### [3.0.0](https://github.com/louaySleman/react-native-launcher-kit/releases/tag/3.0.0)
+
+- Full React Native New Architecture (TurboModules) support
+- Android native layer rewritten in Kotlin
+- Real-time battery monitoring with `startListeningForBatteryChanges`
+- Native `requestDefaultLauncher()` using Android RoleManager API
+- Node.js minimum version raised to 20.19.4
+- Source folders renamed to lowercase for cross-platform CI compatibility
 
 ### [2.1.0](https://github.com/louaySleman/react-native-launcher-kit/releases/tag/2.1.0)
 
@@ -352,6 +443,28 @@ cd example-0.80 && npm install && npm run android
 ### [1.0.0](https://github.com/louaySleman/react-native-launcher-kit/releases/tag/1.0.4)
 
 First release.
+
+## FAQ
+
+### Does this work with iOS?
+
+No. This is an Android-only library. iOS does not allow custom launchers or querying installed apps.
+
+### Does this work with Expo?
+
+Yes, with [Expo development builds](https://docs.expo.dev/develop/development-builds/introduction/) (`expo-dev-client`). It does not work in Expo Go since it requires native code.
+
+### How do I get a list of installed apps in React Native?
+
+Use `InstalledApps.getApps()` or `InstalledApps.getSortedApps()` from this package. Both return app label, package name, icon path, and optionally version and accent color.
+
+### How do I make my React Native app the default launcher?
+
+Call `RNLauncherKitHelper.requestDefaultLauncher()` and declare the `CATEGORY_HOME` intent filter in your AndroidManifest.xml. See the [setup instructions](#launcher-activity-declaration).
+
+### Does this support React Native New Architecture?
+
+Yes. Version 3.0.0 has full TurboModule support. It also works on the Legacy Bridge for RN 0.60+.
 
 ## Support
 
