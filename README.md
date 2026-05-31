@@ -1,14 +1,21 @@
 # react-native-launcher-kit
 
-This is a React Native package for Android that provides a set of helper functions for launching apps and interacting
-with the launcher. It works with automatic linking on React Native versions 0.60 and higher. For older versions, manual
-linking is required.
+A React Native package for Android that provides helper functions for building launchers and interacting with the system. Supports both New Architecture (TurboModules) and Legacy Architecture.
 
 <p align="left">
   <a href="https://www.npmjs.com/package/react-native-launcher-kit"><img src="https://img.shields.io/badge/npm-v2.1.0-blue"></a>
  <a href="https://github.com/prettier/prettier"><img src="https://img.shields.io/badge/styled_with-prettier-ff69b4.svg"></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-blue.svg"></a>
 </p>
+
+## Compatibility
+
+| React Native | Architecture | Supported |
+|---|---|---|
+| 0.82+ | New Architecture (always enabled) | Yes |
+| 0.71 - 0.81 | New Architecture (`newArchEnabled=true`) | Yes |
+| 0.71 - 0.81 | Legacy Architecture (`newArchEnabled=false`) | Yes |
+| 0.60 - 0.70 | Legacy (auto-linking) | Yes |
 
 ## Installation
 
@@ -20,402 +27,341 @@ or
 yarn add react-native-launcher-kit
 ```
 
-If you're using React Native 0.60 or higher, the package will be automatically linked for you. For older versions, you
-need to manually link the package.
+React Native 0.60+ automatically links the package. For older versions, manual linking is required.
 
-<details>
-  <summary>Manual Linking</summary>
+## Android Setup
 
-  <!-- Content of the dropdown goes here -->
+### Required Permission
 
-1. In your project directory, run the following command:
-
-```sh
-react-native link react-native-launcher-kit
-```
-
-2. Open the `android/app/build.gradle` file in your project and add the following line to the `dependencies` section:
-
-```typescript
-implementation
-project(':react-native-launcher-kit')
-```
-
-3. Open the `MainApplication.java` file in your project and add the following import statement:
-
-```java
-import com.launcherkit;
-```
-
-4. Add the package to the list of packages in the getPackages() method:
-
-```java
-protected List<ReactPackage> getPackages(){
-  return Arrays.asList(
-  new MainReactPackage(),
-  new LauncherKit() // <-- Add this line
-  );
-  }
-```
-
-</details>
-
-## Features
-
-The features of the React Native Launcher Kit include:
-
-1. Get all installed apps (sorted and unsorted).
-2. Get the current default launcher.
-3. Get the current battery percentage and whether the phone is charging or not.
-4. Check if a package (bundle ID) is installed.
-5. Open system settings.
-6. Open "Set as default launcher" screen directly.
-7. Open an app using its bundle ID with custom params.
-8. Open the alarm app directly.
-9. Listen for app installations and removals.
-10. Get app version and color accent for each app on the installed app list.
-
-❤️ **Love this project? Consider supporting its development!**
-<p align="left">
-  <a href="https://www.patreon.com/louaysleman">
-    <img src="https://c5.patreon.com/external/logo/become_a_patron_button.png" alt="Become a Patron" />
-  </a>
-</p>
-
-## Important Note
-
-Starting with Android 11 (API level 30), you need to add the following permission to your `AndroidManifest.xml` file to query package information:
+Starting with Android 11 (API level 30), add the following permission to your app's `AndroidManifest.xml` to query installed packages:
 
 ```xml
 <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"/>
- ```
-**Important Note:** Google Play Store has specific policies regarding the use of `QUERY_ALL_PACKAGES` permission. Your app must have a core functionality that requires querying installed apps to use this permission. You may need to provide justification during the app review process. Make sure your app's use case complies with the Google Play Policy.
+```
 
-This permission is required for the following features in this package:
+> **Google Play Note:** The `QUERY_ALL_PACKAGES` permission requires justification during app review. Your app must have a core feature that requires querying installed apps (e.g., a launcher, app manager, or device management tool).
 
-- Getting installed apps list
+This permission is required for:
+- Getting the installed apps list
 - Checking if a specific package is installed
 - Listening for app installations and removals
 
+### Launcher Activity Declaration
+
+If your app is a launcher and you want to use `requestDefaultLauncher()`, you must declare your activity as a home app:
+
+```xml
+<activity android:name=".MainActivity" ...>
+    <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.HOME" />
+        <category android:name="android.intent.category.DEFAULT" />
+    </intent-filter>
+</activity>
+```
+
+> **Important:** Without this declaration, the system will not show your app as an option in the default launcher picker dialog.
+
+## Features
+
+1. Get all installed apps (sorted and unsorted)
+2. Get the current default launcher
+3. Get battery percentage and charging status (one-shot or event-driven)
+4. Listen for real-time battery changes
+5. Check if a package is installed
+6. Open system settings
+7. Request default launcher via system dialog
+8. Open "Set as default launcher" settings page
+9. Launch apps with custom intent parameters
+10. Open the alarm app
+11. Listen for app installations and removals
+12. Get app version and accent color for each installed app
+
 ## Demo
+
 <p>
    <img width="200" src="https://raw.githubusercontent.com/louaySleman/react-native-launcher-kit/main/screenshots/1.gif" />
 </p>
 
-## Breaking History
+## API Reference
 
-### [2.1.0](https://github.com/louaySleman/react-native-launcher-kit/releases/tag/2.1.0)
-**Enhanced Launch Parameters:**
+### `InstalledApps.getApps(options): Promise<AppDetail[]>`
 
-🚀 **Launch Parameter Support**
-- Added structured launch parameters for better app launching
-- Introduced [`IntentAction`](#intent-actions) and [`MimeType`](#mime-types) enums
-- Enhanced type safety with [`LaunchParams`](#launch-parameters-interface) interface
-
-### [2.0.0](https://github.com/louaySleman/react-native-launcher-kit/releases/tag/2.0.0)
-**Breaking Changes:**
-
-🚀 **Performance Optimization**
-- Changed getApps and getSortedApps to return Promises
-- Apps are now loaded on-demand when calling getInstalledApps instead of at app startup
-- This change dramatically improves initial app launch performance
-
-🔄 **API Changes**
-- Icon property now returns file path instead of base64 string
-- Added new GetAppsOptions interface for configurable app queries
-- Added support for custom parameters in launchApplication
-- Moved `QUERY_ALL_PACKAGES` permission requirement to user's AndroidManifest.xml
-  > Previously this was included in the package's manifest, now users need to add it manually if their app requires querying all packages
-
-✨ **New Features**
-- App version and accent color support in getApps and getSortedApps
-- New app installation listener with startListeningForAppInstallations
-- New app removal listener with startListeningForAppRemovals
-
-### [1.0.0](https://github.com/louaySleman/react-native-launcher-kit/releases/tag/1.0.4)
-First release
-
-## Methods
-
-### 1. `getApps(options: GetAppsOptions): Promise<AppDetail[]>`
-
-Returns an array of all installed apps on the device with optional version and accent color.
-
-
+Returns all installed apps with optional version and accent color.
 
 ```typescript
 import { InstalledApps } from 'react-native-launcher-kit';
 
-const result = await InstalledApps.getApps({ includeVersion: true, includeAccentColor: true });
+const apps = await InstalledApps.getApps({
+  includeVersion: true,
+  includeAccentColor: true,
+});
 ```
 
-### 2. `getSortedApps(options: GetAppsOptions): Promise<AppDetail[]>`
+### `InstalledApps.getSortedApps(options): Promise<AppDetail[]>`
 
-Returns an array of all installed apps on the device, sorted alphabetically by app label, with optional version and accent color.
+Same as `getApps` but sorted alphabetically by label.
 
 ```typescript
-import { InstalledApps } from 'react-native-launcher-kit';
-
-const result = await InstalledApps.getSortedApps({ includeVersion: true, includeAccentColor: true });
+const apps = await InstalledApps.getSortedApps({
+  includeVersion: true,
+  includeAccentColor: true,
+});
 ```
 
-#### `AppDetail Interface`
+#### Types
 
 ```typescript
 interface AppDetail {
   label: string;
   packageName: string;
-  icon: string;
+  icon: string;        // File path to icon image
   version?: string;
-  accentColor?: string;
+  accentColor?: string; // Dominant color of the app icon
 }
-```
-#### `GetAppsOptions Interface`
 
-```typescript
 interface GetAppsOptions {
   includeVersion: boolean;
   includeAccentColor: boolean;
 }
 ```
 
-### Note:
+### `RNLauncherKitHelper.launchApplication(bundleId, params?)`
 
-- The icon property will now return the file path of the icon image instead of the base64 encoded string as in previous versions.
-- The accentColor property provides the dominant color of the app's icon for easy UI theming.
+Launch an app by package name, optionally with intent parameters.
 
-### 3. Enhanced App Launching `launchApplication`
-
-#### Basic App Launch
-```typescript
-import { RNLauncherKitHelper } from 'react-native-launcher-kit';
-
-// Simple app launch
-RNLauncherKitHelper.launchApplication('com.example.app');
-```
-
-#### Launch with Parameters
-
-Google Maps Examples
 ```typescript
 import { RNLauncherKitHelper, IntentAction } from 'react-native-launcher-kit';
-// Open specific location
+
+// Simple launch
+RNLauncherKitHelper.launchApplication('com.example.app');
+
+// Launch with parameters (e.g., open a map location)
 RNLauncherKitHelper.launchApplication('com.google.android.apps.maps', {
   action: IntentAction.VIEW,
-  data: `geo:40.7580,-73.9855?q=40.7580,-73.9855(Times Square)&z=16`
+  data: 'geo:40.7580,-73.9855?q=40.7580,-73.9855(Times Square)&z=16',
+});
+
+// Open a URL in Chrome
+RNLauncherKitHelper.launchApplication('com.android.chrome', {
+  action: IntentAction.VIEW,
+  data: 'https://www.youtube.com',
 });
 
 // Start navigation
 RNLauncherKitHelper.launchApplication('com.google.android.apps.maps', {
   action: IntentAction.VIEW,
-  data: `google.navigation:q=48.8584,2.2945&mode=driving`
+  data: 'google.navigation:q=48.8584,2.2945&mode=driving',
 });
 ```
 
-Browser Examples
-```typescript
-import { RNLauncherKitHelper, IntentAction } from 'react-native-launcher-kit';
-// Open URL in Chrome
-RNLauncherKitHelper.launchApplication('com.android.chrome', {
-  action: IntentAction.VIEW,
-  data: 'https://www.youtube.com'
-});
-```
+#### Launch Parameters
 
-#### Intent Actions
-Available intent actions for enhanced app launching:
-```typescript
-enum IntentAction {
-  MAIN = 'android.intent.action.MAIN',
-  VIEW = 'android.intent.action.VIEW',
-  SEND = 'android.intent.action.SEND'
-}
-```
-
-#### MIME Types
-Common MIME types for content handling:
-```typescript
-enum MimeType {
-  ALL = '*/*',
-  GENESIS_ROM = 'application/x-genesis-rom',
-  PSX_ROM = 'application/x-playstation-rom',
-  PDF = 'application/pdf',
-  TEXT = 'text/plain',
-  HTML = 'text/html'
-}
-```
-
-### Launch Parameters Interface
 ```typescript
 interface LaunchParams {
   action?: IntentAction | string;
   data?: string;
   type?: MimeType | string;
-  extras?: Record;
+  extras?: Record<string, string>;
+}
+
+enum IntentAction {
+  MAIN = 'android.intent.action.MAIN',
+  VIEW = 'android.intent.action.VIEW',
+  SEND = 'android.intent.action.SEND',
+}
+
+enum MimeType {
+  ALL = '*/*',
+  PDF = 'application/pdf',
+  TEXT = 'text/plain',
+  HTML = 'text/html',
 }
 ```
 
-### Important Notes
-- The enums (`IntentAction` and `MimeType`) are optional helpers
-- You can use any valid Android intent action string directly
-- You can use any valid MIME type string directly
-- The `extras` object accepts any key-value pairs needed by the target app
-- Always check if the target app is installed before launching
-
-### 4. `checkIfPackageInstalled: Promise<boolean>`
-
-Checks if an app with the given bundle ID is installed on the device.
+### `RNLauncherKitHelper.checkIfPackageInstalled(bundleId): Promise<boolean>`
 
 ```typescript
-import { RNLauncherKitHelper } from 'react-native-launcher-kit';
-
-const result = await RNLauncherKitHelper.checkIfPackageInstalled(
-  'com.android.settings',
-);
-console.log(result); // true or false.
+const isInstalled = await RNLauncherKitHelper.checkIfPackageInstalled('com.android.settings');
 ```
 
-### 5. `getDefaultLauncherPackageName: Promise<string>`
-
-Checks the default launcher app on the device.
+### `RNLauncherKitHelper.getDefaultLauncherPackageName(): Promise<string>`
 
 ```typescript
-import { RNLauncherKitHelper } from 'react-native-launcher-kit';
-
-const result = await RNLauncherKitHelper.getDefaultLauncherPackageName();
-console.log(result);
+const launcher = await RNLauncherKitHelper.getDefaultLauncherPackageName();
 ```
 
-### 6. `openSetDefaultLauncher: Promise<boolean>`
+### `RNLauncherKitHelper.requestDefaultLauncher(): Promise<boolean>`
 
-Opens the "Set Default Launcher" screen on the device.
+Shows a system dialog for the user to pick the default launcher. This is the recommended way to request becoming the default launcher.
+
+- **Android 10+:** Uses `RoleManager` to show the system picker modal
+- **Android 9 and below:** Triggers the system home chooser dialog
+- **Fallback:** Opens the Settings page if the dialog can't be shown
 
 ```typescript
-import { RNLauncherKitHelper } from 'react-native-launcher-kit';
-
-const result = await RNLauncherKitHelper.openSetDefaultLauncher();
-console.log(result); // true or false.
+await RNLauncherKitHelper.requestDefaultLauncher();
 ```
 
-### 7. `getBatteryStatus: Promise<BatteryStatus>`
+> **Important:** Your app must declare the `CATEGORY_HOME` intent filter in `AndroidManifest.xml` for the system to show it as an option. See [Launcher Activity Declaration](#launcher-activity-declaration).
 
-Returns the current battery status of the device and if the phone is currently charging or not.
+### `RNLauncherKitHelper.openSetDefaultLauncher(): Promise<boolean>`
+
+Opens the system "Set Default Launcher" settings page.
 
 ```typescript
-import { RNLauncherKitHelper } from 'react-native-launcher-kit';
-
-const result = await RNLauncherKitHelper.getBatteryStatus();
-console.log(result); // {"isCharging": false, "level": 100}
+await RNLauncherKitHelper.openSetDefaultLauncher();
 ```
 
-#### `BatteryStatus Interface`
+### `RNLauncherKitHelper.getBatteryStatus(): Promise<BatteryStatus>`
+
+One-shot battery status query.
 
 ```typescript
-interface AppDetail {
+const battery = await RNLauncherKitHelper.getBatteryStatus();
+// { level: 85, isCharging: false }
+```
+
+```typescript
+interface BatteryStatus {
   level: number;
   isCharging: boolean;
 }
 ```
 
-### 8. `openAlarmApp: boolean`
+### `RNLauncherKitHelper.startListeningForBatteryChanges(callback)`
 
-Opens the default alarm app on the device.
+Event-driven battery monitoring. The callback fires only when the battery level or charging state actually changes -- no polling needed.
 
 ```typescript
 import { RNLauncherKitHelper } from 'react-native-launcher-kit';
 
-const result = await RNLauncherKitHelper.getBatteryStatus();
-console.log(result);
+// Start listening
+RNLauncherKitHelper.startListeningForBatteryChanges((status) => {
+  console.log(`Battery: ${status.level}%, Charging: ${status.isCharging}`);
+});
+
+// Stop listening (e.g., on component unmount)
+RNLauncherKitHelper.stopListeningForBatteryChanges();
 ```
 
-### 9. `goToSettings`
-
-Opens the settings screen of the device.
+#### Full example with React hooks:
 
 ```typescript
+import { useEffect, useState } from 'react';
 import { RNLauncherKitHelper } from 'react-native-launcher-kit';
+import type { BatteryStatus } from 'react-native-launcher-kit/lib/typescript/interfaces/battery';
 
+const useBattery = () => {
+  const [battery, setBattery] = useState<BatteryStatus>({ level: 0, isCharging: false });
+
+  useEffect(() => {
+    // Get initial status
+    RNLauncherKitHelper.getBatteryStatus().then(setBattery);
+
+    // Listen for changes
+    RNLauncherKitHelper.startListeningForBatteryChanges(setBattery);
+
+    return () => {
+      RNLauncherKitHelper.stopListeningForBatteryChanges();
+    };
+  }, []);
+
+  return battery;
+};
+```
+
+### `RNLauncherKitHelper.openAlarmApp()`
+
+Opens the default alarm/clock app. Supports standard Android, Xiaomi (MIUI), Samsung, and Google Clock.
+
+```typescript
+RNLauncherKitHelper.openAlarmApp();
+```
+
+### `RNLauncherKitHelper.goToSettings()`
+
+Opens the device settings screen.
+
+```typescript
 RNLauncherKitHelper.goToSettings();
 ```
 
-### 10. Start listening for new App installations
+### App Installation Listener
 
-Listens for app installations and provides app details when an app is installed.
-
-```jsx
+```typescript
 import { InstalledApps } from 'react-native-launcher-kit';
-import { useEffect, useState } from 'react';
 
-const App = () => {
-  const [apps, setApps] = useState<AppDetail[]>([]);
+// Start listening
+InstalledApps.startListeningForAppInstallations((app) => {
+  console.log('New app installed:', app);
+});
 
-  const initApp = async () => {
-    const appsList = await InstalledApps.getApps({
-      includeVersion: true,
-      includeAccentColor: true,
-    });
-    setApps(appsList);
-  }
-  useEffect(() => {
-    InstalledApps.startListeningForAppInstallations((app) => {
-      setApps((prev) => [app, ...prev]);
-    });
-
-    return () => {
-      InstalledApps.stopListeningForAppInstallations();
-    };
-  }, []);
-
-  return (
-    // Your component rendering logic
-  );
-};
+// Stop listening
+InstalledApps.stopListeningForAppInstallations();
 ```
 
+### App Removal Listener
 
-### 11. Start listening for an App removal
-
-Listens for app removals (uninstallations) and provides the package name when an app is removed.
-
-```jsx
+```typescript
 import { InstalledApps } from 'react-native-launcher-kit';
-import { useEffect, useState } from 'react';
 
-const App = () => {
-  const [apps, setApps] = useState<AppDetail[]>([]);
+// Start listening
+InstalledApps.startListeningForAppRemovals((packageName) => {
+  console.log('App removed:', packageName);
+});
 
-  const initApp = async () => {
-    const appsList = await InstalledApps.getApps({
-      includeVersion: true,
-      includeAccentColor: true,
-    });
-    setApps(appsList);
-  }
-  useEffect(() => {
-    InstalledApps.startListeningForAppRemovals((packageName) => {
-      setApps((prev) =>
-        prev.filter((item) => item.packageName !== packageName)
-      );
-    });
-
-    return () => {
-      InstalledApps.stopListeningForAppRemovals();
-    };
-  }, []);
-
-  return (
-    // Your component rendering logic
-  );
-};
+// Stop listening
+InstalledApps.stopListeningForAppRemovals();
 ```
 
-## Demo App
+## Example Apps
 
-React-Native-Launcher-Kit has been utilized for testing purposes on a launcher known as NoPhoneLauncher. You can experience its functionality in real-time by accessing it on Google Play via the following [link](https://nophonelauncher.canguru.au).
+Two example apps are included for testing both architectures:
 
-## Example App
+- **`example/`** - React Native 0.85 (New Architecture)
+- **`example-0.80/`** - React Native 0.80 (Legacy Architecture)
 
-You can experience the functionality of the code by exploring the examples provided in our GitHub repository, which can be accessed from the following [link](https://github.com/louaySleman/react-native-launcher-kit/tree/main/example).
+Both examples install from the built `dist/` folder (same as what npm consumers get). Running `npm install` in either example automatically builds the library first via `preinstall` hook.
+
+```sh
+# Run the RN 0.85 example
+cd example && npm install && npm run android
+
+# Run the RN 0.80 example
+cd example-0.80 && npm install && npm run android
+```
+
+> After making changes to the library source, just run `npm install` inside the example to rebuild `dist/` and pick up changes.
+
+## Breaking History
+
+### [2.1.0](https://github.com/louaySleman/react-native-launcher-kit/releases/tag/2.1.0)
+
+- Added structured launch parameters with `IntentAction` and `MimeType` enums
+- Enhanced type safety with `LaunchParams` interface
+
+### [2.0.0](https://github.com/louaySleman/react-native-launcher-kit/releases/tag/2.0.0)
+
+- Changed `getApps`/`getSortedApps` to return Promises (on-demand loading)
+- Icon property returns file path instead of base64 string
+- Added app version and accent color support
+- Added app installation/removal listeners
+- Moved `QUERY_ALL_PACKAGES` permission to user's `AndroidManifest.xml`
+
+### [1.0.0](https://github.com/louaySleman/react-native-launcher-kit/releases/tag/1.0.4)
+
+First release.
+
+## Support
+
+If you find this project helpful, consider supporting its development:
+
+<p align="left">
+  <a href="https://www.patreon.com/louaysleman">
+    <img src="https://c5.patreon.com/external/logo/become_a_patron_button.png" alt="Become a Patron" />
+  </a>
+</p>
 
 ## License
 
