@@ -1,77 +1,83 @@
-# Getting Started
+# LauncherKit Example (React Native 0.85 - New Architecture)
 
->**Note**: Make sure you have completed the [React Native - Environment Setup](https://reactnative.dev/docs/environment-setup) instructions till "Creating a new application" step, before proceeding.
+This example app demonstrates all features of `react-native-launcher-kit` using React Native 0.85 with New Architecture enabled.
 
-## Step 1: Start the Metro Server
+## Setup
 
-First, you will need to start **Metro**, the JavaScript _bundler_ that ships _with_ React Native.
+From this directory:
 
-To start Metro, run the following command from the _root_ of your React Native project:
-
-```bash
-# using npm
-npm start
-
-# OR using Yarn
-yarn start
+```sh
+npm install
 ```
 
-## Step 2: Start your Application
+This will automatically:
+1. Run `build:dist` in the parent directory (builds the library to `dist/`)
+2. Install `react-native-launcher-kit` from `../dist` (mimics the npm package exactly)
 
-Let Metro Bundler run in its _own_ terminal. Open a _new_ terminal from the _root_ of your React Native project. Run the following command to start your _Android_ or _iOS_ app:
+## Run
 
-### For Android
-
-```bash
-# using npm
+```sh
 npm run android
-
-# OR using Yarn
-yarn android
 ```
 
-### For iOS
+## How it works
 
-```bash
-# using npm
-npm run ios
+The example uses `"react-native-launcher-kit": "file:../dist"` which resolves the library from the built `dist/` folder. This is identical to what consumers get from npm — pre-compiled JS, type definitions, and native Android code.
 
-# OR using Yarn
-yarn ios
+The `preinstall` script ensures `dist/` is always up-to-date before installing. If you make changes to the library source, just run `npm install` again to rebuild.
+
+## Rebuilding after library changes
+
+```sh
+# Option 1: Reinstall (triggers preinstall -> build:dist automatically)
+npm install
+
+# Option 2: Manual rebuild
+cd .. && npm run build:dist
 ```
 
-If everything is set up _correctly_, you should see your new app running in your _Android Emulator_ or _iOS Simulator_ shortly provided you have set up your emulator/simulator correctly.
+## Android permission
 
-This is one way to run your app — you can also run it directly from within Android Studio and Xcode respectively.
+Add to `android/app/src/main/AndroidManifest.xml`:
 
-## Step 3: Modifying your App
+```xml
+<uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+```
 
-Now that you have successfully run the app, let's modify it.
+## What the Example Demonstrates
 
-1. Open `App.tsx` in your text editor of choice and edit some lines.
-2. For **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Developer Menu** (<kbd>Ctrl</kbd> + <kbd>M</kbd> (on Window and Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (on macOS)) to see your changes!
+| Feature | API |
+| --- | --- |
+| List installed apps (with version & accent color) | `InstalledApps.getApps()` |
+| Live app install / uninstall events | `InstalledApps.startListeningForAppInstallations()` / `startListeningForAppRemovals()` |
+| Battery level & charging state | `RNLauncherKitHelper.getBatteryStatus()` |
+| Default launcher package name | `RNLauncherKitHelper.getDefaultLauncherPackageName()` |
+| Launch an app by package name | `RNLauncherKitHelper.launchApplication()` |
+| Open system settings | `RNLauncherKitHelper.goToSettings()` |
+| Open "Set default launcher" screen | `RNLauncherKitHelper.openSetDefaultLauncher()` |
+| Open the alarm app | `RNLauncherKitHelper.openAlarmApp()` |
+| Launch with intent params (Maps, browser) | `RNLauncherKitHelper.launchApplication()` + `IntentAction` |
 
-   For **iOS**: Hit <kbd>Cmd ⌘</kbd> + <kbd>R</kbd> in your iOS Simulator to reload the app and see your changes!
+## Project Structure
 
-## Congratulations! :tada:
+```
+example/
+├── src/
+│   ├── App.tsx                 # Main demo screen
+│   ├── interfaces/             # App state types
+│   ├── static/locations.ts     # Coordinates for Maps demos
+│   └── components/
+│       ├── AppButton/          # Reusable action button
+│       ├── AppDetail/          # Single app detail view
+│       ├── AppGrid/            # Installed apps grid
+│       ├── BatteryInfo/        # Battery status display
+│       └── Loading/            # Initial loading state
+├── android/                    # Android native project
+└── metro.config.js             # Watches dist/ for changes
+```
 
-You've successfully run and modified your React Native App. :partying_face:
+## Troubleshooting
 
-### Now what?
-
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [Introduction to React Native](https://reactnative.dev/docs/getting-started).
-
-# Troubleshooting
-
-If you can't get this to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
-
-# Learn More
-
-To learn more about React Native, take a look at the following resources:
-
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+- **Empty app list** — confirm `QUERY_ALL_PACKAGES` is in `AndroidManifest.xml` and you are testing on Android 11+.
+- **Metro cannot resolve the library** — run `npm install` again (triggers rebuild of dist/).
+- **Native changes not reflected** — run: `cd android && ./gradlew clean && cd .. && npm run android`.

@@ -2,6 +2,7 @@
 {
   "extends": "./tsconfig",
   "exclude": [
-    "example"
+    "example",
+    "example-0.80"
   ]
 }
