@@ -1,6 +1,4 @@
-/**
- * Famous and easily accessible locations around the world
- */
+/** Sample coordinates used to demonstrate intent-based map launches. */
 export const LOCATIONS = {
   TIMES_SQUARE: {
     latitude: 40.758,
