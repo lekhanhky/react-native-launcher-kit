@@ -23,7 +23,7 @@
   ],
   "scripts": {
     "build": "bob build",
-    "build:dist": "bash scripts/build-dist.sh",
+    "build:dist": "node scripts/build-dist.js",
     "test": "jest",
     "typecheck": "tsc --noEmit",
     "lint": "eslint \"src/**/*.{js,ts,tsx}\"",

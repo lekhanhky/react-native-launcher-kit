@@ -28,6 +28,18 @@
   * **Body / Nhãn App**: 11px – 13px (Regular / Medium)
   * **Mã PIN / Key**: 20px – 24px (Bold, Monospace)
 
+### 1.3. Hệ thống 5 Bộ Theme Trẻ em (Kids Theme Presets)
+
+Ứng dụng hỗ trợ thay đổi toàn bộ phong cách hình ảnh theo 5 chủ đề độc đáo:
+
+| Theme ID | Tên Chủ Đề | Màu Nền (`background`) | Màu Thẻ App (`cardBg`) | Màu Chữ (`textColor`) | Điểm Nhấn (`accent`) | Phong Cách Trực Quan |
+| :--- | :--- | :---: | :---: | :---: | :---: | :--- |
+| `space` | 🚀 **Vũ trụ Huyền bí** | `#0F172A` | `#1E293B` | `#F8FAFC` | `#38BDF8` | Nền tối kỳ ảo, viền Neon Cyan, icon bo tròn công nghệ |
+| `candy` | 🌈 **Kẹo Ngọt Cầu vồng** | `#FFF1F2` | `#FFFFFF` | `#881337` | `#F43F5E` | Hồng pastel ngọt ngào, thẻ bo tròn mềm mại (Bubbly) |
+| `safari` | 🦁 **Rừng Xanh Safari** | `#F0FDF4` | `#FFFFFF` | `#14532D` | `#16A34A` | Xanh lá thiên nhiên, viền ấm áp, biểu tượng rừng xanh |
+| `ocean` | 🌊 **Đại dương Kỳ thú** | `#F0F9FF` | `#FFFFFF` | `#0C4A6E` | `#0284C7` | Xanh ngọc biển sâu, cảm giác mát mẻ, dịu mắt cho bé |
+| `superhero` | ⚡ **Siêu Anh Hùng** | `#FEF9C3` | `#FFFFFF` | `#7F1D1D` | `#DC2626` | Vàng Comic & Đỏ năng lượng, viền đậm phong cách truyện tranh |
+
 ---
 
 ## 2. CHI TIẾT CÁC MÀN HÌNH & WIREFRAME
@@ -85,8 +97,8 @@
 
 ```text
 ┌────────────────────────────────────────────────────────┐
-│  👋 Chào bé yêu!              [ ⚙️ Phụ huynh ]          │
-│  Thứ Tư, 26 tháng 8 • 15:30                            │
+│  👋 Chào bé yêu!        [ 🎨 Giao diện ] [ ⚙️ Phụ huynh ]│
+│  Thứ Năm, 27 tháng 8 • 08:55                           │
 ├────────────────────────────────────────────────────────┤
 │                                                        │
 │     ┌────┐       ┌────┐       ┌────┐       ┌────┐      │
@@ -105,13 +117,50 @@
 
 #### Chi tiết thành phần:
 1. **Thanh Header trên cùng**:
-   * Lời chào thân thiện + Thời gian thực (Ngày, giờ).
-   * Nút **"⚙️ Phụ huynh"** ở góc phải: Bo góc tròn, màu xám nhạt tinh tế để trẻ ít chú ý, bấm vào sẽ yêu cầu mã PIN.
+   * Lời chào thân thiện + Thông tin màn hình an toàn cho trẻ.
+   * Nút **"🎨 Giao diện"**: Mở modal chọn 5 bộ chủ đề sinh động tức thì.
+   * Nút **"⚙️ Phụ huynh"**: Yêu cầu mã PIN trước khi mở màn hình cấu hình.
 2. **Lưới ứng dụng (App Grid)**:
    * Hiển thị theo dạng lưới **4 cột**.
-   * **Icon App**: Kích thước `52x52px`, bo góc nhẹ `12px` chuẩn phong cách Android.
-   * **Tên App**: Tối đa 1 dòng (`numberOfLines={1}`), nếu quá dài sẽ hiển thị `...`.
-   * **Hiệu ứng chạm (Active Opacity)**: Mờ nhẹ 0.7 khi bé chạm ngón tay vào để khởi chạy.
+   * **Icon App**: Kích thước `54x54px`, hỗ trợ bo góc, màu viền và đổ bóng linh hoạt theo theme đã chọn.
+   * **Tên App**: Tối đa 1 dòng (`numberOfLines={1}`), tự đổi màu chữ theo theme.
+   * **Hiệu ứng chạm (Active Opacity)**: Phản hồi chạm mượt mà.
+
+---
+
+### 2.2.1. Hộp thoại Chọn Giao diện Trẻ em (`ThemeSelectorModal`)
+
+* **Mục đích**: Hiển thị danh sách 5 theme dưới dạng các thẻ trực quan có màu sắc preview và icon đại diện sinh động.
+
+```text
+┌────────────────────────────────────────────────────────┐
+│               🎨 CHỌN GIAO DIỆN YÊU THÍCH               │
+│         Bé hãy chọn thế giới màu sắc mà bé thích nhé!  │
+├────────────────────────────────────────────────────────┤
+│  ┌──────────────────────────────────────────────────┐  │
+│  │ 🚀  Vũ trụ Huyền bí          [ ĐANG DÙNG ✔️ ]    │  │
+│  │     Màu tím huyền bí, các vì sao và phi thuyền   │  │
+│  └──────────────────────────────────────────────────┘  │
+│  ┌──────────────────────────────────────────────────┐  │
+│  │ 🌈  Kẹo Ngọt Cầu vồng        [ CHỌN ]            │  │
+│  │     Màu hồng phấn ngọt ngào, kẹo ngọt & cầu vồng │  │
+│  └──────────────────────────────────────────────────┘  │
+│  ┌──────────────────────────────────────────────────┐  │
+│  │ 🦁  Rừng Xanh Safari         [ CHỌN ]            │  │
+│  │     Xanh lá thiên nhiên, muông thú hoang dã      │  │
+│  └──────────────────────────────────────────────────┘  │
+│  ┌──────────────────────────────────────────────────┐  │
+│  │ 🌊  Đại dương Kỳ thú         [ CHỌN ]            │  │
+│  │     Xanh biển sâu mát mẻ, thế giới sinh vật biển │  │
+│  └──────────────────────────────────────────────────┘  │
+│  ┌──────────────────────────────────────────────────┐  │
+│  │ ⚡  Siêu Anh Hùng            [ CHỌN ]            │  │
+│  │     Vàng & Đỏ rực rỡ, phong cách truyện tranh    │  │
+│  └──────────────────────────────────────────────────┘  │
+│                                                        │
+│                    [ ĐÓNG LẠI ]                        │
+└────────────────────────────────────────────────────────┘
+```
 
 ---
 
@@ -227,6 +276,44 @@
 
 ---
 
+---
+
+### 2.5. Màn hình YouTube An Toàn Cho Bé (`KidsYouTubeScreen`)
+
+* **Mục đích**: Màn hình xem video giáo dục/giải trí chọn lọc, tích hợp phát trực tiếp không quảng cáo, không Shorts, bảo vệ an toàn cho trẻ.
+
+```text
+┌────────────────────────────────────────────────────────┐
+│  ← Quay lại          📺 YOUTUBE CHO BÉ        ⏱️ 25/45p│
+├────────────────────────────────────────────────────────┤
+│  ┌──────────────────────────────────────────────────┐  │
+│  │                                                  │  │
+│  │            [ 🎬 TRÌNH PHÁT VIDEO NHÚNG ]         │  │
+│  │                (Iframe Clean Player)             │  │
+│  │                                                  │  │
+│  └──────────────────────────────────────────────────┘  │
+│  ⭐ Bài hát Tiếng Anh Vui Nhộn Cho Bé - ABC Song       │
+│  Kênh: Super Simple Songs • Thời lượng: 03:45          │
+├────────────────────────────────────────────────────────┤
+│  DANH MỤC: [ Tất cả ] [ 🎵 Ca nhạc ] [ 📚 Học tập ]    │
+│                                                        │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  │
+│  │ 🖼️ Thumbnail │  │ 🖼️ Thumbnail │  │ 🖼️ Thumbnail │  │
+│  │ BabyBus Cứu Hộ│  │ Bé Học Đếm Số│  │ Kể Chuyện Cổ Tích│
+│  └──────────────┘  └──────────────┘  └──────────────┘  │
+└────────────────────────────────────────────────────────┘
+```
+
+#### Chi tiết thành phần:
+1. **Thanh Header**: Nút quay lại màn hình chính, tiêu đề chủ đề, đồng hồ đếm thời lượng xem còn lại trong ngày (`⏱️ 25/45p`).
+2. **Khung phát Video nhúng (Clean Player)**:
+   * Phát trực tiếp video YouTube qua webview iframe sạch.
+   * Chặn hoàn toàn video đề xuất bên ngoài, chặn bình luận và link dẫn sang web khác.
+3. **Thanh danh mục lọc video**: Bé có thể chạm chọn các chủ đề yêu thích (Ca nhạc thiếu nhi, Học tiếng Anh, Hoạt hình giáo dục, Kể chuyện cổ tích).
+4. **Lưới video chọn lọc**: Các video đã được phân loại theo danh sách an toàn.
+
+---
+
 ## 3. TRẢI NGHIỆM NGƯỜI DÙNG (UX FLOW)
 
 ```text
@@ -238,9 +325,13 @@
      │
      └──> Trong giờ cho phép ──> Vào Màn hình chính Launcher
                                     │
-                                    ├──> Bé chạm vào Icon App ──> Khởi chạy ứng dụng
+                                    ├──> Bé chạm vào Icon App thường ──> Khởi chạy ứng dụng
                                     │
-                                    └──> Bé bấm nút Home ───────> Luôn giữ ở Màn hình chính
+                                    ├──> Bé chạm "📺 YouTube Cho Bé" ──> Mở Màn hình YouTube An Toàn
+                                    │                                        │
+                                    │                                        └──> Hết hạn mức ⏱️ ──> Tự động nhắc nhở nghỉ ngơi
+                                    │
+                                    └──> Bé bấm nút Home ──────────────> Luôn giữ ở Màn hình chính
 ```
 
 ---
@@ -251,6 +342,9 @@
 | :--- | :--- | :--- |
 | **`LicenseActivationScreen`** | `src/screens/LicenseActivationScreen.tsx` | Nhập License Key và xem Device ID |
 | **`KidsLauncherScreen`** | `src/screens/KidsLauncherScreen.tsx` | Màn hình chính hiển thị app của bé |
+| **`ThemeSelectorModal`** | `src/components/ThemeSelectorModal.tsx` | Hộp thoại chọn 5 bộ chủ đề giao diện |
+| **`KidsYouTubeScreen`** | `src/screens/KidsYouTubeScreen.tsx` | Màn hình xem video YouTube an toàn cho trẻ |
 | **`LockOverlay`** | `src/components/LockOverlay.tsx` | Lớp phủ tối khóa máy khi hết giờ |
 | **`ParentPinModal`** | `src/components/ParentPinModal.tsx` | Hộp thoại nhập mã PIN bảo vệ |
-| **`ParentSettingsScreen`** | `src/screens/ParentSettingsScreen.tsx` | Màn hình quản lý app và giờ của cha mẹ |
+| **`ParentSettingsScreen`** | `src/screens/ParentSettingsScreen.tsx` | Màn hình quản lý app, giờ và video YouTube |
+

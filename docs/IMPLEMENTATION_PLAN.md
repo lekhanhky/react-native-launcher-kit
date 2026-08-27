@@ -67,6 +67,20 @@ Xây dựng các module xử lý logic nền tảng.
   * Modal nhập **Mã PIN Phụ huynh** để mở khóa tạm thời hoặc vào Cài đặt.
   * Tự động cập nhật giao diện khi có app mới cài đặt/gỡ bỏ.
 
+* **`src/services/themes.ts`**:
+  * Định nghĩa cấu trúc `ThemeConfig` và 5 theme phong cách trẻ em (Vũ trụ, Kẹo ngọt, Safari, Đại dương, Siêu anh hùng).
+  * Quản lý lưu và đọc Theme được chọn qua `MMKV` (`STORAGE_KEYS.CURRENT_THEME`).
+
+* **`src/services/youtubeService.ts`**:
+  * Quản lý danh sách video/kênh YouTube chọn lọc an toàn cho bé (BabyBus, Tiếng Anh Thiếu Nhi, Phim hoạt hình giáo dục, v.v.).
+  * Lưu trữ cấu hình: Bật/Tắt YouTube cho bé, Giới hạn thời gian xem hàng ngày (Daily Time Limit).
+  * Bộ đếm thời gian xem video tự động nhắc nhở/ngắt khi hết thời lượng cho phép.
+
+* **`src/screens/KidsYouTubeScreen.tsx`**:
+  * Màn hình trình phát video YouTube an toàn tích hợp trực tiếp (không cần cài app YouTube ngoài).
+  * Trình phát video qua iframe sạch (`react-native-webview`), chặn Shorts, chặn bình luận và chặn chuyển hướng ra ngoài.
+  * Bộ lọc danh mục video (Học tập, Ca nhạc, Hoạt hình, Kể chuyện).
+
 * **`App.tsx`**:
   * Entry point điều phối luồng: Kiểm tra bản quyền -> Chưa kích hoạt mở `LicenseActivationScreen` -> Đã kích hoạt mở `KidsLauncherScreen`.
 
@@ -87,5 +101,16 @@ Xây dựng các module xử lý logic nền tảng.
 - [ ] Chỉnh giờ hệ thống ngoài khung giờ cho phép: Màn hình khóa màu tối lập tức hiển thị.
 - [ ] Nhập đúng mã PIN phụ huynh: Mở khóa thành công.
 
-### 3.4. Kiểm tra Chế độ Ngoại tuyến (Offline Test)
-- [ ] Tắt toàn bộ Wi-Fi / 4G (Chế độ máy bay): Mở lại app -> Mở ngay tức thì không bị treo, toàn bộ chính sách và bản quyền vẫn hoạt động chuẩn xác.
+### 3.4. Kiểm tra Hệ thống Giao diện Trẻ em (Kids Themes)
+- [ ] Bấm nút **"🎨 Giao diện"**: Mở Modal hiển thị 5 giao diện.
+- [ ] Chọn từng giao diện (Vũ trụ, Kẹo ngọt, Safari, Đại dương, Siêu anh hùng): Toàn bộ màu nền, thanh tiêu đề, thẻ app và icon đổi phong cách tức thì.
+- [ ] Đóng và mở lại app: Theme đã chọn vẫn được duy trì qua MMKV.
+
+### 3.5. Kiểm tra Tích hợp YouTube An Toàn Cho Bé (Kids YouTube Hub)
+- [ ] Chạm vào thẻ **"📺 YouTube Bé Yêu"** trên Launcher: Mở trực tiếp màn hình YouTube an toàn ngay trong app.
+- [ ] Phát video: Video chạy mượt mà qua trình phát nhúng không quảng cáo.
+- [ ] Chặn truy cập ngoài: Không có tính năng xem Shorts, không có bình luận, không thể mở sang ứng dụng hoặc trang web khác.
+- [ ] Giới hạn thời gian xem: Đếm giờ xem video và hiển thị thông báo nghỉ ngơi khi hết hạn mức ngày.
+
+### 3.6. Kiểm tra Chế độ Ngoại tuyến (Offline Test)
+- [ ] Tắt toàn bộ Wi-Fi / 4G (Chế độ máy bay): Mở lại app -> Mở ngay tức thì không bị treo, toàn bộ chính sách, theme và bản quyền vẫn hoạt động chuẩn xác.
