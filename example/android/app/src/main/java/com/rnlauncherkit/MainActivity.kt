@@ -19,4 +19,12 @@ class MainActivity : ReactActivity() {
    */
   override fun createReactActivityDelegate(): ReactActivityDelegate =
       DefaultReactActivityDelegate(this, mainComponentName, fabricEnabled)
+
+  /**
+   * Vô hiệu hóa hành vi thoát Activity mặc định khi bấm nút Back/ESC
+   * Đảm bảo Kids Launcher luôn chạy như màn hình chính Kiosk không thể thoát ra.
+   */
+  override fun invokeDefaultOnBackPressed() {
+    // Không làm gì để giữ Launcher luôn hiển thị ở màn hình chính
+  }
 }

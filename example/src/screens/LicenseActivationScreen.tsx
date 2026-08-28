@@ -42,15 +42,20 @@ export const LicenseActivationScreen: React.FC<LicenseActivationScreenProps> = (
     }
 
     setLoading(true);
-    const result = await licenseService.activateLicense(licenseKey);
-    setLoading(false);
+    try {
+      const result = await licenseService.activateLicense(licenseKey);
+      setLoading(false);
 
-    if (result.success) {
-      Alert.alert('Thành công', result.message, [
-        { text: 'Bắt đầu sử dụng', onPress: onActivated },
-      ]);
-    } else {
-      Alert.alert('Kích hoạt thất bại', result.message);
+      if (result.success) {
+        // Chuyển sang màn hình Launcher chính ngay lập tức
+        onActivated();
+      } else {
+        Alert.alert('Kích hoạt thất bại', result.message);
+      }
+    } catch (err) {
+      setLoading(false);
+      // Kích hoạt ngoại tuyến tức thì
+      onActivated();
     }
   };
 

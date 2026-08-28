@@ -4,7 +4,7 @@
  */
 import { storage, STORAGE_KEYS } from './storage';
 
-export type ThemeId = 'candy' | 'space' | 'safari' | 'ocean' | 'superhero';
+export type ThemeId = 'candy' | 'space' | 'safari' | 'ocean' | 'superhero' | 'autumn';
 
 export interface ThemeConfig {
   id: ThemeId;
@@ -95,6 +95,48 @@ export const KIDS_THEMES: Record<ThemeId, ThemeConfig> = {
     emptyTitleColor: '#881337',
     emptySubtitleColor: '#9F1239',
     accentBadgeColor: '#F43F5E',
+  },
+
+  autumn: {
+    id: 'autumn',
+    name: 'Mùa Thu Vàng',
+    subtitle: 'Lá vàng êm đềm, sắc cam ấm áp & dịu dàng',
+    emoji: '🍁',
+    previewColor: '#EA580C',
+    previewSecondary: '#FFFBEB',
+
+    backgroundColor: '#FFFBEB',
+    headerBg: '#FFFFFF',
+    headerBorderColor: '#FDE68A',
+    greetingColor: '#9A3412',
+    subtitleColor: '#C2410C',
+    statusBarStyle: 'dark-content',
+
+    cardBg: '#FFFFFF',
+    cardBorderColor: '#FCD34D',
+    cardBorderWidth: 1.5,
+    cardShadowColor: '#FB923C',
+    appLabelColor: '#7C2D12',
+    appLabelFontWeight: '700',
+
+    iconBorderRadius: 18,
+    iconBorderWidth: 2,
+    iconBorderColor: '#FDBA74',
+    iconPlaceholderBg: '#EA580C',
+    iconPlaceholderText: '#FFFFFF',
+
+    themeBtnBg: '#FEF3C7',
+    themeBtnText: '#C2410C',
+    themeBtnBorder: '#FCD34D',
+
+    parentBtnBg: '#FFFBEB',
+    parentBtnText: '#9A3412',
+    parentBtnBorder: '#FDE68A',
+
+    emptyIcon: '🍂',
+    emptyTitleColor: '#7C2D12',
+    emptySubtitleColor: '#9A3412',
+    accentBadgeColor: '#EA580C',
   },
 
   space: {

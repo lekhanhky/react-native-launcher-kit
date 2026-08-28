@@ -11,15 +11,20 @@ import {
   Alert,
   Image,
   ActivityIndicator,
+  useWindowDimensions,
+  Modal,
 } from 'react-native';
+import { RNLauncherKitHelper } from 'react-native-launcher-kit';
 import type { AppDetail } from 'react-native-launcher-kit/src/interfaces/InstalledApps';
 import { storage, STORAGE_KEYS } from '../services/storage';
 import { ScheduleConfig } from '../services/timeScheduler';
+import { launcherHelper } from '../services/launcherHelper';
 import {
   youtubeService,
   YouTubeChannel,
-  YOUTUBE_CATEGORIES,
 } from '../services/youtubeService';
+import { YouTubeChannelSearchScreen } from './YouTubeChannelSearchScreen';
+import { YouTubeVideoDetailScreen } from './YouTubeVideoDetailScreen';
 
 interface ParentSettingsScreenProps {
   allApps: AppDetail[];
@@ -28,7 +33,7 @@ interface ParentSettingsScreenProps {
   onResetLicense: () => void;
 }
 
-const AVAILABLE_CHANNEL_EMOJIS = ['📺', '🎨', '🌈', '🐼', '🐰', '🚀', '⭐', '🎶', '🍉', '🐺', '🐉', '🧸', '🐷', '🐶', '🐻', '🦁', '🌐'];
+type SettingsTab = 'apps' | 'youtube' | 'account';
 
 export const ParentSettingsScreen: React.FC<ParentSettingsScreenProps> = ({
   allApps,
@@ -36,7 +41,10 @@ export const ParentSettingsScreen: React.FC<ParentSettingsScreenProps> = ({
   onRefreshPolicies,
   onResetLicense,
 }) => {
-  // 1. Quản lý danh sách chặn
+  const { width } = useWindowDimensions();
+  const [activeTab, setActiveTab] = useState<SettingsTab>('apps');
+
+  // 1. Quản lý danh sách ứng dụng & Tìm kiếm
   const [blockedPackages, setBlockedPackages] = useState<string[]>(() => {
     try {
       const raw = storage.getString(STORAGE_KEYS.PACKAGE_LIST);
@@ -45,8 +53,10 @@ export const ParentSettingsScreen: React.FC<ParentSettingsScreenProps> = ({
       return ['com.android.settings'];
     }
   });
+  const [appSearchQuery, setAppSearchQuery] = useState<string>('');
+  const [isAdminActive, setIsAdminActive] = useState<boolean>(false);
 
-  // 2. Quản lý Lịch biểu
+  // 2. Quản lý Lịch biểu Giờ học / Ngủ
   const [schedule, setSchedule] = useState<ScheduleConfig>(() => {
     try {
       const raw = storage.getString(STORAGE_KEYS.SCHEDULE);
@@ -70,7 +80,7 @@ export const ParentSettingsScreen: React.FC<ParentSettingsScreenProps> = ({
     }
   });
 
-  // 3. Quản lý PIN
+  // 3. Quản lý PIN Phụ huynh
   const [newPin, setNewPin] = useState(
     storage.getString(STORAGE_KEYS.PARENT_PIN) || '1234'
   );
@@ -88,75 +98,19 @@ export const ParentSettingsScreen: React.FC<ParentSettingsScreenProps> = ({
   const [allowedChannels, setAllowedChannels] = useState<string[]>(() =>
     youtubeService.getAllowedChannelIds()
   );
+  const [isSyncingCloud, setIsSyncingCloud] = useState<boolean>(false);
 
-  // Tìm kiếm kênh trực tuyến & khám phá
-  const [searchCatalogQuery, setSearchCatalogQuery] = useState<string>('');
-  const [searchResults, setSearchResults] = useState<YouTubeChannel[]>(() =>
-    youtubeService.searchDiscoveryCatalog('')
-  );
-  const [isSearchingOnline, setIsSearchingOnline] = useState<boolean>(false);
+  // Modal Thêm Kênh Nhanh (khi bấm Floating Action Button +)
+  const [showAddChannelModal, setShowAddChannelModal] = useState<boolean>(false);
+  const [inputChannelText, setInputChannelText] = useState<string>('');
 
-  // Form tự tạo kênh mới
-  const [showManualCreate, setShowManualCreate] = useState<boolean>(false);
-  const [newChannelName, setNewChannelName] = useState<string>('');
-  const [newChannelEmoji, setNewChannelEmoji] = useState<string>('📺');
-  const [newChannelCategory, setNewChannelCategory] = useState<string>('cartoon');
-  const [newChannelFirstVideo, setNewChannelFirstVideo] = useState<string>('');
+  // Kênh đang chọn xem Chi Tiết Video
+  const [selectedDetailChannel, setSelectedDetailChannel] = useState<YouTubeChannel | null>(null);
 
-  // Form thêm video vào kênh
-  const [targetChannelId, setTargetChannelId] = useState<string>(() =>
-    allChannels.length > 0 ? allChannels[0].id : 'custom_channel'
-  );
-  const [newVideoUrl, setNewVideoUrl] = useState<string>('');
-  const [newVideoTitle, setNewVideoTitle] = useState<string>('');
-  const [isFetchingMetadata, setIsFetchingMetadata] = useState<boolean>(false);
-
-  // Cập nhật kết quả tìm kiếm khi query thay đổi
+  // Kiểm tra trạng thái Device Admin khi mở màn hình
   useEffect(() => {
-    if (!searchCatalogQuery.trim()) {
-      setSearchResults(youtubeService.searchDiscoveryCatalog(''));
-      return;
-    }
-    const local = youtubeService.searchDiscoveryCatalog(searchCatalogQuery);
-    setSearchResults(local);
-  }, [searchCatalogQuery]);
-
-  // Kích hoạt tìm kiếm trực tuyến
-  const handleOnlineSearch = async () => {
-    if (!searchCatalogQuery.trim()) {
-      Alert.alert('Thông báo', 'Vui lòng nhập từ khóa tên kênh để tìm kiếm trực tuyến!');
-      return;
-    }
-    setIsSearchingOnline(true);
-    try {
-      const results = await youtubeService.searchOnlineChannels(searchCatalogQuery);
-      setSearchResults(results);
-    } catch (err) {
-      console.warn(err);
-    } finally {
-      setIsSearchingOnline(false);
-    }
-  };
-
-  // Tự động tải thông tin video / kênh trực tuyến khi dán link
-  const handleFetchMetadata = async () => {
-    if (!newVideoUrl.trim()) {
-      Alert.alert('Lỗi', 'Vui lòng dán Link hoặc ID video YouTube!');
-      return;
-    }
-    setIsFetchingMetadata(true);
-    try {
-      const meta = await youtubeService.fetchOnlineMetadata(newVideoUrl);
-      if (meta) {
-        setNewVideoTitle(meta.title);
-        Alert.alert('Thành công', `Đã nhận diện: "${meta.title}" (${meta.channelName})`);
-      }
-    } catch (e) {
-      console.warn(e);
-    } finally {
-      setIsFetchingMetadata(false);
-    }
-  };
+    launcherHelper.isDeviceAdminActive().then(setIsAdminActive);
+  }, []);
 
   // Toggle ẩn/hiện từng app
   const toggleAppVisibility = (packageName: string) => {
@@ -165,6 +119,25 @@ export const ParentSettingsScreen: React.FC<ParentSettingsScreenProps> = ({
       updated = blockedPackages.filter((p) => p !== packageName);
     } else {
       updated = [...blockedPackages, packageName];
+    }
+    setBlockedPackages(updated);
+    storage.set(STORAGE_KEYS.PACKAGE_LIST, JSON.stringify(updated));
+    onRefreshPolicies();
+  };
+
+  // Toggle cho phép / tắt tất cả app
+  const isAllAppsAllowed =
+    allApps.length > 0 &&
+    allApps.every((a) => !blockedPackages.includes(a.packageName));
+
+  const toggleAllApps = (allowAll: boolean) => {
+    let updated: string[];
+    if (allowAll) {
+      // Cho phép tất cả -> danh sách chặn rỗng
+      updated = [];
+    } else {
+      // Tắt tất cả -> chặn tất cả các app
+      updated = allApps.map((a) => a.packageName);
     }
     setBlockedPackages(updated);
     storage.set(STORAGE_KEYS.PACKAGE_LIST, JSON.stringify(updated));
@@ -186,66 +159,21 @@ export const ParentSettingsScreen: React.FC<ParentSettingsScreenProps> = ({
       return;
     }
     storage.set(STORAGE_KEYS.PARENT_PIN, newPin.trim());
-    Alert.alert('Thành công', 'Đã cập nhật mã PIN Phụ huynh!');
+    Alert.alert('Thành công', 'Đã cập nhật mã PIN Phụ huynh mới!');
   };
 
-  // Thêm kênh từ kho / trực tuyến
-  const handleAddFromCatalog = (catalogChannel: YouTubeChannel) => {
-    const isAlreadyAdded = allChannels.some(
-      (c) => c.name.toLowerCase() === catalogChannel.name.toLowerCase()
-    );
-    if (isAlreadyAdded) {
-      Alert.alert('Thông báo', `Kênh "${catalogChannel.name}" đã có trong danh sách!`);
-      return;
-    }
-
-    const created = youtubeService.addChannelFromCatalog(catalogChannel);
-    const updated = youtubeService.getAllChannels();
-    setAllChannels(updated);
-    setAllowedChannels(youtubeService.getAllowedChannelIds());
-    Alert.alert('Thành công', `Đã thêm kênh "${created.name}" vào danh sách của bé!`);
-    onRefreshPolicies();
-  };
-
-  // Xử lý tạo kênh thủ công
-  const handleCreateChannel = () => {
-    if (!newChannelName.trim()) {
-      Alert.alert('Lỗi', 'Vui lòng nhập tên kênh thiếu nhi!');
-      return;
-    }
-    const created = youtubeService.addCustomChannel({
-      name: newChannelName.trim(),
-      emoji: newChannelEmoji,
-      color: '#2563EB',
-      category: newChannelCategory,
-      description: 'Kênh tùy chỉnh do phụ huynh tạo',
-      firstVideoIdOrUrl: newChannelFirstVideo.trim(),
-    });
-
-    const updatedChannels = youtubeService.getAllChannels();
-    setAllChannels(updatedChannels);
-    setAllowedChannels(youtubeService.getAllowedChannelIds());
-    setTargetChannelId(created.id);
-
-    setNewChannelName('');
-    setNewChannelFirstVideo('');
-    setShowManualCreate(false);
-    Alert.alert('Thành công', `Đã thêm kênh "${created.name}" vào YouTube Cho Bé!`);
-    onRefreshPolicies();
-  };
-
-  // Xử lý xóa kênh tùy chỉnh
+  // Xử lý xóa bất kỳ kênh nào
   const handleDeleteChannel = (channel: YouTubeChannel) => {
     Alert.alert(
       'Xóa Kênh',
-      `Bạn có chắc muốn xóa kênh "${channel.name}" và toàn bộ video trong kênh này?`,
+      `Bạn có chắc chắn muốn xóa kênh "${channel.name}" khỏi danh sách của bé?`,
       [
         { text: 'Hủy', style: 'cancel' },
         {
           text: 'Xóa',
           style: 'destructive',
           onPress: () => {
-            youtubeService.deleteCustomChannel(channel.id);
+            youtubeService.deleteChannel(channel.id);
             const updated = youtubeService.getAllChannels();
             setAllChannels(updated);
             setAllowedChannels(youtubeService.getAllowedChannelIds());
@@ -257,525 +185,638 @@ export const ParentSettingsScreen: React.FC<ParentSettingsScreenProps> = ({
     );
   };
 
-  // Xử lý thêm video vào kênh đã chọn
-  const handleAddVideoToChannel = () => {
-    if (!newVideoUrl.trim()) {
-      Alert.alert('Lỗi', 'Vui lòng nhập Link hoặc ID video YouTube!');
+  // Xử lý thêm nhanh kênh từ nút (+)
+  const handleQuickAddChannel = () => {
+    if (!inputChannelText.trim()) {
+      Alert.alert('Thông báo', 'Vui lòng nhập tên kênh hoặc dán link YouTube!');
       return;
     }
-
-    const selectedCh = allChannels.find((c) => c.id === targetChannelId);
-    const res = youtubeService.addCustomVideo({
-      videoIdOrUrl: newVideoUrl,
-      title: newVideoTitle || 'Video Phụ huynh thêm',
-      channelId: targetChannelId,
-      channelName: selectedCh ? selectedCh.name : 'Kênh Phụ Huynh',
-      channelEmoji: selectedCh ? selectedCh.emoji : '📺',
-      channelColor: selectedCh ? selectedCh.color : '#2563EB',
-      category: (selectedCh ? selectedCh.category : 'music') as any,
+    const name = inputChannelText.trim();
+    const created = youtubeService.addCustomChannel({
+      name: name,
+      emoji: '📺',
+      color: '#DC2626',
+      category: 'cartoon',
+      description: 'Kênh do phụ huynh thêm',
     });
+    const updated = youtubeService.getAllChannels();
+    setAllChannels(updated);
+    setAllowedChannels(youtubeService.getAllowedChannelIds());
+    setInputChannelText('');
+    setShowAddChannelModal(false);
+    Alert.alert('Thành công', `Đã thêm kênh "${created.name}" vào danh sách của bé!`);
+    onRefreshPolicies();
+  };
 
-    if (res) {
-      setNewVideoUrl('');
-      setNewVideoTitle('');
-      Alert.alert('Thành công', `Đã thêm video vào kênh "${selectedCh?.name || 'Kênh Phụ Huynh'}"!`);
-      onRefreshPolicies();
-    } else {
-      Alert.alert('Lỗi', 'Không nhận dạng được Link hoặc ID video YouTube hợp lệ!');
+  // Đồng bộ đám mây thủ công
+  const handleSyncCloud = async () => {
+    setIsSyncingCloud(true);
+    try {
+      const res = await youtubeService.syncWithSupabase();
+      if (res.success) {
+        setAllChannels(youtubeService.getAllChannels());
+        setAllowedChannels(youtubeService.getAllowedChannelIds());
+        Alert.alert('Thành công', 'Đã đồng bộ toàn bộ chính sách và kênh với đám mây Supabase!');
+        onRefreshPolicies();
+      } else {
+        Alert.alert('Thông báo', (res as any).error || 'Không thể đồng bộ Supabase lúc này.');
+      }
+    } catch (e: any) {
+      Alert.alert('Lỗi đồng bộ', e?.message || 'Có lỗi xảy ra khi kết nối Supabase');
+    } finally {
+      setIsSyncingCloud(false);
     }
   };
 
+  // Lọc app theo tìm kiếm
+  const filteredApps = allApps.filter(
+    (app) =>
+      !appSearchQuery.trim() ||
+      app.label.toLowerCase().includes(appSearchQuery.toLowerCase()) ||
+      app.packageName.toLowerCase().includes(appSearchQuery.toLowerCase())
+  );
+
+  const allowedAppsCount = allApps.filter((a) => !blockedPackages.includes(a.packageName)).length;
+
   return (
     <SafeAreaView style={styles.safeArea}>
-      {/* HEADER */}
+      {/* HEADER CHÍNH */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>⚙️ Cài đặt Quản lý Phụ huynh</Text>
-        <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
+        <View>
+          <Text style={styles.headerTitle}>⚙️ Cài đặt Phụ huynh</Text>
+          <Text style={styles.headerSubtitle}>Quản lý an toàn và giám sát thiết bị của bé</Text>
+        </View>
+        <TouchableOpacity style={styles.closeBtn} onPress={onClose} activeOpacity={0.7}>
           <Text style={styles.closeBtnText}>Đóng ✕</Text>
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
-        {/* NHÓM 1: LỊCH BIỂU SỬ DỤNG */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>⏰ Khung Giờ Cho Phép Sử Dụng</Text>
-          <Text style={styles.cardDesc}>
-            Thiết bị sẽ tự động khóa lại ngoài khoảng thời gian này để bé đi ngủ hoặc học bài.
+      {/* 3 TAB CHÍNH */}
+      <View style={styles.tabBar}>
+        <TouchableOpacity
+          style={[styles.tabItem, activeTab === 'apps' && styles.tabItemActive]}
+          onPress={() => setActiveTab('apps')}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.tabIcon}>📱</Text>
+          <Text style={[styles.tabTitle, activeTab === 'apps' && styles.tabTitleActive]}>
+            Quản Lý App
           </Text>
-
-          <View style={styles.row}>
-            <Text style={styles.label}>Kích hoạt Giới hạn Giờ</Text>
-            <Switch
-              value={schedule.isEnabled}
-              onValueChange={(val) => handleSaveSchedule('isEnabled', val)}
-              trackColor={{ false: '#CBD5E1', true: '#86EFAC' }}
-              thumbColor={schedule.isEnabled ? '#16A34A' : '#F1F5F9'}
-            />
+          <View style={[styles.tabBadge, activeTab === 'apps' && styles.tabBadgeActive]}>
+            <Text style={[styles.tabBadgeText, activeTab === 'apps' && styles.tabBadgeTextActive]}>
+              {allowedAppsCount}
+            </Text>
           </View>
+        </TouchableOpacity>
 
-          {schedule.isEnabled && (
-            <View style={styles.scheduleInputs}>
-              <View style={styles.timeRow}>
-                <Text style={styles.timeLabel}>Từ (Bắt đầu):</Text>
-                <TextInput
-                  style={styles.timeInput}
-                  value={schedule.allowedStartTime}
-                  onChangeText={(val) => handleSaveSchedule('allowedStartTime', val)}
-                  placeholder="07:00:00"
-                />
-              </View>
-              <View style={styles.timeRow}>
-                <Text style={styles.timeLabel}>Đến (Kết thúc):</Text>
-                <TextInput
-                  style={styles.timeInput}
-                  value={schedule.allowedEndTime}
-                  onChangeText={(val) => handleSaveSchedule('allowedEndTime', val)}
-                  placeholder="21:00:00"
-                />
-              </View>
-            </View>
-          )}
-        </View>
-
-        {/* NHÓM 2: QUẢN LÝ DANH SÁCH ỨNG DỤNG ĐƯỢC PHÉP */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>📱 Quản Lý Ứng Dụng Cho Phép</Text>
-          <Text style={styles.cardDesc}>
-            Chỉ những ứng dụng được gạt công tắc MÀU XANH mới hiển thị trên màn hình của bé.
+        <TouchableOpacity
+          style={[styles.tabItem, activeTab === 'youtube' && styles.tabItemActive]}
+          onPress={() => setActiveTab('youtube')}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.tabIcon}>📺</Text>
+          <Text style={[styles.tabTitle, activeTab === 'youtube' && styles.tabTitleActive]}>
+            Quản Lý YouTube
           </Text>
+          <View style={[styles.tabBadge, activeTab === 'youtube' && styles.tabBadgeActive]}>
+            <Text style={[styles.tabBadgeText, activeTab === 'youtube' && styles.tabBadgeTextActive]}>
+              {allowedChannels.length}
+            </Text>
+          </View>
+        </TouchableOpacity>
 
-          {allApps.map((app) => {
-            const isAllowed = !blockedPackages.includes(app.packageName);
-            return (
-              <View key={app.packageName} style={styles.appRow}>
-                {app.icon ? (
-                  <Image
-                    source={{
-                      uri:
-                        app.icon.startsWith('file://') ||
-                        app.icon.startsWith('data:') ||
-                        app.icon.startsWith('http')
-                          ? app.icon
-                          : `data:image/png;base64,${app.icon}`,
-                    }}
-                    style={styles.appSettingsIcon}
-                  />
-                ) : (
-                  <View style={[styles.appSettingsIcon, styles.appPlaceholderIcon]}>
-                    <Text style={{ fontSize: 16 }}>📱</Text>
-                  </View>
-                )}
-                <View style={styles.appInfo}>
-                  <Text style={styles.appName} numberOfLines={1}>
-                    {app.label}
+        <TouchableOpacity
+          style={[styles.tabItem, activeTab === 'account' && styles.tabItemActive]}
+          onPress={() => setActiveTab('account')}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.tabIcon}>👤</Text>
+          <Text style={[styles.tabTitle, activeTab === 'account' && styles.tabTitleActive]}>
+            Tài Khoản
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* NỘI DUNG TỪNG TAB */}
+      <ScrollView contentContainerStyle={styles.content}>
+        {/* ========================================================================= */}
+        {/* TAB 1: QUẢN LÝ ỨNG DỤNG (APPS) */}
+        {/* ========================================================================= */}
+        {activeTab === 'apps' && (
+          <>
+            {/* 1.1. BẢO VỆ CHỐNG GỠ ỨNG DỤNG (DEVICE ADMIN) */}
+            <View style={styles.card}>
+              <View style={styles.cardHeaderRow}>
+                <Text style={styles.cardTitle}>🛡️ Bảo Vệ Chống Gỡ Ứng Dụng</Text>
+                <View
+                  style={[
+                    styles.statusPill,
+                    { backgroundColor: isAdminActive ? '#DCFCE7' : '#FEF3C7' },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.statusPillText,
+                      { color: isAdminActive ? '#15803D' : '#B45309' },
+                    ]}
+                  >
+                    {isAdminActive ? 'Đã bảo vệ ✅' : 'Chưa kích hoạt ⚠️'}
                   </Text>
-                  <Text style={styles.appPackage} numberOfLines={1}>
-                    {app.packageName}
+                </View>
+              </View>
+              <Text style={styles.cardDesc}>
+                Khóa quyền gỡ cài đặt trong hệ thống Android để bé không thể xóa Launcher quản lý.
+              </Text>
+              {!isAdminActive ? (
+                <TouchableOpacity
+                  style={styles.adminActionBtn}
+                  onPress={() => {
+                    launcherHelper.requestDeviceAdmin();
+                  }}
+                >
+                  <Text style={styles.adminActionBtnText}>🚀 Kích Hoạt Quyền Quản Trị Viên (Device Admin)</Text>
+                </TouchableOpacity>
+              ) : (
+                <Text style={styles.adminActiveHint}>
+                  ✔️ Ứng dụng đã được cấp quyền quản trị viên thiết bị an toàn.
+                </Text>
+              )}
+            </View>
+
+            {/* 1.2. THIẾT LẬP MÀN HÌNH CHÍNH MẶC ĐỊNH (DEFAULT LAUNCHER) */}
+            <View style={styles.card}>
+              <View style={styles.cardHeaderRow}>
+                <Text style={styles.cardTitle}>🏠 Đặt Làm Màn Hình Chính Mặc Định</Text>
+              </View>
+              <Text style={styles.cardDesc}>
+                Khóa phím Home và phím Back để bé luôn ở trong Kids Launcher mà không thể thoát ra ngoài.
+              </Text>
+              <TouchableOpacity
+                style={styles.defaultLauncherBtn}
+                onPress={async () => {
+                  try {
+                    await RNLauncherKitHelper.openSetDefaultLauncher();
+                  } catch {
+                    await RNLauncherKitHelper.requestDefaultLauncher();
+                  }
+                }}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.defaultLauncherBtnText}>
+                  ⚙️ Mở Cài Đặt Chọn Màn Hình Chính Mặc Định
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* 1.3. KHUNG GIỜ CHO PHÉP SỬ DỤNG (SCHEDULE) */}
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>⏰ Khung Giờ Cho Phép Sử Dụng</Text>
+              <Text style={styles.cardDesc}>
+                Thiết bị sẽ tự động khóa lại ngoài khoảng thời gian này để bé đi ngủ hoặc học bài.
+              </Text>
+
+              <View style={styles.row}>
+                <Text style={styles.label}>Kích hoạt Giới hạn Giờ</Text>
+                <Switch
+                  value={schedule.isEnabled}
+                  onValueChange={(val) => handleSaveSchedule('isEnabled', val)}
+                  trackColor={{ false: '#CBD5E1', true: '#86EFAC' }}
+                  thumbColor={schedule.isEnabled ? '#16A34A' : '#F1F5F9'}
+                />
+              </View>
+
+              {schedule.isEnabled && (
+                <View style={styles.scheduleInputs}>
+                  <View style={styles.timeRow}>
+                    <Text style={styles.timeLabel}>Từ (Bắt đầu):</Text>
+                    <TextInput
+                      style={styles.timeInput}
+                      value={schedule.allowedStartTime}
+                      onChangeText={(val) => handleSaveSchedule('allowedStartTime', val)}
+                      placeholder="07:00:00"
+                    />
+                  </View>
+                  <View style={styles.timeRow}>
+                    <Text style={styles.timeLabel}>Đến (Kết thúc):</Text>
+                    <TextInput
+                      style={styles.timeInput}
+                      value={schedule.allowedEndTime}
+                      onChangeText={(val) => handleSaveSchedule('allowedEndTime', val)}
+                      placeholder="21:00:00"
+                    />
+                  </View>
+                </View>
+              )}
+            </View>
+
+            {/* 1.3. DANH SÁCH ỨNG DỤNG CHO PHÉP (WHITELIST) */}
+            <View style={styles.card}>
+              <View style={styles.cardHeaderRow}>
+                <Text style={styles.cardTitle}>📱 Ứng Dụng Hiển Thị Cho Bé</Text>
+                <Text style={styles.counterText}>
+                  {allowedAppsCount}/{allApps.length} app
+                </Text>
+              </View>
+              <Text style={styles.cardDesc}>
+                Chỉ những ứng dụng được gạt công tắc MÀU XANH mới hiển thị trên màn hình của bé.
+              </Text>
+
+              {/* Thanh tìm kiếm app */}
+              <TextInput
+                style={styles.searchInput}
+                placeholder="🔍 Tìm kiếm ứng dụng theo tên hoặc package..."
+                value={appSearchQuery}
+                onChangeText={setAppSearchQuery}
+              />
+
+              {/* TOGGLE CHO PHÉP / TẮT TẤT CẢ ỨNG DỤNG */}
+              <View style={styles.toggleAllAppsCard}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.toggleAllAppsTitle}>
+                    {isAllAppsAllowed ? 'Cho phép tất cả ứng dụng' : 'Bật / Tắt tất cả ứng dụng'}
+                  </Text>
+                  <Text style={styles.toggleAllAppsSub}>
+                    {isAllAppsAllowed
+                      ? `Đang bật tất cả (${allowedAppsCount}/${allApps.length} app)`
+                      : `Gạt công tắc để bật nhanh tất cả ứng dụng cho bé`}
                   </Text>
                 </View>
                 <Switch
-                  value={isAllowed}
-                  onValueChange={() => toggleAppVisibility(app.packageName)}
+                  value={isAllAppsAllowed}
+                  onValueChange={toggleAllApps}
                   trackColor={{ false: '#CBD5E1', true: '#86EFAC' }}
-                  thumbColor={isAllowed ? '#16A34A' : '#F1F5F9'}
+                  thumbColor={isAllAppsAllowed ? '#16A34A' : '#F1F5F9'}
                 />
               </View>
-            );
-          })}
-        </View>
 
-        {/* NHÓM 3: QUẢN LÝ YOUTUBE CHO BÉ & CHỌN/THÊM KÊNH */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>📺 Quản lý YouTube An Toàn & Kênh Cho Bé</Text>
-          <Text style={styles.cardDesc}>
-            Trình phát video thiếu nhi tích hợp sẵn, chặn 100% video rác, Shorts và quảng cáo.
-          </Text>
-
-          {/* Công tắc Bật/Tắt YouTube */}
-          <View style={styles.row}>
-            <Text style={styles.label}>Cho phép bé xem YouTube trong app</Text>
-            <Switch
-              value={ytEnabled}
-              onValueChange={(val) => {
-                setYtEnabled(val);
-                youtubeService.setYouTubeEnabled(val);
-                onRefreshPolicies();
-              }}
-              trackColor={{ false: '#CBD5E1', true: '#86EFAC' }}
-              thumbColor={ytEnabled ? '#16A34A' : '#F1F5F9'}
-            />
-          </View>
-
-          {ytEnabled && (
-            <>
-              {/* Giới hạn thời lượng xem */}
-              <View style={{ marginTop: 10 }}>
-                <Text style={styles.subLabel}>Thời lượng xem tối đa mỗi ngày (phút):</Text>
-                <View style={styles.row}>
-                  <TextInput
-                    style={styles.timeInput}
-                    value={ytDailyLimit}
-                    onChangeText={(val) => {
-                      setYtDailyLimit(val);
-                      const mins = parseInt(val, 10);
-                      if (!isNaN(mins) && mins > 0) {
-                        youtubeService.setDailyLimitMinutes(mins);
-                      }
-                    }}
-                    keyboardType="numeric"
-                    placeholder="45"
-                  />
-                  <Text style={{ marginLeft: 10, fontSize: 13, color: '#64748B' }}>
-                    phút / ngày
-                  </Text>
-                </View>
-              </View>
-
-              {/* 3.1. Danh Sách Kênh Đang Có */}
-              <View style={styles.subSection}>
-                <Text style={styles.subSectionTitle}>
-                  ⭐ Danh sách Kênh đang có ({allowedChannels.length}/{allChannels.length} được bật)
-                </Text>
-                <Text style={styles.cardDesc}>
-                  Gạt công tắc để ẩn hoặc hiện từng kênh trên màn hình của bé.
-                </Text>
-
-                {allChannels.map((ch) => {
-                  const isChannelAllowed = allowedChannels.includes(ch.id);
-                  return (
-                    <View key={ch.id} style={styles.channelRow}>
-                      <View
-                        style={[
-                          styles.channelEmojiBox,
-                          { backgroundColor: ch.color || '#2563EB' },
-                        ]}
-                      >
-                        <Text style={styles.channelEmojiText}>{ch.emoji}</Text>
-                      </View>
-                      <View style={styles.appInfo}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                          <Text style={styles.appName} numberOfLines={1}>
-                            {ch.name}
-                          </Text>
-                          {ch.isCustom && (
-                            <Text style={styles.customBadge}>Tùy chỉnh</Text>
-                          )}
-                        </View>
-                        <Text style={styles.appPackage} numberOfLines={1}>
-                          {ch.subscribers} • {ch.description}
-                        </Text>
-                      </View>
-
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        {ch.isCustom && (
-                          <TouchableOpacity
-                            style={styles.deleteChBtn}
-                            onPress={() => handleDeleteChannel(ch)}
-                          >
-                            <Text style={styles.deleteChBtnText}>🗑️</Text>
-                          </TouchableOpacity>
-                        )}
-                        <Switch
-                          value={isChannelAllowed}
-                          onValueChange={(val) => {
-                            const updated = youtubeService.toggleChannel(ch.id, val);
-                            setAllowedChannels(updated);
-                            onRefreshPolicies();
-                          }}
-                          trackColor={{ false: '#CBD5E1', true: '#86EFAC' }}
-                          thumbColor={isChannelAllowed ? '#16A34A' : '#F1F5F9'}
-                        />
-                      </View>
-                    </View>
-                  );
-                })}
-              </View>
-
-              {/* 3.2. TÌM KIẾM KÊNH TRỰC TUYẾN & THÊM VÀO (ONLINE & CATALOG SEARCH) */}
-              <View style={styles.subSection}>
-                <Text style={styles.subSectionTitle}>
-                  🔍 Tìm Kiếm Kênh Trực Tuyến & Thêm Vào
-                </Text>
-                <Text style={styles.cardDesc}>
-                  Tìm kiếm kênh YouTube trực tuyến theo tên hoặc chủ đề (Peppa, VTV7, Paw Patrol, Blippi, Học vẽ...) và thêm vào với 1 chạm.
-                </Text>
-
-                <View style={styles.searchRow}>
-                  <TextInput
-                    style={[styles.formInput, { flex: 1 }]}
-                    placeholder="Nhập tên kênh hoặc chủ đề bé thích..."
-                    value={searchCatalogQuery}
-                    onChangeText={setSearchCatalogQuery}
-                    onSubmitEditing={handleOnlineSearch}
-                  />
-                  <TouchableOpacity
-                    style={styles.onlineSearchBtn}
-                    onPress={handleOnlineSearch}
-                    disabled={isSearchingOnline}
-                  >
-                    {isSearchingOnline ? (
-                      <ActivityIndicator size="small" color="#FFFFFF" />
+              {filteredApps.map((app) => {
+                const isAllowed = !blockedPackages.includes(app.packageName);
+                return (
+                  <View key={app.packageName} style={styles.appRow}>
+                    {app.icon ? (
+                      <Image
+                        source={{
+                          uri:
+                            app.icon.startsWith('file://') ||
+                            app.icon.startsWith('data:') ||
+                            app.icon.startsWith('http')
+                              ? app.icon
+                              : `data:image/png;base64,${app.icon}`,
+                        }}
+                        style={styles.appSettingsIcon}
+                      />
                     ) : (
-                      <Text style={styles.onlineSearchText}>🌐 Tìm Online</Text>
+                      <View style={[styles.appSettingsIcon, styles.appPlaceholderIcon]}>
+                        <Text style={{ fontSize: 16 }}>📱</Text>
+                      </View>
                     )}
-                  </TouchableOpacity>
-                </View>
+                    <View style={styles.appInfo}>
+                      <Text style={styles.appName} numberOfLines={1}>
+                        {app.label}
+                      </Text>
+                      <Text style={styles.appPackage} numberOfLines={1}>
+                        {app.packageName}
+                      </Text>
+                    </View>
+                    <Switch
+                      value={isAllowed}
+                      onValueChange={() => toggleAppVisibility(app.packageName)}
+                      trackColor={{ false: '#CBD5E1', true: '#86EFAC' }}
+                      thumbColor={isAllowed ? '#16A34A' : '#F1F5F9'}
+                    />
+                  </View>
+                );
+              })}
+            </View>
+          </>
+        )}
 
-                {/* Kết quả tìm kiếm kênh */}
-                <View style={styles.catalogGrid}>
-                  {searchResults.map((catCh) => {
-                    const isAlreadyAdded = allChannels.some(
-                      (c) => c.name.toLowerCase() === catCh.name.toLowerCase()
-                    );
+        {/* ========================================================================= */}
+        {/* TAB 2: QUẢN LÝ YOUTUBE (YOUTUBE) */}
+        {/* ========================================================================= */}
+        {activeTab === 'youtube' && (
+          <View style={styles.youtubeTabContainer}>
+            {/* TIÊU ĐỀ SECTION CHÍNH */}
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionHeading}>Kênh của bé</Text>
+              <Text style={styles.sectionSubheading}>
+                Quản lý và xem thống kê các kênh YouTube.
+              </Text>
+            </View>
+
+            {/* CÔNG TẮC BẬT TẮT YOUTUBE */}
+            <View style={styles.ytToggleCard}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.ytToggleTitle}>📺 Kích hoạt YouTube Cho Bé</Text>
+                <Text style={styles.ytToggleSub}>
+                  Chặn video rác, Shorts và đề xuất ngoài luồng
+                </Text>
+              </View>
+              <Switch
+                value={ytEnabled}
+                onValueChange={(val) => {
+                  setYtEnabled(val);
+                  youtubeService.setYouTubeEnabled(val);
+                  onRefreshPolicies();
+                }}
+                trackColor={{ false: '#E5E7EB', true: '#FCA5A5' }}
+                thumbColor={ytEnabled ? '#DC2626' : '#9CA3AF'}
+              />
+            </View>
+
+            {ytEnabled && (
+              <>
+                {/* DANH SÁCH CÁC KÊNH (MODERN CHANNEL CARDS) */}
+                <View style={styles.channelsList}>
+                  {allChannels.map((ch) => {
+                    const isAllowed = allowedChannels.includes(ch.id);
                     return (
-                      <View key={catCh.id} style={styles.catalogCard}>
-                        <View style={styles.catalogHeader}>
+                      <TouchableOpacity
+                        key={ch.id}
+                        style={styles.modernChannelCard}
+                        activeOpacity={0.85}
+                        onPress={() => setSelectedDetailChannel(ch)}
+                      >
+                        {/* AVATAR KÊNH TRÒN */}
+                        {ch.avatar && !ch.avatar.includes('placeholder') ? (
+                          <Image
+                            source={{ uri: ch.avatar }}
+                            style={styles.channelAvatarImg}
+                          />
+                        ) : (
                           <View
                             style={[
-                              styles.channelEmojiBox,
-                              { backgroundColor: catCh.color || '#2563EB', width: 34, height: 34 },
+                              styles.channelAvatarLetter,
+                              { backgroundColor: ch.color || '#E5E7EB' },
                             ]}
                           >
-                            <Text style={{ fontSize: 16 }}>{catCh.emoji}</Text>
+                            <Text style={styles.channelAvatarLetterText}>
+                              {ch.emoji || ch.name.charAt(0).toUpperCase()}
+                            </Text>
                           </View>
-                          <View style={{ flex: 1 }}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                              <Text style={styles.catalogTitle} numberOfLines={1}>
-                                {catCh.name}
-                              </Text>
-                              {catCh.isOnline && (
-                                <Text style={styles.onlineBadge}>Trực tuyến</Text>
-                              )}
+                        )}
+
+                        {/* THÔNG TIN KÊNH */}
+                        <View style={styles.modernChannelInfo}>
+                          <View style={styles.channelNameRow}>
+                            <Text style={styles.modernChannelName} numberOfLines={1}>
+                              {ch.name}
+                            </Text>
+                            <View style={styles.redVerifiedCircle}>
+                              <Text style={styles.redVerifiedCheck}>✓</Text>
                             </View>
-                            <Text style={styles.catalogSub} numberOfLines={1}>
-                              {catCh.subscribers}
+                          </View>
+
+                          <Text style={styles.modernChannelSubs} numberOfLines={1}>
+                            {ch.subscribers || '1.2M người đăng ký'}
+                          </Text>
+
+                          <View style={styles.liveStatusRow}>
+                            <View
+                              style={[
+                                styles.liveDot,
+                                { backgroundColor: isAllowed ? '#DC2626' : '#9CA3AF' },
+                              ]}
+                            />
+                            <Text
+                              style={[
+                                styles.liveStatusText,
+                                { color: isAllowed ? '#DC2626' : '#6B7280' },
+                              ]}
+                            >
+                              {isAllowed ? 'Đang cho phép' : 'Đang tắt'}
                             </Text>
                           </View>
                         </View>
-                        <Text style={styles.catalogDesc} numberOfLines={2}>
-                          {catCh.description}
-                        </Text>
-                        <TouchableOpacity
-                          style={[
-                            styles.catalogAddBtn,
-                            isAlreadyAdded && styles.catalogAddBtnDisabled,
-                          ]}
-                          disabled={isAlreadyAdded}
-                          onPress={() => handleAddFromCatalog(catCh)}
-                        >
-                          <Text
-                            style={[
-                              styles.catalogAddText,
-                              isAlreadyAdded && styles.catalogAddTextDisabled,
-                            ]}
+
+                        {/* NÚT XÓA, SWITCH VÀ NÚT MŨI TÊN CHEVRON */}
+                        <View style={styles.cardActionsRight}>
+                          <TouchableOpacity
+                            style={styles.trashCircleBtn}
+                            onPress={() => handleDeleteChannel(ch)}
+                            activeOpacity={0.7}
                           >
-                            {isAlreadyAdded ? '✔️ Đã có trong danh sách' : '+ Thêm Vào YouTube Cho Bé'}
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
+                            <Text style={{ fontSize: 13 }}>🗑️</Text>
+                          </TouchableOpacity>
+
+                          <Switch
+                            value={isAllowed}
+                            onValueChange={() => {
+                              const updated = youtubeService.toggleChannel(ch.id, !isAllowed);
+                              setAllowedChannels(updated);
+                              onRefreshPolicies();
+                            }}
+                            trackColor={{ false: '#E5E7EB', true: '#FCA5A5' }}
+                            thumbColor={isAllowed ? '#DC2626' : '#9CA3AF'}
+                          />
+
+                          <View style={styles.chevronCircle}>
+                            <Text style={styles.chevronArrow}>›</Text>
+                          </View>
+                        </View>
+                      </TouchableOpacity>
                     );
                   })}
                 </View>
-              </View>
 
-              {/* 3.3. TỰ TẠO KÊNH THỦ CÔNG */}
-              <View style={styles.subSection}>
-                <TouchableOpacity
-                  style={styles.accordionHeader}
-                  onPress={() => setShowManualCreate(!showManualCreate)}
-                >
-                  <Text style={styles.subSectionTitle}>
-                    ✏️ Tự Nhập Kênh Khác Thủ Công {showManualCreate ? '▲' : '▼'}
-                  </Text>
-                </TouchableOpacity>
-
-                {showManualCreate && (
-                  <View style={{ marginTop: 8 }}>
-                    <TextInput
-                      style={[styles.formInput, { marginBottom: 8 }]}
-                      placeholder="Tên Kênh mới..."
-                      value={newChannelName}
-                      onChangeText={setNewChannelName}
-                    />
-
-                    {/* Chọn biểu tượng kênh */}
-                    <Text style={styles.miniLabel}>Chọn biểu tượng cho kênh:</Text>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>
-                      <View style={{ flexDirection: 'row', gap: 8, paddingVertical: 4 }}>
-                        {AVAILABLE_CHANNEL_EMOJIS.map((emoji) => (
-                          <TouchableOpacity
-                            key={emoji}
-                            style={[
-                              styles.emojiSelectBtn,
-                              newChannelEmoji === emoji && styles.emojiSelectBtnActive,
-                            ]}
-                            onPress={() => setNewChannelEmoji(emoji)}
-                          >
-                            <Text style={{ fontSize: 20 }}>{emoji}</Text>
-                          </TouchableOpacity>
-                        ))}
-                      </View>
-                    </ScrollView>
-
-                    {/* Chọn Thể loại */}
-                    <Text style={styles.miniLabel}>Thể loại:</Text>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>
-                      <View style={{ flexDirection: 'row', gap: 6 }}>
-                        {YOUTUBE_CATEGORIES.filter((c) => c.id !== 'all').map((cat) => (
-                          <TouchableOpacity
-                            key={cat.id}
-                            style={[
-                              styles.catSelectBtn,
-                              newChannelCategory === cat.id && styles.catSelectBtnActive,
-                            ]}
-                            onPress={() => setNewChannelCategory(cat.id)}
-                          >
-                            <Text
-                              style={[
-                                styles.catSelectText,
-                                newChannelCategory === cat.id && styles.catSelectTextActive,
-                              ]}
-                            >
-                              {cat.emoji} {cat.name}
-                            </Text>
-                          </TouchableOpacity>
-                        ))}
-                      </View>
-                    </ScrollView>
-
-                    <TextInput
-                      style={[styles.formInput, { marginBottom: 10 }]}
-                      placeholder="Link YouTube hoặc ID video đầu tiên (Tùy chọn)..."
-                      value={newChannelFirstVideo}
-                      onChangeText={setNewChannelFirstVideo}
-                    />
-
-                    <TouchableOpacity
-                      style={[styles.actionBtn, { backgroundColor: '#2563EB' }]}
-                      onPress={handleCreateChannel}
-                    >
-                      <Text style={styles.actionBtnText}>+ Tạo Kênh Tùy Chỉnh</Text>
-                    </TouchableOpacity>
+                {/* THẺ ĐỎ: TỔNG QUAN THÁNG NÀY / THỜI LƯỢNG */}
+                <View style={styles.redStatsBanner}>
+                  <View style={styles.redStatsTopRow}>
+                    <View style={styles.redStatsIconBox}>
+                      <Text style={{ fontSize: 20 }}>📈</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.redStatsTitle}>Tổng quan tháng này</Text>
+                      <Text style={styles.redStatsSub}>
+                        Đã xem: {youtubeService.getTodayWatchedMinutes()} / {ytDailyLimit} phút tối đa hôm nay.
+                      </Text>
+                    </View>
                   </View>
-                )}
-              </View>
 
-              {/* 3.4. Thêm Video Vào Kênh Đã Có & Tự Động Lấy Thông Tin */}
-              <View style={styles.subSection}>
-                <Text style={styles.subSectionTitle}>
-                  🎬 Thêm Video Mới Vào Kênh
-                </Text>
-                <Text style={styles.cardDesc}>
-                  Chọn kênh đích và dán Link YouTube. Hệ thống có thể tự động nhận diện tiêu đề video trực tuyến.
-                </Text>
-
-                {/* Chọn Kênh Đích */}
-                <Text style={styles.miniLabel}>Chọn kênh để thêm video:</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>
-                  <View style={{ flexDirection: 'row', gap: 6 }}>
-                    {allChannels.map((ch) => (
-                      <TouchableOpacity
-                        key={ch.id}
-                        style={[
-                          styles.catSelectBtn,
-                          targetChannelId === ch.id && styles.catSelectBtnActive,
-                        ]}
-                        onPress={() => setTargetChannelId(ch.id)}
-                      >
-                        <Text
+                  {/* CHỌN NHANH THỜI LƯỢNG */}
+                  <View style={styles.redTimePillsContainer}>
+                    {[15, 30, 45, 60, 90, 120].map((mins) => {
+                      const isSelected = ytDailyLimit === String(mins);
+                      return (
+                        <TouchableOpacity
+                          key={mins}
                           style={[
-                            styles.catSelectText,
-                            targetChannelId === ch.id && styles.catSelectTextActive,
+                            styles.redTimePill,
+                            isSelected && styles.redTimePillActive,
                           ]}
+                          onPress={() => {
+                            setYtDailyLimit(String(mins));
+                            youtubeService.setDailyLimitMinutes(mins);
+                          }}
                         >
-                          {ch.emoji} {ch.name}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
+                          <Text
+                            style={[
+                              styles.redTimePillText,
+                              isSelected && styles.redTimePillTextActive,
+                            ]}
+                          >
+                            {mins}p
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
                   </View>
-                </ScrollView>
 
-                <View style={styles.searchRow}>
-                  <TextInput
-                    style={[styles.formInput, { flex: 1 }]}
-                    placeholder="Dán Link YouTube (VD: https://youtu.be/...)..."
-                    value={newVideoUrl}
-                    onChangeText={setNewVideoUrl}
-                  />
+                  {/* NÚT XEM BÁO CÁO */}
                   <TouchableOpacity
-                    style={styles.fetchMetaBtn}
-                    onPress={handleFetchMetadata}
-                    disabled={isFetchingMetadata}
+                    style={styles.redReportPillBtn}
+                    onPress={() => {
+                      Alert.alert(
+                        '📊 Báo Cáo Thời Lượng YouTube',
+                        `• Thời lượng đã xem hôm nay: ${youtubeService.getTodayWatchedMinutes()} phút.\n• Hạn mức tối đa: ${ytDailyLimit} phút/ngày.\n• Số kênh đang bật: ${allowedChannels.length}/${allChannels.length} kênh.`
+                      );
+                    }}
+                    activeOpacity={0.85}
                   >
-                    {isFetchingMetadata ? (
-                      <ActivityIndicator size="small" color="#FFFFFF" />
-                    ) : (
-                      <Text style={styles.fetchMetaText}>⚡ Tải Tên</Text>
-                    )}
+                    <Text style={styles.redReportBtnText}>Xem báo cáo</Text>
                   </TouchableOpacity>
                 </View>
+              </>
+            )}
+          </View>
+        )}
 
+        {/* ========================================================================= */}
+        {/* TAB 3: TÀI KHOẢN & BẢN QUYỀN (ACCOUNT) */}
+        {/* ========================================================================= */}
+        {activeTab === 'account' && (
+          <>
+            {/* 3.1. THÔNG TIN BẢN QUYỀN THIẾT BỊ */}
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>📜 Thông Tin Bản Quyền Thiết Bị</Text>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Trạng thái bản quyền:</Text>
+                <View style={[styles.statusPill, { backgroundColor: '#DCFCE7' }]}>
+                  <Text style={[styles.statusPillText, { color: '#15803D' }]}>Đã Kích Hoạt ✅</Text>
+                </View>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>License Key:</Text>
+                <Text style={styles.infoValue}>
+                  {storage.getString(STORAGE_KEYS.LICENSE_KEY) || 'LCK-DEMO-PARENT'}
+                </Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Device Unique ID:</Text>
+                <Text style={styles.infoValue}>
+                  {storage.getString(STORAGE_KEYS.DEVICE_ID) || 'ANDROID_DEVICE_TEST'}
+                </Text>
+              </View>
+            </View>
+
+            {/* 3.2. ĐỒNG BỘ ĐÁM MÂY SUPABASE */}
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>☁️ Đồng Bộ Đám Mây (Supabase)</Text>
+              <Text style={styles.cardDesc}>
+                Tải các chính sách, kênh YouTube mới nhất từ xa và gửi nhật ký thời lượng xem lên máy chủ.
+              </Text>
+              <TouchableOpacity
+                style={styles.syncBtn}
+                onPress={handleSyncCloud}
+                disabled={isSyncingCloud}
+                activeOpacity={0.8}
+              >
+                {isSyncingCloud ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.syncBtnText}>🔄 Đồng Bộ Dữ Liệu Ngay</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+
+            {/* 3.3. BẢO MẬT & ĐỔI MÃ PIN */}
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>🔒 Mã PIN Phụ Huynh</Text>
+              <Text style={styles.cardDesc}>
+                Mã PIN bảo vệ màn hình Cài đặt và mở khóa khẩn cấp ngoài giờ.
+              </Text>
+              <View style={styles.pinRow}>
                 <TextInput
-                  style={[styles.formInput, { marginBottom: 10, marginTop: 8 }]}
-                  placeholder="Tiêu đề video..."
-                  value={newVideoTitle}
-                  onChangeText={setNewVideoTitle}
+                  style={styles.pinInput}
+                  value={newPin}
+                  onChangeText={setNewPin}
+                  keyboardType="numeric"
+                  maxLength={6}
+                  secureTextEntry
+                  placeholder="1234"
                 />
-
-                <TouchableOpacity
-                  style={[styles.actionBtn, { backgroundColor: '#16A34A' }]}
-                  onPress={handleAddVideoToChannel}
-                >
-                  <Text style={styles.actionBtnText}>+ Thêm Video Vào Kênh</Text>
+                <TouchableOpacity style={styles.savePinBtn} onPress={handleSavePin}>
+                  <Text style={styles.savePinText}>Lưu Mã PIN</Text>
                 </TouchableOpacity>
               </View>
-            </>
-          )}
-        </View>
+            </View>
 
-        {/* NHÓM 4: BẢO MẬT & MÃ PIN */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>🔒 Mã PIN Phụ huynh</Text>
-          <View style={styles.row}>
-            <TextInput
-              style={styles.pinInput}
-              value={newPin}
-              onChangeText={setNewPin}
-              keyboardType="numeric"
-              maxLength={6}
-            />
-            <TouchableOpacity style={styles.savePinBtn} onPress={handleSavePin}>
-              <Text style={styles.savePinText}>Lưu PIN</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* NHÓM 5: THÔNG TIN BẢN QUYỀN */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>📜 Bản Quyền Ứng Dụng</Text>
-          <Text style={styles.licenseInfo}>
-            Trạng thái: <Text style={{ color: '#16A34A', fontWeight: 'bold' }}>Đã Kích Hoạt</Text>
-          </Text>
-          <Text style={styles.licenseInfo}>
-            License Key: <Text style={{ fontWeight: 'bold' }}>{storage.getString(STORAGE_KEYS.LICENSE_KEY) || 'LCK-DEMO'}</Text>
-          </Text>
-          <TouchableOpacity
-            style={styles.resetLicenseBtn}
-            onPress={() => {
-              Alert.alert(
-                'Xác nhận đăng xuất',
-                'Bạn có chắc chắn muốn hủy kích hoạt bản quyền trên thiết bị này?',
-                [
-                  { text: 'Hủy', style: 'cancel' },
-                  { text: 'Đồng ý', style: 'destructive', onPress: onResetLicense },
-                ]
-              );
-            }}
-          >
-            <Text style={styles.resetLicenseText}>Hủy kích hoạt bản quyền (Đăng xuất)</Text>
-          </TouchableOpacity>
-        </View>
+            {/* 3.4. ĐĂNG XUẤT THIẾT BỊ */}
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>🚪 Đăng Xuất Thiết Bị</Text>
+              <Text style={styles.cardDesc}>
+                Hủy kích hoạt bản quyền trên thiết bị này và chuyển về màn hình đăng nhập khóa bản quyền ban đầu.
+              </Text>
+              <TouchableOpacity
+                style={styles.resetLicenseBtn}
+                onPress={() => {
+                  Alert.alert(
+                    'Xác nhận đăng xuất',
+                    'Bạn có chắc chắn muốn hủy kích hoạt bản quyền trên thiết bị này?',
+                    [
+                      { text: 'Hủy', style: 'cancel' },
+                      { text: 'Đồng ý', style: 'destructive', onPress: onResetLicense },
+                    ]
+                  );
+                }}
+              >
+                <Text style={styles.resetLicenseText}>Hủy Kích Hoạt Bản Quyền (Đăng Xuất)</Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
       </ScrollView>
+
+      {/* FLOATING ACTION BUTTON (+) Ở GÓC DƯỚI BÊN PHẢI (BOTTOM RIGHT) */}
+      {activeTab === 'youtube' && (
+        <TouchableOpacity
+          style={styles.floatingAddBtn}
+          onPress={() => setShowAddChannelModal(true)}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.floatingAddBtnText}>+</Text>
+        </TouchableOpacity>
+      )}
+
+      {/* MODAL TÌM KIẾM & CHỌN NHIỀU KÊNH (KHI BẤM NÚT +) */}
+      <Modal
+        visible={showAddChannelModal}
+        animationType="slide"
+        onRequestClose={() => setShowAddChannelModal(false)}
+      >
+        <YouTubeChannelSearchScreen
+          onClose={() => setShowAddChannelModal(false)}
+          onChannelsAdded={() => {
+            setAllChannels(youtubeService.getAllChannels());
+            setAllowedChannels(youtubeService.getAllowedChannelIds());
+            onRefreshPolicies();
+          }}
+        />
+      </Modal>
+
+      {/* MODAL CHI TIẾT VIDEO CỦA KÊNH KHI BẤM VÀO KÊNH */}
+      <Modal
+        visible={!!selectedDetailChannel}
+        animationType="slide"
+        onRequestClose={() => setSelectedDetailChannel(null)}
+      >
+        {selectedDetailChannel && (
+          <YouTubeVideoDetailScreen
+            channel={selectedDetailChannel}
+            onClose={() => setSelectedDetailChannel(null)}
+          />
+        )}
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -783,67 +824,193 @@ export const ParentSettingsScreen: React.FC<ParentSettingsScreenProps> = ({
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#F1F5F9',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 18,
     paddingVertical: 14,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#E2E8F0',
   },
   headerTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '800',
     color: '#0F172A',
   },
+  headerSubtitle: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 2,
+  },
   closeBtn: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    backgroundColor: '#F1F5F9',
-    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
   },
   closeBtnText: {
     fontWeight: '700',
+    color: '#334155',
+    fontSize: 13,
+  },
+
+  /* TAB BAR */
+  tabBar: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+    gap: 8,
+  },
+  tabItem: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: '#F8FAFC',
+    gap: 6,
+  },
+  tabItemActive: {
+    backgroundColor: '#EEF2FF',
+    borderWidth: 1.5,
+    borderColor: '#6366F1',
+  },
+  tabIcon: {
+    fontSize: 16,
+  },
+  tabTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#64748B',
+  },
+  tabTitleActive: {
+    color: '#4F46E5',
+    fontWeight: '800',
+  },
+  tabBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+    backgroundColor: '#E2E8F0',
+  },
+  tabBadgeActive: {
+    backgroundColor: '#4F46E5',
+  },
+  tabBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
     color: '#475569',
   },
+  tabBadgeTextActive: {
+    color: '#FFFFFF',
+  },
+
   content: {
     padding: 16,
     paddingBottom: 40,
-    gap: 16,
+    gap: 14,
   },
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
+    padding: 18,
     borderWidth: 1,
     borderColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  cardHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
   },
   cardTitle: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '800',
-    color: '#1E293B',
+    color: '#0F172A',
     marginBottom: 4,
   },
   cardDesc: {
-    fontSize: 12,
+    fontSize: 12.5,
     color: '#64748B',
-    lineHeight: 16,
-    marginBottom: 12,
+    lineHeight: 18,
+    marginBottom: 14,
   },
+  counterText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#4F46E5',
+    backgroundColor: '#EEF2FF',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+
+  /* STATUS PILL */
+  statusPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  statusPillText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+
+  /* ADMIN BUTTON */
+  adminActionBtn: {
+    backgroundColor: '#2563EB',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  adminActionBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  defaultLauncherBtn: {
+    backgroundColor: '#1E293B',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  defaultLauncherBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  adminActiveHint: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#16A34A',
+    backgroundColor: '#F0FDF4',
+    padding: 10,
+    borderRadius: 10,
+  },
+
+  /* SCHEDULE */
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 6,
   },
   label: {
     fontSize: 14,
@@ -852,12 +1019,12 @@ const styles = StyleSheet.create({
   },
   subLabel: {
     fontSize: 13,
-    color: '#475569',
     fontWeight: '600',
-    marginBottom: 4,
+    color: '#475569',
+    marginBottom: 8,
   },
   scheduleInputs: {
-    marginTop: 12,
+    marginTop: 14,
     paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: '#F1F5F9',
@@ -865,8 +1032,8 @@ const styles = StyleSheet.create({
   },
   timeRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
+    alignItems: 'center',
   },
   timeLabel: {
     fontSize: 13,
@@ -878,27 +1045,88 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    fontSize: 13,
-    width: 120,
+    fontSize: 14,
+    color: '#0F172A',
+    width: 110,
     textAlign: 'center',
     backgroundColor: '#F8FAFC',
+  },
+
+  /* QUICK TIME LIMIT BUTTONS */
+  quickTimeRow: {
+    flexDirection: 'row',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  quickTimeBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+  },
+  quickTimeBtnActive: {
+    backgroundColor: '#4F46E5',
+    borderColor: '#4F46E5',
+  },
+  quickTimeText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#475569',
+  },
+  quickTimeTextActive: {
+    color: '#FFFFFF',
+  },
+
+  /* APP LIST */
+  searchInput: {
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 13,
     color: '#0F172A',
+    marginBottom: 12,
+  },
+  toggleAllAppsCard: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  toggleAllAppsTitle: {
+    fontSize: 13.5,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  toggleAllAppsSub: {
+    fontSize: 11.5,
+    color: '#64748B',
+    marginTop: 2,
   },
   appRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#F8FAFC',
+    borderBottomColor: '#F1F5F9',
+    gap: 12,
   },
   appSettingsIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    marginRight: 12,
-    backgroundColor: '#E2E8F0',
+    width: 38,
+    height: 38,
+    borderRadius: 8,
   },
   appPlaceholderIcon: {
+    backgroundColor: '#E2E8F0',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -906,260 +1134,408 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   appName: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
-    color: '#1E293B',
+    color: '#0F172A',
   },
   appPackage: {
     fontSize: 11,
     color: '#94A3B8',
     marginTop: 2,
   },
-  subSection: {
-    marginTop: 16,
-    paddingTop: 14,
-    borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
+
+  /* MODERN YOUTUBE TAB STYLES */
+  youtubeTabContainer: {
+    gap: 14,
   },
-  subSectionTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#0F172A',
+  sectionHeader: {
     marginBottom: 4,
   },
-  channelRow: {
+  sectionHeading: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#111827',
+  },
+  sectionSubheading: {
+    fontSize: 13.5,
+    color: '#4B5563',
+    marginTop: 3,
+  },
+  ytToggleCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F8FAFC',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
-  channelEmojiBox: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+  ytToggleTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  ytToggleSub: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  channelsList: {
+    gap: 10,
+  },
+  modernChannelCard: {
+    backgroundColor: '#F3F4F6',
+    borderRadius: 20,
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  channelAvatarImg: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#E5E7EB',
+  },
+  channelAvatarLetter: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 10,
   },
-  channelEmojiText: {
-    fontSize: 18,
+  channelAvatarLetterText: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#1F2937',
   },
-  customBadge: {
+  modernChannelInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  channelNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  modernChannelName: {
+    fontSize: 15.5,
+    fontWeight: '800',
+    color: '#111827',
+    maxWidth: '85%',
+  },
+  redVerifiedCircle: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#DC2626',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  redVerifiedCheck: {
     fontSize: 9,
-    fontWeight: '700',
-    color: '#2563EB',
-    backgroundColor: '#DBEAFE',
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-    borderRadius: 4,
+    color: '#FFFFFF',
+    fontWeight: '900',
   },
-  onlineBadge: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: '#059669',
-    backgroundColor: '#D1FAE5',
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-    borderRadius: 4,
+  modernChannelSubs: {
+    fontSize: 12.5,
+    color: '#4B5563',
+    fontWeight: '500',
   },
-  deleteChBtn: {
-    padding: 6,
-    backgroundColor: '#FEE2E2',
-    borderRadius: 6,
+  liveStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 2,
   },
-  deleteChBtnText: {
-    fontSize: 14,
+  liveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
-  searchRow: {
+  liveStatusText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  cardActionsRight: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 8,
   },
-  onlineSearchBtn: {
-    backgroundColor: '#0284C7',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    minWidth: 95,
-  },
-  onlineSearchText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  fetchMetaBtn: {
-    backgroundColor: '#7C3AED',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
+  trashCircleBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#FEE2E2',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  fetchMetaText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  formInput: {
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    fontSize: 13,
-    backgroundColor: '#F8FAFC',
-    color: '#0F172A',
-  },
-  miniLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#475569',
-    marginBottom: 4,
-  },
-  emojiSelectBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    backgroundColor: '#F8FAFC',
+  chevronCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#E5E7EB',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  emojiSelectBtnActive: {
-    borderColor: '#2563EB',
-    backgroundColor: '#EFF6FF',
-    transform: [{ scale: 1.1 }],
-  },
-  catSelectBtn: {
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    backgroundColor: '#F8FAFC',
-  },
-  catSelectBtnActive: {
-    borderColor: '#2563EB',
-    backgroundColor: '#2563EB',
-  },
-  catSelectText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#475569',
-  },
-  catSelectTextActive: {
-    color: '#FFFFFF',
+  chevronArrow: {
+    fontSize: 18,
+    color: '#4B5563',
     fontWeight: '700',
-  },
-  actionBtn: {
-    paddingVertical: 10,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  actionBtnText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '800',
+    marginTop: -2,
   },
 
-  // CATALOG STYLES
-  catalogGrid: {
-    gap: 10,
+  /* RED OVERVIEW CARD */
+  redStatsBanner: {
+    backgroundColor: '#E11D48',
+    borderRadius: 22,
+    padding: 18,
+    marginTop: 6,
+    gap: 12,
+    shadowColor: '#E11D48',
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 4,
   },
-  catalogCard: {
-    backgroundColor: '#F8FAFC',
-    borderRadius: 12,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  catalogHeader: {
+  redStatsTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
+    gap: 12,
   },
-  catalogTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#0F172A',
-  },
-  catalogSub: {
-    fontSize: 11,
-    color: '#64748B',
-  },
-  catalogDesc: {
-    fontSize: 12,
-    color: '#475569',
-    marginVertical: 4,
-    lineHeight: 16,
-  },
-  catalogAddBtn: {
-    backgroundColor: '#2563EB',
-    paddingVertical: 7,
-    borderRadius: 8,
+  redStatsIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#9F1239',
+    justifyContent: 'center',
     alignItems: 'center',
+  },
+  redStatsTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  redStatsSub: {
+    fontSize: 12.5,
+    color: '#FFE4E6',
+    marginTop: 2,
+  },
+  redTimePillsContainer: {
+    flexDirection: 'row',
+    gap: 6,
+    flexWrap: 'wrap',
+  },
+  redTimePill: {
+    paddingVertical: 5,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    backgroundColor: '#BE123C',
+  },
+  redTimePillActive: {
+    backgroundColor: '#FFFFFF',
+  },
+  redTimePillText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFE4E6',
+  },
+  redTimePillTextActive: {
+    color: '#BE123C',
+  },
+  redReportPillBtn: {
+    backgroundColor: '#9F1239',
+    paddingVertical: 10,
+    paddingHorizontal: 22,
+    borderRadius: 20,
+    alignSelf: 'flex-start',
     marginTop: 4,
   },
-  catalogAddBtnDisabled: {
-    backgroundColor: '#E2E8F0',
-  },
-  catalogAddText: {
+  redReportBtnText: {
     color: '#FFFFFF',
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
   },
-  catalogAddTextDisabled: {
+
+  /* ACCOUNT TAB */
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  infoLabel: {
+    fontSize: 13.5,
     color: '#64748B',
   },
-  accordionHeader: {
-    paddingVertical: 4,
-  },
-
-  pinInput: {
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    fontSize: 16,
-    letterSpacing: 4,
-    width: 140,
-    textAlign: 'center',
-    backgroundColor: '#F8FAFC',
+  infoValue: {
+    fontSize: 13.5,
+    fontWeight: '700',
     color: '#0F172A',
+  },
+  syncBtn: {
+    backgroundColor: '#2563EB',
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  syncBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 13.5,
+  },
+  pinRow: {
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'center',
+  },
+  pinInput: {
+    borderWidth: 1.5,
+    borderColor: '#CBD5E1',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    fontSize: 18,
     fontWeight: 'bold',
+    color: '#0F172A',
+    width: 120,
+    textAlign: 'center',
+    letterSpacing: 4,
   },
   savePinBtn: {
-    backgroundColor: '#2563EB',
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 8,
+    backgroundColor: '#16A34A',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 10,
   },
   savePinText: {
     color: '#FFFFFF',
     fontWeight: '700',
-    fontSize: 13,
-  },
-  licenseInfo: {
-    fontSize: 13,
-    color: '#334155',
-    marginVertical: 3,
+    fontSize: 13.5,
   },
   resetLicenseBtn: {
-    marginTop: 12,
-    paddingVertical: 10,
-    alignItems: 'center',
     backgroundColor: '#FEE2E2',
-    borderRadius: 8,
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#FECACA',
   },
   resetLicenseText: {
     color: '#DC2626',
     fontWeight: '700',
-    fontSize: 13,
+    fontSize: 13.5,
+  },
+
+  /* FLOATING ACTION BUTTON (+) */
+  floatingAddBtn: {
+    position: 'absolute',
+    bottom: 24,
+    right: 20,
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: '#DC2626',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#DC2626',
+    shadowOpacity: 0.45,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
+  },
+  floatingAddBtnText: {
+    fontSize: 32,
+    color: '#FFFFFF',
+    fontWeight: '300',
+    marginTop: -2,
+  },
+
+  /* ADD MODAL STYLES */
+  addModalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  addModalCard: {
+    width: '100%',
+    maxWidth: 360,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  addModalHeader: {
+    alignItems: 'center',
+    marginBottom: 18,
+  },
+  addModalIconBox: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#FEE2E2',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  addModalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  addModalSub: {
+    fontSize: 12.5,
+    color: '#64748B',
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  addModalInput: {
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 14,
+    color: '#0F172A',
+    marginBottom: 20,
+  },
+  addModalActions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  addModalCancelBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+  },
+  addModalCancelText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#475569',
+  },
+  addModalConfirmBtn: {
+    flex: 1.4,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: '#DC2626',
+    alignItems: 'center',
+  },
+  addModalConfirmText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 });

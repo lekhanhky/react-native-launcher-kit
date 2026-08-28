@@ -10,6 +10,8 @@ import {
   Alert,
   StatusBar,
   useWindowDimensions,
+  AppState,
+  BackHandler,
 } from 'react-native';
 import { InstalledApps, RNLauncherKitHelper } from 'react-native-launcher-kit';
 import type { AppDetail } from 'react-native-launcher-kit/src/interfaces/InstalledApps';
@@ -20,8 +22,16 @@ import { ThemeConfig, themeService } from '../services/themes';
 import { youtubeService } from '../services/youtubeService';
 import { ThemeSelectorModal } from '../components/ThemeSelectorModal';
 import { KidsYouTubeScreen } from './KidsYouTubeScreen';
+import { MemoryGameScreen } from './MemoryGameScreen';
+import { BubblePopGameScreen } from './BubblePopGameScreen';
+import { AnimalSoundGameScreen } from './AnimalSoundGameScreen';
+import { ColoringGameScreen } from './ColoringGameScreen';
+import { SortingGameScreen } from './SortingGameScreen';
+import { MazeGameScreen } from './MazeGameScreen';
+import { TangramPuzzleGameScreen } from './TangramPuzzleGameScreen';
 import { LockOverlay } from '../components/LockOverlay';
 import { ParentPinModal } from '../components/ParentPinModal';
+import { DeviceAdminGuideModal } from '../components/DeviceAdminGuideModal';
 import { ParentSettingsScreen } from './ParentSettingsScreen';
 
 interface KidsLauncherScreenProps {
@@ -49,6 +59,30 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
   // Safe YouTube Screen state
   const [showYouTubeScreen, setShowYouTubeScreen] = useState<boolean>(false);
 
+  // Memory Game Screen state
+  const [showMemoryGame, setShowMemoryGame] = useState<boolean>(false);
+
+  // Bubble Pop Game Screen state
+  const [showBubblePopGame, setShowBubblePopGame] = useState<boolean>(false);
+
+  // Animal Sound Game Screen state
+  const [showAnimalSoundGame, setShowAnimalSoundGame] = useState<boolean>(false);
+
+  // Coloring Game Screen state
+  const [showColoringGame, setShowColoringGame] = useState<boolean>(false);
+
+  // Sorting Game Screen state
+  const [showSortingGame, setShowSortingGame] = useState<boolean>(false);
+
+  // Maze Game Screen state
+  const [showMazeGame, setShowMazeGame] = useState<boolean>(false);
+
+  // Tangram Puzzle Game Screen state
+  const [showTangramGame, setShowTangramGame] = useState<boolean>(false);
+
+  // Device Admin Guide Modal state
+  const [showAdminGuideModal, setShowAdminGuideModal] = useState<boolean>(false);
+
   // Modals & Navigation
   const [showPinModal, setShowPinModal] = useState(false);
   const [pinAction, setPinAction] = useState<'unlock_temp' | 'open_settings'>('open_settings');
@@ -70,6 +104,55 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
 
       let filtered = apps.filter((app) => !blockedList.includes(app.packageName));
 
+      // Game 1: Lật thẻ trí nhớ cho bé
+      const memoryGameApp: AppDetail = {
+        label: 'Lật Thẻ Trí Nhớ',
+        packageName: 'internal.game.memory',
+        icon: '',
+      };
+
+      // Game 2: Nổ bong bóng kỳ diệu
+      const bubblePopApp: AppDetail = {
+        label: 'Nổ Bong Bóng',
+        packageName: 'internal.game.bubblepop',
+        icon: '',
+      };
+
+      // Game 3: Nghe tiếng đoán con vật
+      const animalSoundApp: AppDetail = {
+        label: 'Đoán Con Vật',
+        packageName: 'internal.game.animalsound',
+        icon: '',
+      };
+
+      // Game 4: Bé vui tô màu & Sáng tạo
+      const coloringGameApp: AppDetail = {
+        label: 'Bé Tập Tô Màu',
+        packageName: 'internal.game.coloring',
+        icon: '',
+      };
+
+      // Game 5: Phân loại rác & Đồ vật
+      const sortingGameApp: AppDetail = {
+        label: 'Bé Phân Loại',
+        packageName: 'internal.game.sorting',
+        icon: '',
+      };
+
+      // Game 8: Mê cung tìm đường về tổ
+      const mazeGameApp: AppDetail = {
+        label: 'Mê Cung Kỳ Thú',
+        packageName: 'internal.game.maze',
+        icon: '',
+      };
+
+      // Game 10: Xếp hình trí tuệ Tangram / Jigsaw
+      const tangramGameApp: AppDetail = {
+        label: 'Bé Xếp Hình',
+        packageName: 'internal.game.tangram',
+        icon: '',
+      };
+
       // Thêm ứng dụng YouTube an toàn nếu phụ huynh cho phép
       if (youtubeService.isYouTubeEnabled()) {
         const ytApp: AppDetail = {
@@ -77,7 +160,9 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
           packageName: 'internal.safe.youtube',
           icon: '',
         };
-        filtered = [ytApp, ...filtered];
+        filtered = [memoryGameApp, bubblePopApp, animalSoundApp, coloringGameApp, sortingGameApp, mazeGameApp, tangramGameApp, ytApp, ...filtered];
+      } else {
+        filtered = [memoryGameApp, bubblePopApp, animalSoundApp, coloringGameApp, sortingGameApp, mazeGameApp, tangramGameApp, ...filtered];
       }
 
       setVisibleApps(filtered);
@@ -116,24 +201,158 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
   // 3. Khởi tạo
   useEffect(() => {
     launcherHelper.setupDefaultLauncher();
+    
+    // Kiểm tra và hiển thị hướng dẫn kích hoạt Device Admin nếu chưa bật
+    launcherHelper.isDeviceAdminActive().then(isActive => {
+      if (!isActive) {
+        setShowAdminGuideModal(true);
+      }
+    });
+
     loadApps();
     evaluateSchedule();
+
+    // Tự động kiểm tra lại khi người dùng quay lại app từ màn hình Cài đặt Android
+    const appStateSub = AppState.addEventListener('change', nextState => {
+      if (nextState === 'active') {
+        launcherHelper.isDeviceAdminActive().then(isActive => {
+          if (isActive) {
+            setShowAdminGuideModal(false);
+          }
+        });
+      }
+    });
 
     const interval = setInterval(evaluateSchedule, 15000);
     InstalledApps.startListeningForAppInstallations(() => loadApps());
     InstalledApps.startListeningForAppRemovals(() => loadApps());
 
     return () => {
+      appStateSub.remove();
       clearInterval(interval);
       InstalledApps.stopListeningForAppInstallations();
       InstalledApps.stopListeningForAppRemovals();
     };
   }, [loadApps, evaluateSchedule]);
 
+  // 3.1. Chặn phím Back vật lý / phím ESC trên Android để không bao giờ thoát khỏi Launcher
+  useEffect(() => {
+    const onBackPress = () => {
+      if (showPinModal) {
+        setShowPinModal(false);
+        return true;
+      }
+      if (showThemeModal) {
+        setShowThemeModal(false);
+        return true;
+      }
+      if (showAdminGuideModal) {
+        setShowAdminGuideModal(false);
+        return true;
+      }
+      if (showMemoryGame) {
+        setShowMemoryGame(false);
+        return true;
+      }
+      if (showBubblePopGame) {
+        setShowBubblePopGame(false);
+        return true;
+      }
+      if (showAnimalSoundGame) {
+        setShowAnimalSoundGame(false);
+        return true;
+      }
+      if (showColoringGame) {
+        setShowColoringGame(false);
+        return true;
+      }
+      if (showSortingGame) {
+        setShowSortingGame(false);
+        return true;
+      }
+      if (showMazeGame) {
+        setShowMazeGame(false);
+        return true;
+      }
+      if (showTangramGame) {
+        setShowTangramGame(false);
+        return true;
+      }
+      if (showYouTubeScreen) {
+        setShowYouTubeScreen(false);
+        return true;
+      }
+      if (showSettingsScreen) {
+        setShowSettingsScreen(false);
+        return true;
+      }
+      // Đang ở màn hình chính của Launcher: CHẶN THOÁT (Return true)
+      return true;
+    };
+
+    const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => sub.remove();
+  }, [
+    showPinModal,
+    showThemeModal,
+    showAdminGuideModal,
+    showMemoryGame,
+    showBubblePopGame,
+    showAnimalSoundGame,
+    showColoringGame,
+    showSortingGame,
+    showMazeGame,
+    showTangramGame,
+    showYouTubeScreen,
+    showSettingsScreen,
+  ]);
+
   // 4. Xử lý mở app
   const handleLaunchApp = (packageName: string) => {
     if (isLocked) {
       Alert.alert('Thiết bị đang bị khóa', lockReason);
+      return;
+    }
+
+    // Mở Game 1: Lật Thẻ Trí Nhớ
+    if (packageName === 'internal.game.memory') {
+      setShowMemoryGame(true);
+      return;
+    }
+
+    // Mở Game 2: Nổ Bong Bóng Kỳ Diệu
+    if (packageName === 'internal.game.bubblepop') {
+      setShowBubblePopGame(true);
+      return;
+    }
+
+    // Mở Game 3: Nghe Tiếng Đoán Con Vật
+    if (packageName === 'internal.game.animalsound') {
+      setShowAnimalSoundGame(true);
+      return;
+    }
+
+    // Mở Game 4: Bé Tập Tô Màu & Nét Vẽ Sáng Tạo
+    if (packageName === 'internal.game.coloring') {
+      setShowColoringGame(true);
+      return;
+    }
+
+    // Mở Game 5: Bé Phân Loại Rác & Đồ Vật
+    if (packageName === 'internal.game.sorting') {
+      setShowSortingGame(true);
+      return;
+    }
+
+    // Mở Game 8: Mê Cung Tìm Đường Về Tổ
+    if (packageName === 'internal.game.maze') {
+      setShowMazeGame(true);
+      return;
+    }
+
+    // Mở Game 10: Xếp Hình Trí Tuệ Tangram / Jigsaw
+    if (packageName === 'internal.game.tangram') {
+      setShowTangramGame(true);
       return;
     }
 
@@ -168,6 +387,76 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
           evaluateSchedule();
         }}
         onResetLicense={onResetLicense}
+      />
+    );
+  }
+
+  // Mở màn hình Game 1: Lật Thẻ Trí Nhớ
+  if (showMemoryGame) {
+    return (
+      <MemoryGameScreen
+        theme={currentTheme}
+        onClose={() => setShowMemoryGame(false)}
+      />
+    );
+  }
+
+  // Mở màn hình Game 2: Nổ Bong Bóng Kỳ Diệu
+  if (showBubblePopGame) {
+    return (
+      <BubblePopGameScreen
+        theme={currentTheme}
+        onClose={() => setShowBubblePopGame(false)}
+      />
+    );
+  }
+
+  // Mở màn hình Game 3: Nghe Tiếng Đoán Con Vật
+  if (showAnimalSoundGame) {
+    return (
+      <AnimalSoundGameScreen
+        theme={currentTheme}
+        onClose={() => setShowAnimalSoundGame(false)}
+      />
+    );
+  }
+
+  // Mở màn hình Game 4: Bé Tập Tô Màu
+  if (showColoringGame) {
+    return (
+      <ColoringGameScreen
+        theme={currentTheme}
+        onClose={() => setShowColoringGame(false)}
+      />
+    );
+  }
+
+  // Mở màn hình Game 5: Bé Phân Loại Rác & Đồ Vật
+  if (showSortingGame) {
+    return (
+      <SortingGameScreen
+        theme={currentTheme}
+        onClose={() => setShowSortingGame(false)}
+      />
+    );
+  }
+
+  // Mở màn hình Game 8: Mê Cung Tìm Đường
+  if (showMazeGame) {
+    return (
+      <MazeGameScreen
+        theme={currentTheme}
+        onClose={() => setShowMazeGame(false)}
+      />
+    );
+  }
+
+  // Mở màn hình Game 10: Xếp Hình Trí Tuệ Tangram / Jigsaw
+  if (showTangramGame) {
+    return (
+      <TangramPuzzleGameScreen
+        theme={currentTheme}
+        onClose={() => setShowTangramGame(false)}
       />
     );
   }
@@ -288,6 +577,13 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
           showsVerticalScrollIndicator={false}
           renderItem={({ item }) => {
             const isYouTube = item.packageName === 'internal.safe.youtube';
+            const isMemoryGame = item.packageName === 'internal.game.memory';
+            const isBubblePop = item.packageName === 'internal.game.bubblepop';
+            const isAnimalSound = item.packageName === 'internal.game.animalsound';
+            const isColoringGame = item.packageName === 'internal.game.coloring';
+            const isSortingGame = item.packageName === 'internal.game.sorting';
+            const isMazeGame = item.packageName === 'internal.game.maze';
+            const isTangramGame = item.packageName === 'internal.game.tangram';
             return (
               <TouchableOpacity
                 style={styles.appCard}
@@ -295,7 +591,49 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
                 onPress={() => handleLaunchApp(item.packageName)}
               >
                 {/* ICON ỨNG DỤNG */}
-                {isYouTube ? (
+                {isMemoryGame ? (
+                  <View style={[styles.appIcon, styles.gameIconContainer]}>
+                    <View style={styles.gameInnerBadge}>
+                      <Text style={styles.gameEmojiIcon}>🃏</Text>
+                    </View>
+                  </View>
+                ) : isBubblePop ? (
+                  <View style={[styles.appIcon, styles.bubblePopIconContainer]}>
+                    <View style={styles.bubblePopInnerBadge}>
+                      <Text style={styles.bubblePopEmojiIcon}>🎈</Text>
+                    </View>
+                  </View>
+                ) : isAnimalSound ? (
+                  <View style={[styles.appIcon, styles.animalSoundIconContainer]}>
+                    <View style={styles.animalSoundInnerBadge}>
+                      <Text style={styles.animalSoundEmojiIcon}>🐶</Text>
+                    </View>
+                  </View>
+                ) : isColoringGame ? (
+                  <View style={[styles.appIcon, styles.coloringIconContainer]}>
+                    <View style={styles.coloringInnerBadge}>
+                      <Text style={styles.coloringEmojiIcon}>🎨</Text>
+                    </View>
+                  </View>
+                ) : isSortingGame ? (
+                  <View style={[styles.appIcon, styles.sortingIconContainer]}>
+                    <View style={styles.sortingInnerBadge}>
+                      <Text style={styles.sortingEmojiIcon}>♻️</Text>
+                    </View>
+                  </View>
+                ) : isMazeGame ? (
+                  <View style={[styles.appIcon, styles.mazeIconContainer]}>
+                    <View style={styles.mazeInnerBadge}>
+                      <Text style={styles.mazeEmojiIcon}>🌀</Text>
+                    </View>
+                  </View>
+                ) : isTangramGame ? (
+                  <View style={[styles.appIcon, styles.tangramIconContainer]}>
+                    <View style={styles.tangramInnerBadge}>
+                      <Text style={styles.tangramEmojiIcon}>🧩</Text>
+                    </View>
+                  </View>
+                ) : isYouTube ? (
                   <View style={[styles.appIcon, styles.youtubeIconContainer]}>
                     <View style={styles.youtubeRedBox}>
                       <Text style={styles.youtubePlayTriangle}>▶</Text>
@@ -409,6 +747,15 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
               : 'Xác thực Phụ huynh'
           }
         />
+
+        {/* MODAL HƯỚNG DẪN KÍCH HOẠT QUẢN TRỊ VIÊN THIẾT BỊ (CHỐNG GỠ APP) */}
+        <DeviceAdminGuideModal
+          visible={showAdminGuideModal}
+          onClose={() => setShowAdminGuideModal(false)}
+          onConfirm={() => {
+            launcherHelper.requestDeviceAdmin();
+          }}
+        />
       </View>
     </SafeAreaView>
   );
@@ -515,6 +862,174 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: 'bold',
     marginLeft: 2,
+  },
+
+  // GAME 1: MEMORY GAME ICON
+  gameIconContainer: {
+    backgroundColor: '#6366F1',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#4F46E5',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 4,
+  },
+  gameInnerBadge: {
+    width: 44,
+    height: 44,
+    backgroundColor: '#EEF2FF',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  gameEmojiIcon: {
+    fontSize: 24,
+  },
+
+  // GAME 2: BUBBLE POP ICON
+  bubblePopIconContainer: {
+    backgroundColor: '#0284C7',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#0369A1',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 4,
+  },
+  bubblePopInnerBadge: {
+    width: 44,
+    height: 44,
+    backgroundColor: '#E0F2FE',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  bubblePopEmojiIcon: {
+    fontSize: 24,
+  },
+
+  // GAME 3: ANIMAL SOUND ICON
+  animalSoundIconContainer: {
+    backgroundColor: '#D97706',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#B45309',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 4,
+  },
+  animalSoundInnerBadge: {
+    width: 44,
+    height: 44,
+    backgroundColor: '#FEF3C7',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  animalSoundEmojiIcon: {
+    fontSize: 24,
+  },
+
+  // GAME 4: COLORING BOOK ICON
+  coloringIconContainer: {
+    backgroundColor: '#7C3AED',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#6D28D9',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 4,
+  },
+  coloringInnerBadge: {
+    width: 44,
+    height: 44,
+    backgroundColor: '#EDE9FE',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  coloringEmojiIcon: {
+    fontSize: 24,
+  },
+
+  // GAME 5: SORTING GAME ICON
+  sortingIconContainer: {
+    backgroundColor: '#059669',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#047857',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 4,
+  },
+  sortingInnerBadge: {
+    width: 44,
+    height: 44,
+    backgroundColor: '#D1FAE5',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sortingEmojiIcon: {
+    fontSize: 24,
+  },
+
+  // GAME 8: MAZE GAME ICON
+  mazeIconContainer: {
+    backgroundColor: '#0284C7',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#0369A1',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 4,
+  },
+  mazeInnerBadge: {
+    width: 44,
+    height: 44,
+    backgroundColor: '#E0F2FE',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  mazeEmojiIcon: {
+    fontSize: 24,
+  },
+
+  // GAME 10: TANGRAM PUZZLE ICON
+  tangramIconContainer: {
+    backgroundColor: '#D946EF',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#C026D3',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 4,
+  },
+  tangramInnerBadge: {
+    width: 44,
+    height: 44,
+    backgroundColor: '#FAE8FF',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  tangramEmojiIcon: {
+    fontSize: 24,
   },
 
   appIconPlaceholder: {

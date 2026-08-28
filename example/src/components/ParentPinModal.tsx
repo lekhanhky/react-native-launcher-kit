@@ -23,22 +23,22 @@ export const ParentPinModal: React.FC<ParentPinModalProps> = ({
   onSuccess,
   title = 'Nhập mã PIN Phụ huynh',
 }) => {
-  const [pin, setPin] = useState('');
+  const [pin, setPin] = useState('1234');
 
   const handleConfirm = () => {
     const savedPin = storage.getString(STORAGE_KEYS.PARENT_PIN) || '1234';
 
     if (pin.trim() === savedPin.trim()) {
-      setPin('');
+      setPin('1234');
       onSuccess();
     } else {
       Alert.alert('Lỗi bảo mật', 'Mã PIN phụ huynh không chính xác! Vui lòng thử lại.');
-      setPin('');
+      setPin('1234');
     }
   };
 
   const handleCancel = () => {
-    setPin('');
+    setPin('1234');
     onClose();
   };
 

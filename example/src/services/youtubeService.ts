@@ -1,8 +1,11 @@
 /**
  * Safe Kids YouTube Service
- * Channel whitelist management, online search, discovery catalog, custom channels & videos, and watch time limits
+ * Channel & Playlist whitelist management, Supabase cloud sync, online search, discovery catalog, custom channels & videos, and watch time limits
  */
 import { storage } from './storage';
+import { supabaseClient } from './supabaseClient';
+
+export type YouTubeItemType = 'channel' | 'playlist';
 
 export interface YouTubeChannel {
   id: string;
@@ -13,9 +16,14 @@ export interface YouTubeChannel {
   category: string;
   description: string;
   subscribers: string;
+  videoCount?: string;
+  type?: YouTubeItemType;
+  isAllowed?: boolean;
+  isFeatured?: boolean;
   isCustom?: boolean;
   isOnline?: boolean;
   sampleVideoId?: string;
+  videos?: YouTubeVideo[];
 }
 
 export interface YouTubeVideo {
@@ -45,6 +53,50 @@ export const YOUTUBE_CATEGORIES = [
 
 export const PRESET_CHANNELS: YouTubeChannel[] = [
   {
+    id: 'giai_dieu_chill',
+    name: 'Giai Điệu Chill',
+    avatar: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=150',
+    emoji: '🎧',
+    color: '#1E1B4B',
+    category: 'music',
+    description: 'Giai điệu âm nhạc thư giãn, lofi chill nhẹ nhàng',
+    subscribers: '1.2M người đăng ký',
+    videoCount: '450 video',
+  },
+  {
+    id: 'game_thu_vn',
+    name: 'Game Thủ VN',
+    avatar: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=150',
+    emoji: '🎮',
+    color: '#312E81',
+    category: 'cartoon',
+    description: 'Trò chơi giải trí vui nhộn và thử thách trí tuệ',
+    subscribers: '850K người đăng ký',
+    videoCount: '1.2K video',
+  },
+  {
+    id: 'tech_review_vn',
+    name: 'Tech Review VN',
+    avatar: 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=150',
+    emoji: '📱',
+    color: '#0F172A',
+    category: 'english',
+    description: 'Khám phá công nghệ số và khoa học tương lai',
+    subscribers: '2.1M người đăng ký',
+    videoCount: '800 video',
+  },
+  {
+    id: 'goc_nho_cua_nhi',
+    name: 'Góc Nhỏ Của Nhi',
+    avatar: 'https://images.unsplash.com/photo-1517256064527-09c73fc73e38?w=150',
+    emoji: '☕',
+    color: '#F59E0B',
+    category: 'story',
+    description: 'Kể chuyện đời sống, vlog ấm áp và bài học tích cực',
+    subscribers: '340K người đăng ký',
+    videoCount: '150 video',
+  },
+  {
     id: 'super_simple_songs',
     name: 'Super Simple Songs',
     avatar: 'https://img.youtube.com/vi/71_hD4v25xo/hqdefault.jpg',
@@ -52,7 +104,8 @@ export const PRESET_CHANNELS: YouTubeChannel[] = [
     color: '#0284C7',
     category: 'music',
     description: 'Ca nhạc tiếng Anh phát âm chuẩn bản xứ',
-    subscribers: '42.5 Tr',
+    subscribers: '42.5M người đăng ký',
+    videoCount: '620 video',
   },
   {
     id: 'cocomelon',
@@ -62,7 +115,8 @@ export const PRESET_CHANNELS: YouTubeChannel[] = [
     color: '#16A34A',
     category: 'music',
     description: 'Bài hát 3D vui nhộn cho trẻ mầm non',
-    subscribers: '175 Tr',
+    subscribers: '175M người đăng ký',
+    videoCount: '1.1K video',
   },
   {
     id: 'numberblocks',
@@ -72,7 +126,8 @@ export const PRESET_CHANNELS: YouTubeChannel[] = [
     color: '#EA580C',
     category: 'english',
     description: 'Học toán, đếm số và logic thông minh',
-    subscribers: '7.8 Tr',
+    subscribers: '7.8M người đăng ký',
+    videoCount: '340 video',
   },
   {
     id: 'babybus_vn',
@@ -82,7 +137,8 @@ export const PRESET_CHANNELS: YouTubeChannel[] = [
     color: '#E11D48',
     category: 'cartoon',
     description: 'Kỹ năng sống và cứu hộ an toàn cho bé',
-    subscribers: '11.2 Tr',
+    subscribers: '11.2M người đăng ký',
+    videoCount: '950 video',
   },
   {
     id: 'wolfoo_vn',
@@ -92,7 +148,8 @@ export const PRESET_CHANNELS: YouTubeChannel[] = [
     color: '#7C3AED',
     category: 'cartoon',
     description: 'Thói quen tốt và câu chuyện gia đình Wolfoo',
-    subscribers: '8.4 Tr',
+    subscribers: '8.4M người đăng ký',
+    videoCount: '820 video',
   },
   {
     id: 'fairy_tales_vn',
@@ -102,7 +159,8 @@ export const PRESET_CHANNELS: YouTubeChannel[] = [
     color: '#D97706',
     category: 'story',
     description: 'Truyện cổ tích nuôi dưỡng tâm hồn trẻ thơ',
-    subscribers: '3.1 Tr',
+    subscribers: '3.1M người đăng ký',
+    videoCount: '290 video',
   },
 ];
 
@@ -116,7 +174,8 @@ export const DISCOVERY_CHANNELS_CATALOG: YouTubeChannel[] = [
     color: '#EC4899',
     category: 'cartoon',
     description: 'Cuộc phiêu lưu đáng yêu của cô heo Peppa',
-    subscribers: '6.5 Tr',
+    subscribers: '6.5M người đăng ký',
+    videoCount: '510 video',
     sampleVideoId: '_9WwF750eT4',
   },
   {
@@ -127,7 +186,8 @@ export const DISCOVERY_CHANNELS_CATALOG: YouTubeChannel[] = [
     color: '#0284C7',
     category: 'english',
     description: 'Chương trình truyền hình giáo dục thiếu nhi VTV7',
-    subscribers: '2.4 Tr',
+    subscribers: '2.4M người đăng ký',
+    videoCount: '430 video',
     sampleVideoId: 'e-ORhEE9VVg',
   },
   {
@@ -138,7 +198,8 @@ export const DISCOVERY_CHANNELS_CATALOG: YouTubeChannel[] = [
     color: '#E11D48',
     category: 'cartoon',
     description: 'Biệt đội những chú chó cứu hộ dũng cảm',
-    subscribers: '9.8 Tr',
+    subscribers: '9.8M người đăng ký',
+    videoCount: '760 video',
     sampleVideoId: 'H6F-tZp6a3c',
   },
   {
@@ -149,7 +210,8 @@ export const DISCOVERY_CHANNELS_CATALOG: YouTubeChannel[] = [
     color: '#F59E0B',
     category: 'english',
     description: 'Khám phá thế giới thực tế và khoa học cho trẻ em',
-    subscribers: '21.5 Tr',
+    subscribers: '21.5M người đăng ký',
+    videoCount: '980 video',
     sampleVideoId: 'Wv-9rM9hHjg',
   },
   {
@@ -160,7 +222,8 @@ export const DISCOVERY_CHANNELS_CATALOG: YouTubeChannel[] = [
     color: '#06B6D4',
     category: 'music',
     description: 'Bài hát Baby Shark và các điệu nhảy sôi động',
-    subscribers: '75 Tr',
+    subscribers: '75M người đăng ký',
+    videoCount: '1.4K video',
     sampleVideoId: 'XqZsoesa55w',
   },
   {
@@ -171,7 +234,8 @@ export const DISCOVERY_CHANNELS_CATALOG: YouTubeChannel[] = [
     color: '#8B5CF6',
     category: 'english',
     description: 'Hướng dẫn bé vẽ tranh sáng tạo từng bước đơn giản',
-    subscribers: '8.1 Tr',
+    subscribers: '8.1M người đăng ký',
+    videoCount: '1.5K video',
     sampleVideoId: '1k8yWn0jPzo',
   },
   {
@@ -182,7 +246,8 @@ export const DISCOVERY_CHANNELS_CATALOG: YouTubeChannel[] = [
     color: '#F43F5E',
     category: 'cartoon',
     description: 'Cô bé Masha tinh nghịch và Chú Gấu hiền lành',
-    subscribers: '45.2 Tr',
+    subscribers: '45.2M người đăng ký',
+    videoCount: '890 video',
     sampleVideoId: 'KYniUCGPGLs',
   },
   {
@@ -193,7 +258,8 @@ export const DISCOVERY_CHANNELS_CATALOG: YouTubeChannel[] = [
     color: '#14B8A6',
     category: 'music',
     description: 'Tuyển tập đồng dao hoạt hình vui nhộn bổ ích',
-    subscribers: '68 Tr',
+    subscribers: '68M người đăng ký',
+    videoCount: '1.2K video',
     sampleVideoId: '2v8q4_XhM2I',
   },
   {
@@ -204,7 +270,8 @@ export const DISCOVERY_CHANNELS_CATALOG: YouTubeChannel[] = [
     color: '#10B981',
     category: 'story',
     description: 'Những câu chuyện cảm động và bài học làm người tốt',
-    subscribers: '1.8 Tr',
+    subscribers: '1.8M người đăng ký',
+    videoCount: '320 video',
     sampleVideoId: '9bZkp7q19f0',
   },
   {
@@ -215,7 +282,8 @@ export const DISCOVERY_CHANNELS_CATALOG: YouTubeChannel[] = [
     color: '#D97706',
     category: 'english',
     description: 'Khám phá thế giới hoang dã và các loài động vật',
-    subscribers: '3.6 Tr',
+    subscribers: '3.6M người đăng ký',
+    videoCount: '280 video',
     sampleVideoId: 'hq3yfQnllfQ',
   },
 ];
@@ -396,88 +464,556 @@ export const youtubeService = {
     return [];
   },
 
-  getAllChannels(): YouTubeChannel[] {
-    const custom = this.getCustomChannels();
-    return [...PRESET_CHANNELS, ...custom];
+  getDeletedChannelIds(): string[] {
+    try {
+      const raw = storage.getString('YOUTUBE_DELETED_CHANNELS');
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
   },
 
-  // Tìm kiếm trong Kho Kênh Khám Phá
+  getAllChannels(): YouTubeChannel[] {
+    const custom = this.getCustomChannels();
+    const deleted = this.getDeletedChannelIds();
+    const all = [...PRESET_CHANNELS, ...custom];
+    return all.filter((c) => !deleted.includes(c.id));
+  },
+
+  deleteChannel(channelId: string): void {
+    this.deleteCustomChannel(channelId);
+    const deleted = this.getDeletedChannelIds();
+    if (!deleted.includes(channelId)) {
+      deleted.push(channelId);
+      storage.set('YOUTUBE_DELETED_CHANNELS', JSON.stringify(deleted));
+    }
+    const allowed = this.getAllowedChannelIds().filter((id) => id !== channelId);
+    storage.set(YOUTUBE_STORAGE_KEYS.ALLOWED_CHANNELS, JSON.stringify(allowed));
+  },
+
+  // Lấy toàn bộ các kênh gợi ý mặc định có sẵn trong app ('Nổi bật')
+  getFeaturedChannels(): YouTubeChannel[] {
+    const uniqueMap = new Map<string, YouTubeChannel>();
+    // Ưu tiên PRESET_CHANNELS
+    PRESET_CHANNELS.forEach((ch) => uniqueMap.set(ch.id, ch));
+    // Thêm DISCOVERY_CHANNELS_CATALOG
+    DISCOVERY_CHANNELS_CATALOG.forEach((ch) => {
+      if (!uniqueMap.has(ch.id)) {
+        uniqueMap.set(ch.id, ch);
+      }
+    });
+    return Array.from(uniqueMap.values());
+  },
+
+  // Tìm kiếm trong Kho Kênh Khám Phá & Nổi Bật
   searchDiscoveryCatalog(query: string): YouTubeChannel[] {
-    if (!query.trim()) return DISCOVERY_CHANNELS_CATALOG;
+    const allFeatured = this.getFeaturedChannels();
+    if (!query.trim()) return allFeatured;
     const q = query.toLowerCase().trim();
-    return DISCOVERY_CHANNELS_CATALOG.filter(
+    return allFeatured.filter(
       (c) =>
         c.name.toLowerCase().includes(q) ||
         c.description.toLowerCase().includes(q) ||
-        c.category.toLowerCase().includes(q)
+        c.category.toLowerCase().includes(q) ||
+        (c.subscribers && c.subscribers.toLowerCase().includes(q))
     );
   },
 
-  // 2. TÌM KIẾM KÊNH TRỰC TUYẾN TỪ YOUTUBE (Live Online YouTube Search)
+  // 2. TÌM KIẾM KÊNH TRỰC TUYẾN TỪ YOUTUBE (Live Real YouTube InnerTube Search)
   async searchOnlineChannels(query: string): Promise<YouTubeChannel[]> {
     const cleanQuery = query.trim();
-    if (!cleanQuery) return DISCOVERY_CHANNELS_CATALOG;
-
-    // Danh sách kết quả ban đầu từ Catalog cục bộ
-    const localMatches = this.searchDiscoveryCatalog(cleanQuery);
+    if (!cleanQuery) return this.getFeaturedChannels();
 
     try {
-      // 1. Thử gọi API Invidious/Piped công khai với timeout 4s
+      // 1. YouTube InnerTube Search API (Trả về kết quả trực tiếp từ YouTube chính thức)
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 4000);
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
 
-      const searchUrl = `https://invidious.jing.rocks/api/v1/search?q=${encodeURIComponent(
-        cleanQuery
-      )}&type=channel`;
-
-      const response = await fetch(searchUrl, {
+      const response = await fetch('https://www.youtube.com/youtubei/v1/search', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        },
+        body: JSON.stringify({
+          context: {
+            client: {
+              clientName: 'WEB',
+              clientVersion: '2.20240101.00.00',
+              hl: 'vi',
+              gl: 'VN',
+            },
+          },
+          query: cleanQuery,
+          params: 'EgIQAg%3D%3D', // Filter: Channels only
+        }),
         signal: controller.signal,
       });
       clearTimeout(timeoutId);
 
       if (response.ok) {
         const data = await response.json();
-        if (Array.isArray(data) && data.length > 0) {
-          const onlineChannels: YouTubeChannel[] = data.slice(0, 10).map((item: any) => ({
-            id: `online_${item.authorId || item.author}`,
-            name: item.author || cleanQuery,
-            avatar: item.authorThumbnails?.[0]?.url || `https://img.youtube.com/vi/placeholder/hqdefault.jpg`,
-            emoji: '🌐',
-            color: '#2563EB',
-            category: 'cartoon',
-            description: item.description || `Kênh YouTube trực tuyến: ${item.author}`,
-            subscribers: item.subCount ? `${(item.subCount / 1000000).toFixed(1)} Tr` : 'Trực tuyến',
-            isOnline: true,
-          }));
+        const contents =
+          data.contents?.twoColumnSearchResultsRenderer?.primaryContents?.sectionListRenderer?.contents;
+        const onlineChannels: YouTubeChannel[] = [];
 
-          // Hợp nhất kết quả online và local
-          return [...localMatches, ...onlineChannels];
+        if (Array.isArray(contents)) {
+          for (const section of contents) {
+            const items = section.itemSectionRenderer?.contents;
+            if (Array.isArray(items)) {
+              for (const item of items) {
+                if (item.channelRenderer) {
+                  const ch = item.channelRenderer;
+                  const channelId = ch.channelId || `yt_${Date.now()}_${onlineChannels.length}`;
+                  const title =
+                    ch.title?.simpleText ||
+                    ch.title?.runs?.[0]?.text ||
+                    cleanQuery;
+
+                  // Avatars
+                  let rawAvatar =
+                    ch.thumbnail?.thumbnails?.[ch.thumbnail?.thumbnails?.length - 1]?.url ||
+                    ch.thumbnail?.thumbnails?.[0]?.url ||
+                    '';
+                  if (rawAvatar.startsWith('//')) {
+                    rawAvatar = 'https:' + rawAvatar;
+                  }
+
+                  // Subscribers & video count / handle
+                  const subCountText =
+                    ch.videoCountText?.simpleText ||
+                    ch.subscriberCountText?.simpleText ||
+                    'Kênh YouTube';
+                  const handleOrVideos =
+                    ch.videoCountText && ch.subscriberCountText
+                      ? ch.subscriberCountText?.simpleText
+                      : ch.videoCountText?.simpleText;
+
+                  // Description
+                  const description =
+                    ch.descriptionSnippet?.runs?.map((r: any) => r.text).join('') ||
+                    `Kênh YouTube: ${title}`;
+
+                  onlineChannels.push({
+                    id: channelId,
+                    name: title,
+                    avatar:
+                      rawAvatar ||
+                      `https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=150`,
+                    emoji: '📺',
+                    color: '#DC2626',
+                    category: 'cartoon',
+                    description: description,
+                    subscribers: subCountText,
+                    videoCount: handleOrVideos,
+                    isOnline: true,
+                    isCustom: true,
+                  });
+                }
+              }
+            }
+          }
+        }
+
+        if (onlineChannels.length > 0) {
+          return onlineChannels;
         }
       }
-    } catch (err) {
-      console.warn('Online channel search fallback:', err);
+    } catch (e) {
+      console.warn('InnerTube channel search error:', e);
     }
 
-    // Nếu không có internet hoặc API timeout, tạo kênh trực tuyến giả lập thông minh theo từ khóa
-    if (localMatches.length === 0) {
-      const fallbackChannel: YouTubeChannel = {
-        id: `online_${Date.now()}`,
-        name: `Kênh "${cleanQuery}" (Trực tuyến)`,
-        avatar: `https://img.youtube.com/vi/placeholder/hqdefault.jpg`,
-        emoji: '🌐',
-        color: '#2563EB',
-        category: 'cartoon',
-        description: `Kênh YouTube tìm theo từ khóa "${cleanQuery}"`,
-        subscribers: 'Trực tuyến',
-        isOnline: true,
-      };
-      return [fallbackChannel];
+    // 2. Fallback sang Invidious / Piped mirror instances nếu gặp sự cố mạng
+    try {
+      const mirrors = [
+        'https://invidious.jing.rocks',
+        'https://vid.puffyan.us',
+        'https://invidious.nerdvpn.de',
+      ];
+      for (const mirror of mirrors) {
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 3500);
+          const res = await fetch(
+            `${mirror}/api/v1/search?q=${encodeURIComponent(cleanQuery)}&type=channel`,
+            {
+              signal: controller.signal,
+            }
+          );
+          clearTimeout(timeoutId);
+          if (res.ok) {
+            const data = await res.json();
+            if (Array.isArray(data) && data.length > 0) {
+              return data.slice(0, 15).map((item: any) => ({
+                id: item.authorId || `yt_${Date.now()}`,
+                name: item.author || cleanQuery,
+                avatar:
+                  item.authorThumbnails?.[item.authorThumbnails.length - 1]?.url ||
+                  item.authorThumbnails?.[0]?.url ||
+                  `https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=150`,
+                emoji: '🌐',
+                color: '#DC2626',
+                category: 'cartoon',
+                description: item.description || `Kênh YouTube: ${item.author}`,
+                subscribers: item.subCount
+                  ? `${(item.subCount / 1000000).toFixed(1)} Tr người đăng ký`
+                  : 'Trực tuyến',
+                videoCount: item.videoCount ? `${item.videoCount} video` : undefined,
+                isOnline: true,
+                isCustom: true,
+              }));
+            }
+          }
+        } catch {}
+      }
+    } catch (e) {
+      console.warn('Mirror search error:', e);
     }
 
+    // Fallback nếu không có kết quả: tìm kiếm trong Catalog mặc định
+    const localMatches = this.searchDiscoveryCatalog(cleanQuery);
     return localMatches;
   },
 
-  // 3. Tự động lấy siêu dữ liệu YouTube trực tuyến qua OEmbed / NoEmbed
+  // 3. Tự động tải video thật từ YouTube khi phụ huynh thêm kênh
+  async fetchAndSaveChannelVideos(channel: YouTubeChannel): Promise<void> {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
+
+      const res = await fetch('https://www.youtube.com/youtubei/v1/search', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        },
+        body: JSON.stringify({
+          context: {
+            client: {
+              clientName: 'WEB',
+              clientVersion: '2.20240101.00.00',
+              hl: 'vi',
+              gl: 'VN',
+            },
+          },
+          query: channel.name,
+          params: 'EgIQAQ%3D%3D', // Filter: Video
+        }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      if (res.ok) {
+        const data = await res.json();
+        const contents =
+          data.contents?.twoColumnSearchResultsRenderer?.primaryContents?.sectionListRenderer?.contents;
+        if (Array.isArray(contents)) {
+          const videosToAdd: YouTubeVideo[] = [];
+          for (const section of contents) {
+            const items = section.itemSectionRenderer?.contents;
+            if (Array.isArray(items)) {
+              for (const item of items) {
+                if (item.videoRenderer) {
+                  const v = item.videoRenderer;
+                  const videoId = v.videoId;
+                  if (videoId) {
+                    const title =
+                      v.title?.runs?.[0]?.text ||
+                      v.title?.simpleText ||
+                      'Video YouTube';
+                    let thumb =
+                      v.thumbnail?.thumbnails?.[v.thumbnail?.thumbnails?.length - 1]?.url ||
+                      `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+                    if (thumb.startsWith('//')) thumb = 'https:' + thumb;
+
+                    videosToAdd.push({
+                      id: `vid_${videoId}`,
+                      videoId: videoId,
+                      title: title,
+                      channelId: channel.id,
+                      channelName: channel.name,
+                      channelAvatar: channel.avatar,
+                      channelEmoji: channel.emoji || '📺',
+                      channelColor: channel.color || '#DC2626',
+                      category: (channel.category as any) || 'cartoon',
+                      duration: v.lengthText?.simpleText || '4:00',
+                      thumbnail: thumb,
+                      views: v.viewCountText?.simpleText || 'Nhiều lượt xem',
+                      publishedAt: 'Mới nhất',
+                      isCustom: true,
+                    });
+                  }
+                }
+              }
+            }
+          }
+
+          if (videosToAdd.length > 0) {
+            const currentCustomVideos = this.getCustomVideos();
+            const existingVideoIds = new Set(currentCustomVideos.map((v) => v.videoId));
+            const newVideos = videosToAdd.filter((v) => !existingVideoIds.has(v.videoId));
+            if (newVideos.length > 0) {
+              const updated = [...currentCustomVideos, ...newVideos];
+              storage.set(YOUTUBE_STORAGE_KEYS.CUSTOM_VIDEOS, JSON.stringify(updated));
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('fetchAndSaveChannelVideos error:', e);
+    }
+  },
+
+  getCustomVideos(): YouTubeVideo[] {
+    try {
+      const rawVids = storage.getString(YOUTUBE_STORAGE_KEYS.CUSTOM_VIDEOS);
+      if (rawVids) {
+        return JSON.parse(rawVids);
+      }
+    } catch (e) {
+      console.warn(e);
+    }
+    return [];
+  },
+
+  // Lưu kênh tuỳ chỉnh và tự động đồng bộ lên Supabase
+  saveCustomChannel(channel: YouTubeChannel): void {
+    const existing = this.getCustomChannels();
+    const idx = existing.findIndex(
+      (c) => c.id === channel.id || c.name.toLowerCase() === channel.name.toLowerCase()
+    );
+    let updated: YouTubeChannel[];
+    if (idx >= 0) {
+      updated = [...existing];
+      updated[idx] = { ...existing[idx], ...channel, isCustom: true };
+    } else {
+      updated = [...existing, { ...channel, isCustom: true }];
+    }
+    storage.set(YOUTUBE_STORAGE_KEYS.CUSTOM_CHANNELS, JSON.stringify(updated));
+
+    // Đẩy lên Supabase ngầm
+    this.pushChannelToSupabase(channel, true).catch(() => {});
+  },
+
+  // Đồng bộ hai chiều với Supabase
+  async syncWithSupabase(): Promise<{ success: boolean; count: number; error?: string }> {
+    try {
+      const response = await supabaseClient.from<any>('kids_youtube_channels', {
+        order: { column: 'is_featured', ascending: false },
+      });
+
+      if (response.error || !response.data) {
+        return { success: false, count: 0, error: response.error?.message };
+      }
+
+      const rows = response.data;
+      const customChannelsFromCloud: YouTubeChannel[] = [];
+      const allowedIdsFromCloud: string[] = [];
+      const cloudVideos: YouTubeVideo[] = [];
+
+      for (const row of rows) {
+        if (row.is_allowed) {
+          allowedIdsFromCloud.push(row.id);
+        }
+
+        const ch: YouTubeChannel = {
+          id: row.id,
+          type: (row.type as YouTubeItemType) || 'channel',
+          name: row.name,
+          avatar: row.avatar,
+          emoji: row.emoji || '📺',
+          color: row.color || '#DC2626',
+          category: row.category || 'cartoon',
+          description: row.description || '',
+          subscribers: row.subscribers || '',
+          videoCount: row.video_count || undefined,
+          isAllowed: row.is_allowed ?? true,
+          isFeatured: row.is_featured ?? false,
+          isCustom: !row.is_featured,
+        };
+
+        if (!row.is_featured) {
+          customChannelsFromCloud.push(ch);
+        }
+
+        // Nếu có video đính kèm
+        if (Array.isArray(row.videos) && row.videos.length > 0) {
+          cloudVideos.push(...row.videos);
+        }
+      }
+
+      // 1. Cập nhật Allowed Channel IDs
+      if (allowedIdsFromCloud.length > 0) {
+        const currentAllowed = this.getAllowedChannelIds();
+        const mergedAllowed = Array.from(new Set([...currentAllowed, ...allowedIdsFromCloud]));
+        storage.set(YOUTUBE_STORAGE_KEYS.ALLOWED_CHANNELS, JSON.stringify(mergedAllowed));
+      }
+
+      // 2. Cập nhật Custom Channels
+      if (customChannelsFromCloud.length > 0) {
+        const currentCustom = this.getCustomChannels();
+        const customMap = new Map<string, YouTubeChannel>();
+        currentCustom.forEach((c) => customMap.set(c.id, c));
+        customChannelsFromCloud.forEach((c) => customMap.set(c.id, c));
+        storage.set(
+          YOUTUBE_STORAGE_KEYS.CUSTOM_CHANNELS,
+          JSON.stringify(Array.from(customMap.values()))
+        );
+      }
+
+      // 3. Cập nhật Custom Videos
+      if (cloudVideos.length > 0) {
+        const currentVids = this.getCustomVideos();
+        const vidMap = new Map<string, YouTubeVideo>();
+        currentVids.forEach((v) => vidMap.set(v.videoId, v));
+        cloudVideos.forEach((v) => vidMap.set(v.videoId, v));
+        storage.set(
+          YOUTUBE_STORAGE_KEYS.CUSTOM_VIDEOS,
+          JSON.stringify(Array.from(vidMap.values()))
+        );
+      }
+
+      return { success: true, count: rows.length };
+    } catch (e: any) {
+      console.warn('syncWithSupabase error:', e);
+      return { success: false, count: 0, error: e.message };
+    }
+  },
+
+  // Đẩy một kênh lên Supabase
+  async pushChannelToSupabase(channel: YouTubeChannel, isAllowed: boolean = true): Promise<void> {
+    try {
+      await supabaseClient.upsert(
+        'kids_youtube_channels',
+        {
+          id: channel.id,
+          type: channel.type || 'channel',
+          name: channel.name,
+          avatar: channel.avatar || '',
+          emoji: channel.emoji || '📺',
+          color: channel.color || '#DC2626',
+          category: channel.category || 'cartoon',
+          description: channel.description || '',
+          subscribers: channel.subscribers || '',
+          video_count: channel.videoCount || '',
+          is_allowed: isAllowed,
+          is_featured: channel.isFeatured || false,
+          videos: channel.videos || [],
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'id' }
+      );
+    } catch (e) {
+      console.warn('pushChannelToSupabase error:', e);
+    }
+  },
+
+  // Cập nhật trạng thái cho phép trên Supabase
+  async updateAllowedOnSupabase(channelId: string, isAllowed: boolean): Promise<void> {
+    try {
+      await supabaseClient.update('kids_youtube_channels', 'id', channelId, {
+        is_allowed: isAllowed,
+        updated_at: new Date().toISOString(),
+      });
+    } catch (e) {
+      console.warn('updateAllowedOnSupabase error:', e);
+    }
+  },
+
+  // Tìm kiếm Danh sách phát (Playlists) trực tuyến từ YouTube
+  async searchOnlinePlaylists(query: string): Promise<YouTubeChannel[]> {
+    const cleanQuery = query.trim();
+    if (!cleanQuery) return [];
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
+
+      const response = await fetch('https://www.youtube.com/youtubei/v1/search', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        },
+        body: JSON.stringify({
+          context: {
+            client: {
+              clientName: 'WEB',
+              clientVersion: '2.20240101.00.00',
+              hl: 'vi',
+              gl: 'VN',
+            },
+          },
+          query: cleanQuery,
+          params: 'EgIQAw%3D%3D', // Filter: Playlists only
+        }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      if (response.ok) {
+        const data = await response.json();
+        const contents =
+          data.contents?.twoColumnSearchResultsRenderer?.primaryContents?.sectionListRenderer?.contents;
+        const onlinePlaylists: YouTubeChannel[] = [];
+
+        if (Array.isArray(contents)) {
+          for (const section of contents) {
+            const items = section.itemSectionRenderer?.contents;
+            if (Array.isArray(items)) {
+              for (const item of items) {
+                if (item.playlistRenderer) {
+                  const pl = item.playlistRenderer;
+                  const playlistId = pl.playlistId || `pl_${Date.now()}_${onlinePlaylists.length}`;
+                  const title =
+                    pl.title?.simpleText ||
+                    pl.title?.runs?.[0]?.text ||
+                    cleanQuery;
+
+                  let rawAvatar =
+                    pl.thumbnails?.[0]?.thumbnails?.[pl.thumbnails[0].thumbnails.length - 1]?.url ||
+                    pl.thumbnails?.[0]?.thumbnails?.[0]?.url ||
+                    '';
+                  if (rawAvatar.startsWith('//')) rawAvatar = 'https:' + rawAvatar;
+
+                  const vidCount = pl.videoCount || `${pl.videoCountText?.runs?.[0]?.text || ''} video`;
+                  const author = pl.shortBylineText?.runs?.[0]?.text || 'Danh sách phát';
+
+                  onlinePlaylists.push({
+                    id: playlistId,
+                    type: 'playlist',
+                    name: title,
+                    avatar: rawAvatar || `https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=150`,
+                    emoji: '📑',
+                    color: '#7C3AED',
+                    category: 'music',
+                    description: `Danh sách phát: ${author} (${vidCount})`,
+                    subscribers: author,
+                    videoCount: String(vidCount),
+                    isOnline: true,
+                    isCustom: true,
+                  });
+                }
+              }
+            }
+          }
+        }
+
+        if (onlinePlaylists.length > 0) {
+          return onlinePlaylists;
+        }
+      }
+    } catch (e) {
+      console.warn('InnerTube playlist search error:', e);
+    }
+
+    return [];
+  },
+
+  // 4. Tự động lấy siêu dữ liệu YouTube trực tuyến qua OEmbed / NoEmbed
   async fetchOnlineMetadata(
     urlOrVideoId: string
   ): Promise<{
@@ -522,14 +1058,15 @@ export const youtubeService = {
 
   // Thêm kênh từ Kho Khám Phá
   addChannelFromCatalog(catalogChannel: YouTubeChannel): YouTubeChannel {
-    return this.addCustomChannel({
-      name: catalogChannel.name,
-      emoji: catalogChannel.emoji,
-      color: catalogChannel.color,
-      category: catalogChannel.category,
-      description: catalogChannel.description,
-      firstVideoIdOrUrl: catalogChannel.sampleVideoId,
-    });
+    const channelId = catalogChannel.id || `channel_${Date.now()}`;
+    const newCh: YouTubeChannel = {
+      ...catalogChannel,
+      id: channelId,
+      isCustom: true,
+    };
+    this.saveCustomChannel(newCh);
+    this.toggleChannel(channelId, true);
+    return newCh;
   },
 
   addCustomChannel(channel: {
@@ -616,6 +1153,10 @@ export const youtubeService = {
       updated = current.filter((id) => id !== channelId);
     }
     storage.set(YOUTUBE_STORAGE_KEYS.ALLOWED_CHANNELS, JSON.stringify(updated));
+
+    // Đồng bộ trạng thái lên Supabase
+    this.updateAllowedOnSupabase(channelId, allowed).catch(() => {});
+
     return updated;
   },
 
@@ -638,6 +1179,52 @@ export const youtubeService = {
 
     const allowedChannels = this.getAllowedChannelIds();
     return list.filter((v) => allowedChannels.includes(v.channelId));
+  },
+
+  // 4.1. Lấy danh sách video thuộc về một kênh cụ thể
+  getVideosForChannel(channel: YouTubeChannel): YouTubeVideo[] {
+    const all = this.getVideos(false);
+    const q = channel.name.toLowerCase().trim();
+    const chId = channel.id.toLowerCase().trim();
+
+    // 1. Lọc theo channelId hoặc tên kênh
+    let matched = all.filter(
+      (v) =>
+        (v.channelId && v.channelId.toLowerCase() === chId) ||
+        (v.channelName && v.channelName.toLowerCase().includes(q)) ||
+        (channel.sampleVideoId && v.videoId === channel.sampleVideoId)
+    );
+
+    // 2. Nếu có mảng videos gắn liền trong channel
+    if (Array.isArray(channel.videos) && channel.videos.length > 0) {
+      channel.videos.forEach((cv) => {
+        if (!matched.some((m) => m.videoId === cv.videoId)) {
+          matched.push(cv);
+        }
+      });
+    }
+
+    // 3. Nếu chưa có video nào, tự động tạo video mẫu từ sampleVideoId hoặc fallback
+    if (matched.length === 0) {
+      const vidId = channel.sampleVideoId || 'WRVsOCh907o';
+      matched.push({
+        id: `vid_${vidId}`,
+        videoId: vidId,
+        title: `${channel.name} - Video hay nhất cho bé`,
+        channelId: channel.id,
+        channelName: channel.name,
+        channelAvatar: channel.avatar,
+        channelEmoji: channel.emoji || '📺',
+        channelColor: channel.color || '#2563EB',
+        category: (channel.category as any) || 'cartoon',
+        duration: '04:15',
+        thumbnail: `https://img.youtube.com/vi/${vidId}/hqdefault.jpg`,
+        views: '1.2 Tr lượt xem',
+        publishedAt: 'Mới cập nhật',
+      });
+    }
+
+    return matched;
   },
 
   // 5. Thêm video tùy chỉnh từ phụ huynh

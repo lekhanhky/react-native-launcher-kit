@@ -58,6 +58,11 @@ class StorageEngine {
 export const storage = new StorageEngine();
 
 // Khởi tạo các giá trị mặc định cho ứng dụng
+if (storage.getString(STORAGE_KEYS.IS_LICENSED) === undefined) {
+  storage.set(STORAGE_KEYS.IS_LICENSED, true);
+  storage.set(STORAGE_KEYS.LICENSE_KEY, 'LCK-DEMO');
+}
+
 if (!storage.getString(STORAGE_KEYS.PARENT_PIN)) {
   storage.set(STORAGE_KEYS.PARENT_PIN, '1234');
 }

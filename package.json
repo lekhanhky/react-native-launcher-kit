@@ -22,6 +22,8 @@
     "!**/.*"
   ],
   "scripts": {
+    "start": "npm start --prefix example",
+    "android": "npm run android --prefix example",
     "build": "bob build",
     "build:dist": "node scripts/build-dist.js",
     "test": "jest",
