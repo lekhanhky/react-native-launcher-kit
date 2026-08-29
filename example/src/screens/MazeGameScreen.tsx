@@ -224,7 +224,7 @@ function findShortestPath(
 }
 
 export const MazeGameScreen: React.FC<MazeGameScreenProps> = ({ onClose }) => {
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
 
   // Chủ đề và cấp độ
   const [currentTheme, setCurrentTheme] = useState<MazeTheme>(MAZE_THEMES[0]);
@@ -409,9 +409,145 @@ export const MazeGameScreen: React.FC<MazeGameScreenProps> = ({ onClose }) => {
     }
   };
 
-  // Tính toán kích thước ô lưới phù hợp với màn hình
-  const mazeBoardSize = Math.min(width - 32, 340);
+  // Tính toán kích thước ô lưới và chế độ màn hình (Ngang/Dọc)
+  const isLandscape = width > height;
+  const mazeBoardSize = isLandscape
+    ? Math.min(height - 70, width * 0.48, 360)
+    : Math.min(width - 32, height * 0.38, 310);
   const cellSize = mazeBoardSize / cols;
+
+  // Render bảng mê cung
+  const renderMazeBoard = () => (
+    <Animated.View
+      style={[
+        styles.mazeBoard,
+        {
+          width: mazeBoardSize,
+          height: mazeBoardSize,
+          backgroundColor: currentTheme.pathColor,
+          borderColor: currentTheme.wallColor,
+          transform: [{ translateX: shakeAnim }],
+        },
+      ]}
+    >
+      {mazeGrid.map((row, rIdx) => (
+        <View key={`row_${rIdx}`} style={styles.mazeRow}>
+          {row.map((cell, cIdx) => {
+            const isPlayer = playerPos.r === rIdx && playerPos.c === cIdx;
+            const isGoal = goalPos.r === rIdx && goalPos.c === cIdx;
+            const isTrail = trail[`${rIdx}_${cIdx}`];
+            const isHint = hintSteps[`${rIdx}_${cIdx}`];
+
+            return (
+              <View
+                key={`cell_${rIdx}_${cIdx}`}
+                style={[
+                  styles.cellBox,
+                  {
+                    width: cellSize,
+                    height: cellSize,
+                    borderTopWidth: cell.walls.top ? 3 : 0,
+                    borderRightWidth: cell.walls.right ? 3 : 0,
+                    borderBottomWidth: cell.walls.bottom ? 3 : 0,
+                    borderLeftWidth: cell.walls.left ? 3 : 0,
+                    borderColor: currentTheme.wallColor,
+                    backgroundColor: isHint
+                      ? '#FEF08A'
+                      : isTrail
+                      ? currentTheme.trailColor
+                      : currentTheme.pathColor,
+                  },
+                ]}
+              >
+                {/* DẤU CHÂN HOẶC HIỆU ỨNG GỢI Ý */}
+                {isHint && !isPlayer && !isGoal && (
+                  <Text style={styles.hintDot}>💡</Text>
+                )}
+
+                {/* VẬT PHẨM SAO THƯỞNG */}
+                {cell.hasStar && !isPlayer && !isGoal && (
+                  <Text style={[styles.starIcon, { fontSize: cellSize * 0.45 }]}>
+                    {currentTheme.collectEmoji}
+                  </Text>
+                )}
+
+                {/* ĐÍCH ĐẾN */}
+                {isGoal && (
+                  <View style={styles.goalTargetBox}>
+                    <Text style={[styles.goalEmoji, { fontSize: cellSize * 0.65 }]}>
+                      {currentTheme.goalEmoji}
+                    </Text>
+                  </View>
+                )}
+
+                {/* NHÂN VẬT NGƯỜI CHƠI */}
+                {isPlayer && (
+                  <Animated.View
+                    style={[
+                      styles.playerBox,
+                      { transform: [{ scale: playerAnim }] },
+                    ]}
+                  >
+                    <Text style={[styles.playerEmoji, { fontSize: cellSize * 0.7 }]}>
+                      {currentTheme.playerEmoji}
+                    </Text>
+                  </Animated.View>
+                )}
+              </View>
+            );
+          })}
+        </View>
+      ))}
+    </Animated.View>
+  );
+
+  // Render D-pad điều hướng
+  const renderDpad = () => (
+    <View style={styles.dpadContainer}>
+      {/* NÚT LÊN */}
+      <TouchableOpacity
+        style={[styles.dpadBtn, styles.dpadUp, { backgroundColor: currentTheme.wallColor }]}
+        activeOpacity={0.7}
+        onPress={() => movePlayer('up')}
+      >
+        <Text style={styles.dpadArrow}>⬆️</Text>
+      </TouchableOpacity>
+
+      <View style={styles.dpadMiddleRow}>
+        {/* NÚT TRÁI */}
+        <TouchableOpacity
+          style={[styles.dpadBtn, styles.dpadLeft, { backgroundColor: currentTheme.wallColor }]}
+          activeOpacity={0.7}
+          onPress={() => movePlayer('left')}
+        >
+          <Text style={styles.dpadArrow}>⬅️</Text>
+        </TouchableOpacity>
+
+        {/* TÂM ĐIỀU KHIỂN */}
+        <View style={styles.dpadCenter}>
+          <Text style={styles.dpadCenterIcon}>🎮</Text>
+        </View>
+
+        {/* NÚT PHẢI */}
+        <TouchableOpacity
+          style={[styles.dpadBtn, styles.dpadRight, { backgroundColor: currentTheme.wallColor }]}
+          activeOpacity={0.7}
+          onPress={() => movePlayer('right')}
+        >
+          <Text style={styles.dpadArrow}>➡️</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* NÚT XUỐNG */}
+      <TouchableOpacity
+        style={[styles.dpadBtn, styles.dpadDown, { backgroundColor: currentTheme.wallColor }]}
+        activeOpacity={0.7}
+        onPress={() => movePlayer('down')}
+      >
+        <Text style={styles.dpadArrow}>⬇️</Text>
+      </TouchableOpacity>
+    </View>
+  );
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: currentTheme.bgGradient }]}>
@@ -433,90 +569,6 @@ export const MazeGameScreen: React.FC<MazeGameScreenProps> = ({ onClose }) => {
         </TouchableOpacity>
       </View>
 
-      {/* THANH CHỌN CHỦ ĐỀ VÀ ĐỘ KHÓ */}
-      <View style={styles.configBar}>
-        {/* Chọn Độ Khó */}
-        <View style={styles.diffRow}>
-          <TouchableOpacity
-            style={[styles.diffBtn, difficulty === 'easy' && styles.diffBtnActive]}
-            onPress={() => setDifficulty('easy')}
-            activeOpacity={0.8}
-          >
-            <Text style={[styles.diffBtnText, difficulty === 'easy' && styles.diffBtnTextActive]}>
-              🌱 Dễ (5x5)
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.diffBtn, difficulty === 'medium' && styles.diffBtnActive]}
-            onPress={() => setDifficulty('medium')}
-            activeOpacity={0.8}
-          >
-            <Text style={[styles.diffBtnText, difficulty === 'medium' && styles.diffBtnTextActive]}>
-              🌿 Vừa (7x7)
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.diffBtn, difficulty === 'hard' && styles.diffBtnActive]}
-            onPress={() => setDifficulty('hard')}
-            activeOpacity={0.8}
-          >
-            <Text style={[styles.diffBtnText, difficulty === 'hard' && styles.diffBtnTextActive]}>
-              🌳 Khó (9x9)
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Chọn Nhân Vật & Chủ Đề */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.themeScroll}>
-          {MAZE_THEMES.map((thm) => {
-            const isSelected = thm.id === currentTheme.id;
-            return (
-              <TouchableOpacity
-                key={thm.id}
-                style={[styles.themeChip, isSelected && styles.themeChipActive]}
-                onPress={() => setCurrentTheme(thm)}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.themeChipEmoji}>{thm.playerEmoji}</Text>
-                <Text style={[styles.themeChipText, isSelected && styles.themeChipTextActive]}>
-                  {thm.name}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-      </View>
-
-      {/* THÔNG TIN TRẠNG THÁI: BƯỚC ĐI, THỜI GIAN, NGÔI SAO */}
-      <View style={styles.statsBar}>
-        <View style={styles.statItem}>
-          <Text style={styles.statLabel}>Bước đi</Text>
-          <Text style={styles.statValue}>👣 {stepCount}</Text>
-        </View>
-
-        <View style={styles.statItem}>
-          <Text style={styles.statLabel}>Thời gian</Text>
-          <Text style={styles.statValue}>⏱️ {timerSeconds}s</Text>
-        </View>
-
-        <View style={styles.statItem}>
-          <Text style={styles.statLabel}>Ngôi sao</Text>
-          <Text style={styles.statValue}>
-            ⭐ {collectedStars}/{totalStars}
-          </Text>
-        </View>
-
-        <TouchableOpacity
-          style={styles.refreshMazeBtn}
-          activeOpacity={0.8}
-          onPress={() => startNewMaze(difficulty, currentTheme)}
-        >
-          <Text style={styles.refreshMazeText}>🔄 Mê Cung Mới</Text>
-        </TouchableOpacity>
-      </View>
-
       {/* THÔNG BÁO TOAST */}
       {feedbackToast !== '' && (
         <View style={styles.toastCard}>
@@ -524,138 +576,199 @@ export const MazeGameScreen: React.FC<MazeGameScreenProps> = ({ onClose }) => {
         </View>
       )}
 
-      {/* KHUNG MÊ CUNG CHÍNH */}
-      <View style={styles.mazeWrapper} {...panResponder.panHandlers}>
-        <Animated.View
-          style={[
-            styles.mazeBoard,
-            {
-              width: mazeBoardSize,
-              height: mazeBoardSize,
-              backgroundColor: currentTheme.pathColor,
-              borderColor: currentTheme.wallColor,
-              transform: [{ translateX: shakeAnim }],
-            },
-          ]}
-        >
-          {mazeGrid.map((row, rIdx) => (
-            <View key={`row_${rIdx}`} style={styles.mazeRow}>
-              {row.map((cell, cIdx) => {
-                const isPlayer = playerPos.r === rIdx && playerPos.c === cIdx;
-                const isGoal = goalPos.r === rIdx && goalPos.c === cIdx;
-                const isTrail = trail[`${rIdx}_${cIdx}`];
-                const isHint = hintSteps[`${rIdx}_${cIdx}`];
+      {isLandscape ? (
+        /* GIAO DIỆN XOAY NGANG (LANDSCAPE SPLIT-SCREEN) */
+        <View style={styles.landscapeContainer}>
+          {/* CỘT TRÁI: BẢNG MÊ CUNG */}
+          <View style={styles.landscapeMazeWrapper} {...panResponder.panHandlers}>
+            {renderMazeBoard()}
+          </View>
 
+          {/* CỘT PHẢI: BẢNG ĐIỀU KHIỂN & CÀI ĐẶT */}
+          <View style={styles.landscapePanel}>
+            {/* Chọn Độ Khó */}
+            <View style={styles.diffRow}>
+              <TouchableOpacity
+                style={[styles.diffBtn, difficulty === 'easy' && styles.diffBtnActive]}
+                onPress={() => setDifficulty('easy')}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.diffBtnText, difficulty === 'easy' && styles.diffBtnTextActive]}>
+                  🌱 Dễ (5x5)
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.diffBtn, difficulty === 'medium' && styles.diffBtnActive]}
+                onPress={() => setDifficulty('medium')}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.diffBtnText, difficulty === 'medium' && styles.diffBtnTextActive]}>
+                  🌿 Vừa (7x7)
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.diffBtn, difficulty === 'hard' && styles.diffBtnActive]}
+                onPress={() => setDifficulty('hard')}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.diffBtnText, difficulty === 'hard' && styles.diffBtnTextActive]}>
+                  🌳 Khó (9x9)
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Chọn Chủ Đề */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.themeScroll}>
+              {MAZE_THEMES.map((thm) => {
+                const isSelected = thm.id === currentTheme.id;
                 return (
-                  <View
-                    key={`cell_${rIdx}_${cIdx}`}
-                    style={[
-                      styles.cellBox,
-                      {
-                        width: cellSize,
-                        height: cellSize,
-                        borderTopWidth: cell.walls.top ? 3 : 0,
-                        borderRightWidth: cell.walls.right ? 3 : 0,
-                        borderBottomWidth: cell.walls.bottom ? 3 : 0,
-                        borderLeftWidth: cell.walls.left ? 3 : 0,
-                        borderColor: currentTheme.wallColor,
-                        backgroundColor: isHint
-                          ? '#FEF08A'
-                          : isTrail
-                          ? currentTheme.trailColor
-                          : currentTheme.pathColor,
-                      },
-                    ]}
+                  <TouchableOpacity
+                    key={thm.id}
+                    style={[styles.themeChip, isSelected && styles.themeChipActive]}
+                    onPress={() => setCurrentTheme(thm)}
+                    activeOpacity={0.8}
                   >
-                    {/* DẤU CHÂN HOẶC HIỆU ỨNG GỢI Ý */}
-                    {isHint && !isPlayer && !isGoal && (
-                      <Text style={styles.hintDot}>💡</Text>
-                    )}
-
-                    {/* VẬT PHẨM SAO THƯỞNG */}
-                    {cell.hasStar && !isPlayer && !isGoal && (
-                      <Text style={[styles.starIcon, { fontSize: cellSize * 0.45 }]}>
-                        {currentTheme.collectEmoji}
-                      </Text>
-                    )}
-
-                    {/* ĐÍCH ĐẾN */}
-                    {isGoal && (
-                      <View style={styles.goalTargetBox}>
-                        <Text style={[styles.goalEmoji, { fontSize: cellSize * 0.65 }]}>
-                          {currentTheme.goalEmoji}
-                        </Text>
-                      </View>
-                    )}
-
-                    {/* NHÂN VẬT NGƯỜI CHƠI */}
-                    {isPlayer && (
-                      <Animated.View
-                        style={[
-                          styles.playerBox,
-                          { transform: [{ scale: playerAnim }] },
-                        ]}
-                      >
-                        <Text style={[styles.playerEmoji, { fontSize: cellSize * 0.7 }]}>
-                          {currentTheme.playerEmoji}
-                        </Text>
-                      </Animated.View>
-                    )}
-                  </View>
+                    <Text style={styles.themeChipEmoji}>{thm.playerEmoji}</Text>
+                    <Text style={[styles.themeChipText, isSelected && styles.themeChipTextActive]}>
+                      {thm.name}
+                    </Text>
+                  </TouchableOpacity>
                 );
               })}
-            </View>
-          ))}
-        </Animated.View>
-      </View>
+            </ScrollView>
 
-      {/* CỤM PHÍM ĐIỀU HƯỚNG D-PAD VIRTUAL JOYSTICK */}
-      <View style={styles.controlsSection}>
-        <View style={styles.dpadContainer}>
-          {/* NÚT LÊN */}
-          <TouchableOpacity
-            style={[styles.dpadBtn, styles.dpadUp, { backgroundColor: currentTheme.wallColor }]}
-            activeOpacity={0.7}
-            onPress={() => movePlayer('up')}
-          >
-            <Text style={styles.dpadArrow}>⬆️</Text>
-          </TouchableOpacity>
+            {/* Thanh Thống Kê */}
+            <View style={styles.statsBar}>
+              <View style={styles.statItem}>
+                <Text style={styles.statLabel}>Bước đi</Text>
+                <Text style={styles.statValue}>👣 {stepCount}</Text>
+              </View>
 
-          <View style={styles.dpadMiddleRow}>
-            {/* NÚT TRÁI */}
-            <TouchableOpacity
-              style={[styles.dpadBtn, styles.dpadLeft, { backgroundColor: currentTheme.wallColor }]}
-              activeOpacity={0.7}
-              onPress={() => movePlayer('left')}
-            >
-              <Text style={styles.dpadArrow}>⬅️</Text>
-            </TouchableOpacity>
+              <View style={styles.statItem}>
+                <Text style={styles.statLabel}>Thời gian</Text>
+                <Text style={styles.statValue}>⏱️ {timerSeconds}s</Text>
+              </View>
 
-            {/* TÂM ĐIỀU KHIỂN */}
-            <View style={styles.dpadCenter}>
-              <Text style={styles.dpadCenterIcon}>🎮</Text>
+              <View style={styles.statItem}>
+                <Text style={styles.statLabel}>Ngôi sao</Text>
+                <Text style={styles.statValue}>
+                  ⭐ {collectedStars}/{totalStars}
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                style={styles.refreshMazeBtn}
+                activeOpacity={0.8}
+                onPress={() => startNewMaze(difficulty, currentTheme)}
+              >
+                <Text style={styles.refreshMazeText}>🔄 Mê Cung Mới</Text>
+              </TouchableOpacity>
             </View>
 
-            {/* NÚT PHẢI */}
+            {/* Cụm D-pad */}
+            <View style={styles.landscapeDpadWrap}>
+              {renderDpad()}
+            </View>
+          </View>
+        </View>
+      ) : (
+        /* GIAO DIỆN XOAY DỌC (PORTRAIT STACK) */
+        <View style={styles.portraitContainer}>
+          {/* THANH CHỌN CHỦ ĐỀ VÀ ĐỘ KHÓ */}
+          <View style={styles.configBar}>
+            <View style={styles.diffRow}>
+              <TouchableOpacity
+                style={[styles.diffBtn, difficulty === 'easy' && styles.diffBtnActive]}
+                onPress={() => setDifficulty('easy')}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.diffBtnText, difficulty === 'easy' && styles.diffBtnTextActive]}>
+                  🌱 Dễ (5x5)
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.diffBtn, difficulty === 'medium' && styles.diffBtnActive]}
+                onPress={() => setDifficulty('medium')}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.diffBtnText, difficulty === 'medium' && styles.diffBtnTextActive]}>
+                  🌿 Vừa (7x7)
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.diffBtn, difficulty === 'hard' && styles.diffBtnActive]}
+                onPress={() => setDifficulty('hard')}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.diffBtnText, difficulty === 'hard' && styles.diffBtnTextActive]}>
+                  🌳 Khó (9x9)
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.themeScroll}>
+              {MAZE_THEMES.map((thm) => {
+                const isSelected = thm.id === currentTheme.id;
+                return (
+                  <TouchableOpacity
+                    key={thm.id}
+                    style={[styles.themeChip, isSelected && styles.themeChipActive]}
+                    onPress={() => setCurrentTheme(thm)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.themeChipEmoji}>{thm.playerEmoji}</Text>
+                    <Text style={[styles.themeChipText, isSelected && styles.themeChipTextActive]}>
+                      {thm.name}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+
+          {/* THÔNG TIN TRẠNG THÁI */}
+          <View style={styles.statsBar}>
+            <View style={styles.statItem}>
+              <Text style={styles.statLabel}>Bước đi</Text>
+              <Text style={styles.statValue}>👣 {stepCount}</Text>
+            </View>
+
+            <View style={styles.statItem}>
+              <Text style={styles.statLabel}>Thời gian</Text>
+              <Text style={styles.statValue}>⏱️ {timerSeconds}s</Text>
+            </View>
+
+            <View style={styles.statItem}>
+              <Text style={styles.statLabel}>Ngôi sao</Text>
+              <Text style={styles.statValue}>
+                ⭐ {collectedStars}/{totalStars}
+              </Text>
+            </View>
+
             <TouchableOpacity
-              style={[styles.dpadBtn, styles.dpadRight, { backgroundColor: currentTheme.wallColor }]}
-              activeOpacity={0.7}
-              onPress={() => movePlayer('right')}
+              style={styles.refreshMazeBtn}
+              activeOpacity={0.8}
+              onPress={() => startNewMaze(difficulty, currentTheme)}
             >
-              <Text style={styles.dpadArrow}>➡️</Text>
+              <Text style={styles.refreshMazeText}>🔄 Mê Cung Mới</Text>
             </TouchableOpacity>
           </View>
 
-          {/* NÚT XUỐNG */}
-          <TouchableOpacity
-            style={[styles.dpadBtn, styles.dpadDown, { backgroundColor: currentTheme.wallColor }]}
-            activeOpacity={0.7}
-            onPress={() => movePlayer('down')}
-          >
-            <Text style={styles.dpadArrow}>⬇️</Text>
-          </TouchableOpacity>
+          {/* KHUNG MÊ CUNG */}
+          <View style={styles.mazeWrapper} {...panResponder.panHandlers}>
+            {renderMazeBoard()}
+          </View>
+
+          {/* CỤM PHÍM ĐIỀU HƯỚNG D-PAD */}
+          <View style={styles.controlsSection}>
+            {renderDpad()}
+          </View>
         </View>
-      </View>
+      )}
 
       {/* MODAL CHIẾN THẮNG & VỀ ĐÍCH */}
       <Modal
@@ -739,13 +852,47 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
   },
+  landscapeContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+  },
+  landscapeMazeWrapper: {
+    flex: 1.1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  landscapePanel: {
+    flex: 0.95,
+    maxWidth: 380,
+    backgroundColor: 'rgba(0, 0, 0, 0.25)',
+    borderRadius: 18,
+    padding: 8,
+    gap: 6,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.18)',
+    justifyContent: 'center',
+  },
+  landscapeDpadWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 2,
+  },
+  portraitContainer: {
+    flex: 1,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingVertical: 8,
     backgroundColor: 'rgba(0, 0, 0, 0.25)',
+    borderBottomWidth: 1.5,
+    borderBottomColor: 'rgba(255, 255, 255, 0.15)',
   },
   backBtn: {
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
@@ -946,7 +1093,8 @@ const styles = StyleSheet.create({
   },
   playerEmoji: {},
   controlsSection: {
-    paddingBottom: 38,
+    paddingBottom: 16,
+    paddingTop: 4,
     alignItems: 'center',
   },
   dpadContainer: {

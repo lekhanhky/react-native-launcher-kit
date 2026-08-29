@@ -32,7 +32,8 @@ const GRADE_CONFIGS = [
 ];
 
 export const MathQuizGameScreen: React.FC<{ onClose: () => void }> = ({ onClose }) => {
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
+  const isLandscape = width > height;
   const [selectedGrade, setSelectedGrade] = useState<MathGrade>('preschool');
   const [score, setScore] = useState(0);
   const [streak, setStreak] = useState(0);
@@ -148,45 +149,39 @@ export const MathQuizGameScreen: React.FC<{ onClose: () => void }> = ({ onClose 
       return;
     }
 
-    const nextQ = generateQuestion(selectedGrade);
-    setCurrentQuestion(nextQ);
-    setSelectedOption(null);
-    setIsAnswered(false);
-    setIsCorrect(false);
-    setTimeLeft(15);
-    setQuestionIndex((prev) => prev + 1);
-
-    if (nextQ.text) {
-      soundManager.speak(nextQ.text);
-    }
-
-    Animated.spring(scaleAnim, {
-      toValue: 1,
-      friction: 5,
-      useNativeDriver: true,
-    }).start();
-  };
-
-  // Bắt đầu màn chơi mới
-  const startGame = (grade: MathGrade) => {
-    setSelectedGrade(grade);
-    setScore(0);
-    setStreak(0);
-    setStars(0);
-    setQuestionIndex(0);
-    setShowSummary(false);
-    const q = generateQuestion(grade);
+    const nextIdx = questionIndex + 1;
+    setQuestionIndex(nextIdx);
+    const q = generateQuestion(selectedGrade);
     setCurrentQuestion(q);
     setSelectedOption(null);
     setIsAnswered(false);
     setIsCorrect(false);
     setTimeLeft(15);
-    soundManager.speak(`Bắt đầu thử thách toán học`);
+
+    // Đọc đề bài
+    soundManager.speak(q.text);
   };
 
-  // Timer đếm ngược
+  // Bắt đầu game mới
+  const startGame = (grade: MathGrade) => {
+    setSelectedGrade(grade);
+    setScore(0);
+    setStreak(0);
+    setStars(0);
+    setQuestionIndex(1);
+    setShowSummary(false);
+    setSelectedOption(null);
+    setIsAnswered(false);
+
+    const q = generateQuestion(grade);
+    setCurrentQuestion(q);
+    setTimeLeft(15);
+    soundManager.speak(q.text);
+  };
+
+  // Đếm ngược thời gian
   useEffect(() => {
-    if (showSummary || isAnswered) return;
+    if (isAnswered || showSummary || !currentQuestion) return;
 
     timerRef.current = setInterval(() => {
       setTimeLeft((prev) => {
@@ -245,7 +240,67 @@ export const MathQuizGameScreen: React.FC<{ onClose: () => void }> = ({ onClose 
     startGame(selectedGrade);
   }, []);
 
-  const optionButtonWidth = (width - 44) / 2;
+  // Render lưới 4 đáp án
+  const renderOptionsGrid = () => {
+    if (!currentQuestion) return null;
+    return (
+      <View style={isLandscape ? styles.landscapeOptionsGrid : styles.optionsGrid}>
+        {currentQuestion.options.map((opt, idx) => {
+          let btnBg = '#312E81';
+          let borderColor = '#4F46E5';
+
+          if (isAnswered) {
+            if (opt === currentQuestion.correctAnswer) {
+              btnBg = '#10B981';
+              borderColor = '#34D399';
+            } else if (opt === selectedOption) {
+              btnBg = '#EF4444';
+              borderColor = '#F87171';
+            }
+          }
+
+          return (
+            <TouchableOpacity
+              key={idx}
+              style={[
+                isLandscape ? styles.landscapeOptionButton : styles.optionButton,
+                { backgroundColor: btnBg, borderColor },
+              ]}
+              onPress={() => handleSelectOption(opt)}
+              disabled={isAnswered}
+              activeOpacity={0.7}
+            >
+              <Text style={isLandscape ? styles.landscapeOptionNumber : styles.optionNumber}>{opt}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    );
+  };
+
+  // Render Hộp câu hỏi
+  const renderQuestionCard = () => {
+    if (!currentQuestion) return null;
+    return (
+      <Animated.View style={[styles.questionCard, { transform: [{ translateY: bounceAnim }] }]}>
+        <Text style={styles.questionCounter}>Câu hỏi {questionIndex}/10</Text>
+        <Text style={isLandscape ? styles.landscapeQuestionText : styles.questionText}>
+          {currentQuestion.text}
+        </Text>
+
+        {/* Hiển thị Emoji đếm nếu có */}
+        {currentQuestion.emojiIcons && (
+          <View style={styles.emojiGrid}>
+            {currentQuestion.emojiIcons.map((emoji, idx) => (
+              <Text key={idx} style={isLandscape ? styles.landscapeEmojiItem : styles.emojiItem}>
+                {emoji}
+              </Text>
+            ))}
+          </View>
+        )}
+      </Animated.View>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -266,7 +321,10 @@ export const MathQuizGameScreen: React.FC<{ onClose: () => void }> = ({ onClose 
           </View>
         </View>
 
-        <TouchableOpacity style={styles.speakBtn} onPress={() => currentQuestion && soundManager.speak(currentQuestion.text)}>
+        <TouchableOpacity
+          style={styles.speakBtn}
+          onPress={() => currentQuestion && soundManager.speak(currentQuestion.text)}
+        >
           <Text style={styles.speakIcon}>🔊</Text>
         </TouchableOpacity>
       </View>
@@ -292,69 +350,34 @@ export const MathQuizGameScreen: React.FC<{ onClose: () => void }> = ({ onClose 
         </ScrollView>
       </View>
 
-      {/* Khu vực câu hỏi cuộn mượt không bị che thanh navigation */}
-      <ScrollView
-        style={styles.scrollArea}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {!showSummary && currentQuestion ? (
-          <View style={styles.quizArea}>
-            {/* Hộp câu hỏi */}
-            <Animated.View style={[styles.questionCard, { transform: [{ translateY: bounceAnim }] }]}>
-              <Text style={styles.questionCounter}>Câu hỏi {questionIndex}/10</Text>
-              <Text style={styles.questionText}>{currentQuestion.text}</Text>
+      {/* GIAO DIỆN CHÍNH */}
+      {showSummary ? (
+        /* Màn hình tổng kết nhận cúp */
+        <View style={styles.summaryCard}>
+          <Text style={styles.trophyIcon}>🏆</Text>
+          <Text style={styles.summaryTitle}>Chúc Mừng Bé Hoàn Thành!</Text>
+          <Text style={styles.summarySubtitle}>Bé đã giải xuất sắc các bài toán</Text>
 
-              {/* Hiển thị Emoji đếm nếu có */}
-              {currentQuestion.emojiIcons && (
-                <View style={styles.emojiGrid}>
-                  {currentQuestion.emojiIcons.map((emoji, idx) => (
-                    <Text key={idx} style={styles.emojiItem}>
-                      {emoji}
-                    </Text>
-                  ))}
-                </View>
-              )}
-            </Animated.View>
+          <View style={styles.summaryScoreBox}>
+            <Text style={styles.finalScore}>⭐ {score} Điểm</Text>
+            <Text style={styles.finalStars}>Đúng {stars}/10 câu</Text>
+          </View>
 
-            {/* Lưới 4 đáp án dạng Bong Bóng */}
-            <View style={styles.optionsGrid}>
-              {currentQuestion.options.map((opt, idx) => {
-                let btnBg = '#312E81';
-                let borderColor = '#4F46E5';
+          <TouchableOpacity style={styles.playAgainBtn} onPress={() => startGame(selectedGrade)}>
+            <Text style={styles.playAgainText}>🔄 Chơi Lại Màn Này</Text>
+          </TouchableOpacity>
+        </View>
+      ) : isLandscape ? (
+        /* GIAO DIỆN XOAY NGANG (LANDSCAPE SPLIT-SCREEN) */
+        <View style={styles.landscapeMainContainer}>
+          {/* Cột Trái: Đề bài & Phản hồi */}
+          <View style={styles.landscapeLeftColumn}>
+            {renderQuestionCard()}
 
-                if (isAnswered) {
-                  if (opt === currentQuestion.correctAnswer) {
-                    btnBg = '#10B981';
-                    borderColor = '#34D399';
-                  } else if (opt === selectedOption) {
-                    btnBg = '#EF4444';
-                    borderColor = '#F87171';
-                  }
-                }
-
-                return (
-                  <TouchableOpacity
-                    key={idx}
-                    style={[
-                      styles.optionButton,
-                      { width: optionButtonWidth, backgroundColor: btnBg, borderColor },
-                    ]}
-                    onPress={() => handleSelectOption(opt)}
-                    disabled={isAnswered}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.optionNumber}>{opt}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            {/* Nút Tiếp Tục khi đã trả lời */}
-            {isAnswered && (
+            {isAnswered && currentQuestion && (
               <View style={styles.feedbackContainer}>
                 <Text style={[styles.feedbackText, { color: isCorrect ? '#34D399' : '#F87171' }]}>
-                  {isCorrect ? '🎉 Tuyệt vời! Bé chọn đúng rồi!' : `💡 Đáp án đúng là: ${currentQuestion.correctAnswer}`}
+                  {isCorrect ? '🎉 Đúng rồi! Bé giỏi quá!' : `💡 Đáp án đúng: ${currentQuestion.correctAnswer}`}
                 </Text>
                 <TouchableOpacity style={styles.nextBtn} onPress={nextQuestion}>
                   <Text style={styles.nextBtnText}>Câu Tiếp Theo ➔</Text>
@@ -362,24 +385,38 @@ export const MathQuizGameScreen: React.FC<{ onClose: () => void }> = ({ onClose 
               </View>
             )}
           </View>
-        ) : showSummary ? (
-          /* Màn hình tổng kết nhận cúp */
-          <View style={styles.summaryCard}>
-            <Text style={styles.trophyIcon}>🏆</Text>
-            <Text style={styles.summaryTitle}>Chúc Mừng Bé Hoàn Thành!</Text>
-            <Text style={styles.summarySubtitle}>Bé đã giải xuất sắc các bài toán</Text>
 
-            <View style={styles.summaryScoreBox}>
-              <Text style={styles.finalScore}>⭐ {score} Điểm</Text>
-              <Text style={styles.finalStars}>Đúng {stars}/10 câu</Text>
-            </View>
-
-            <TouchableOpacity style={styles.playAgainBtn} onPress={() => startGame(selectedGrade)}>
-              <Text style={styles.playAgainText}>🔄 Chơi Lại Màn Này</Text>
-            </TouchableOpacity>
+          {/* Cột Phải: 4 Đáp án */}
+          <View style={styles.landscapeRightColumn}>
+            {renderOptionsGrid()}
           </View>
-        ) : null}
-      </ScrollView>
+        </View>
+      ) : (
+        /* GIAO DIỆN DỌC (PORTRAIT) */
+        <ScrollView
+          style={styles.scrollArea}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {currentQuestion && (
+            <View style={styles.quizArea}>
+              {renderQuestionCard()}
+              {renderOptionsGrid()}
+
+              {isAnswered && (
+                <View style={styles.feedbackContainer}>
+                  <Text style={[styles.feedbackText, { color: isCorrect ? '#34D399' : '#F87171' }]}>
+                    {isCorrect ? '🎉 Tuyệt vời! Bé chọn đúng rồi!' : `💡 Đáp án đúng là: ${currentQuestion.correctAnswer}`}
+                  </Text>
+                  <TouchableOpacity style={styles.nextBtn} onPress={nextQuestion}>
+                    <Text style={styles.nextBtnText}>Câu Tiếp Theo ➔</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          )}
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 };
@@ -388,6 +425,53 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#0F172A',
+  },
+  landscapeMainContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    gap: 16,
+  },
+  landscapeLeftColumn: {
+    flex: 1.1,
+    justifyContent: 'center',
+    gap: 6,
+  },
+  landscapeRightColumn: {
+    flex: 0.9,
+    justifyContent: 'center',
+  },
+  landscapeQuestionText: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: '900',
+    textAlign: 'center',
+  },
+  landscapeEmojiItem: {
+    fontSize: 26,
+  },
+  landscapeOptionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  landscapeOptionButton: {
+    width: '48%',
+    height: 62,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2.5,
+    elevation: 5,
+  },
+  landscapeOptionNumber: {
+    color: '#FFFFFF',
+    fontSize: 26,
+    fontWeight: '900',
   },
   header: {
     flexDirection: 'row',

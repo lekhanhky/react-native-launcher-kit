@@ -29,6 +29,7 @@ import { ColoringGameScreen } from './ColoringGameScreen';
 import { SortingGameScreen } from './SortingGameScreen';
 import { MazeGameScreen } from './MazeGameScreen';
 import { TangramPuzzleGameScreen } from './TangramPuzzleGameScreen';
+import { JigsawPuzzleGameScreen } from './JigsawPuzzleGameScreen';
 import { MathQuizGameScreen } from './MathQuizGameScreen';
 import { WordSpellingGameScreen } from './WordSpellingGameScreen';
 import { ConnectDotsGameScreen } from './ConnectDotsGameScreen';
@@ -82,6 +83,9 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
 
   // Tangram Puzzle Game Screen state
   const [showTangramGame, setShowTangramGame] = useState<boolean>(false);
+
+  // Jigsaw Puzzle Game Screen state
+  const [showJigsawGame, setShowJigsawGame] = useState<boolean>(false);
 
   // Math Quiz Game Screen state
   const [showMathGame, setShowMathGame] = useState<boolean>(false);
@@ -186,6 +190,13 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
         icon: '',
       };
 
+      // Game 11: Ghép tranh Jigsaw Puzzle
+      const jigsawGameApp: AppDetail = {
+        label: 'Bé Ghép Tranh',
+        packageName: 'internal.game.jigsaw',
+        icon: '',
+      };
+
       const allKidsGames = [
         memoryGameApp,
         bubblePopApp,
@@ -197,6 +208,7 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
         mazeGameApp,
         connectDotsApp,
         tangramGameApp,
+        jigsawGameApp,
       ];
 
       // Thêm ứng dụng YouTube an toàn nếu phụ huynh cho phép
@@ -336,6 +348,10 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
         setShowTangramGame(false);
         return true;
       }
+      if (showJigsawGame) {
+        setShowJigsawGame(false);
+        return true;
+      }
       if (showYouTubeScreen) {
         setShowYouTubeScreen(false);
         return true;
@@ -364,6 +380,7 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
     showMazeGame,
     showConnectDotsGame,
     showTangramGame,
+    showJigsawGame,
     showYouTubeScreen,
     showSettingsScreen,
   ]);
@@ -432,6 +449,12 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
     // Mở Game 10: Xếp Hình Trí Tuệ Tangram / Jigsaw
     if (packageName === 'internal.game.tangram') {
       setShowTangramGame(true);
+      return;
+    }
+
+    // Mở Game 11: Ghép Tranh Jigsaw Puzzle
+    if (packageName === 'internal.game.jigsaw') {
+      setShowJigsawGame(true);
       return;
     }
 
@@ -551,6 +574,16 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
       <TangramPuzzleGameScreen
         theme={currentTheme}
         onClose={() => setShowTangramGame(false)}
+      />
+    );
+  }
+
+  // Mở màn hình Game 11: Ghép Tranh Jigsaw Puzzle
+  if (showJigsawGame) {
+    return (
+      <JigsawPuzzleGameScreen
+        theme={currentTheme}
+        onClose={() => setShowJigsawGame(false)}
       />
     );
   }
@@ -681,6 +714,7 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
             const isWordSpelling = item.packageName === 'internal.game.wordspelling';
             const isConnectDots = item.packageName === 'internal.game.connectdots';
             const isTangramGame = item.packageName === 'internal.game.tangram';
+            const isJigsawGame = item.packageName === 'internal.game.jigsaw';
             return (
               <TouchableOpacity
                 style={styles.appCard}
@@ -746,6 +780,12 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
                   <View style={[styles.appIcon, styles.tangramIconContainer]}>
                     <View style={styles.tangramInnerBadge}>
                       <Text style={styles.tangramEmojiIcon}>🧩</Text>
+                    </View>
+                  </View>
+                ) : isJigsawGame ? (
+                  <View style={[styles.appIcon, styles.jigsawIconContainer]}>
+                    <View style={styles.jigsawInnerBadge}>
+                      <Text style={styles.jigsawEmojiIcon}>🖼️</Text>
                     </View>
                   </View>
                 ) : isYouTube ? (
@@ -1216,6 +1256,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   tangramEmojiIcon: {
+    fontSize: 24,
+  },
+
+  // GAME 11: JIGSAW PUZZLE ICON
+  jigsawIconContainer: {
+    backgroundColor: '#EA580C',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#C2410C',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 4,
+  },
+  jigsawInnerBadge: {
+    width: 44,
+    height: 44,
+    backgroundColor: '#FFEDD5',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  jigsawEmojiIcon: {
     fontSize: 24,
   },
 

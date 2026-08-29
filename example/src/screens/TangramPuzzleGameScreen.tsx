@@ -427,22 +427,32 @@ export const JIGSAW_PUZZLES: JigsawPuzzle[] = [
 ];
 
 export const TangramPuzzleGameScreen: React.FC<TangramPuzzleGameScreenProps> = ({ onClose }) => {
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
 
   const [mode, setMode] = useState<PuzzleMode>('tangram');
 
-  // Tangram State
+  // Tangram State: Lưu tiến độ từng bài theo puzzle id (tránh bị reset khi chuyển bài hoặc re-render)
   const [currentTangramIdx, setCurrentTangramIdx] = useState<number>(0);
   const currentTangram = TANGRAM_PUZZLES[currentTangramIdx];
-  const [placedTangramPieces, setPlacedTangramPieces] = useState<{ [pieceId: string]: boolean }>({});
+  const [tangramProgress, setTangramProgress] = useState<{ [puzzleId: string]: { [pieceId: string]: boolean } }>({});
+  const placedTangramPieces = tangramProgress[currentTangram.id] || {};
   const [selectedPieceId, setSelectedPieceId] = useState<string | null>(null);
 
-  // Jigsaw State
+  // Jigsaw State: Lưu tiến độ từng bài theo puzzle id
   const [currentJigsawIdx, setCurrentJigsawIdx] = useState<number>(0);
   const currentJigsaw = JIGSAW_PUZZLES[currentJigsawIdx];
-  const [jigsawGrid, setJigsawGrid] = useState<(JigsawPiece | null)[]>([null, null, null, null]);
-  const [availableJigsawPieces, setAvailableJigsawPieces] = useState<JigsawPiece[]>([]);
+  const [jigsawProgress, setJigsawProgress] = useState<{ [puzzleId: string]: (JigsawPiece | null)[] }>({});
+  const jigsawGrid = jigsawProgress[currentJigsaw.id] || [null, null, null, null];
+  
+  // Danh sách các mảnh jigsaw còn lại chưa đặt
+  const availableJigsawPieces = currentJigsaw.pieces.filter(
+    (p) => !jigsawGrid.some((slot) => slot && slot.id === p.id)
+  );
   const [selectedJigsawPiece, setSelectedJigsawPiece] = useState<JigsawPiece | null>(null);
+
+  // Vùng đang được hover khi kéo thả
+  const [hoveredTangramSlotId, setHoveredTangramSlotId] = useState<string | null>(null);
+  const [hoveredJigsawSlotIdx, setHoveredJigsawSlotIdx] = useState<number | null>(null);
 
   // Thông báo & Hiệu ứng
   const [toastText, setToastText] = useState<string>('');
@@ -450,9 +460,33 @@ export const TangramPuzzleGameScreen: React.FC<TangramPuzzleGameScreenProps> = (
   const [hintActive, setHintActive] = useState<boolean>(false);
   const [showHelperLines, setShowHelperLines] = useState<boolean>(true);
 
+  // Layout của bảng trên màn hình
+  const boardLayoutRef = useRef<{ x: number; y: number; width: number; height: number }>({
+    x: 0,
+    y: 0,
+    width: 0,
+    height: 0,
+  });
+
+  // Animation values cho từng slot trên bảng (để scale phình to khi rê ngón tay vào)
+  const tangramSlotScaleAnims = useRef<{ [key: string]: Animated.Value }>({}).current;
+  const jigsawSlotScaleAnims = useRef<Animated.Value[]>([
+    new Animated.Value(1),
+    new Animated.Value(1),
+    new Animated.Value(1),
+    new Animated.Value(1),
+  ]).current;
+
   // Animations
   const victoryScale = useRef(new Animated.Value(0.3)).current;
   const snapAnim = useRef(new Animated.Value(1)).current;
+
+  // Khởi tạo slot scale anim cho tangram
+  currentTangram.pieces.forEach((p) => {
+    if (!tangramSlotScaleAnims[p.id]) {
+      tangramSlotScaleAnims[p.id] = new Animated.Value(1);
+    }
+  });
 
   // Hiển thị thông báo nhỏ
   const showToast = (msg: string) => {
@@ -460,34 +494,56 @@ export const TangramPuzzleGameScreen: React.FC<TangramPuzzleGameScreenProps> = (
     setTimeout(() => setToastText(''), 1800);
   };
 
-  // 1. Khởi tạo Tangram Puzzle mới
-  const startNewTangram = useCallback((idx: number) => {
+  // 1. Chuyển sang Tangram Puzzle (giữ nguyên tiến độ đã ghép của các bài)
+  const selectTangramPuzzle = (idx: number) => {
     setCurrentTangramIdx(idx);
-    setPlacedTangramPieces({});
     setSelectedPieceId(null);
+    setHoveredTangramSlotId(null);
     setIsVictory(false);
     setHintActive(false);
-  }, []);
 
-  // 2. Khởi tạo Jigsaw Puzzle mới
-  const startNewJigsaw = useCallback((idx: number) => {
+    TANGRAM_PUZZLES[idx].pieces.forEach((p) => {
+      if (!tangramSlotScaleAnims[p.id]) {
+        tangramSlotScaleAnims[p.id] = new Animated.Value(1);
+      } else {
+        tangramSlotScaleAnims[p.id].setValue(1);
+      }
+    });
+  };
+
+  // 2. Chuyển sang Jigsaw Puzzle (giữ nguyên tiến độ đã ghép của các bài)
+  const selectJigsawPuzzle = (idx: number) => {
     setCurrentJigsawIdx(idx);
-    const puzzle = JIGSAW_PUZZLES[idx];
-    setJigsawGrid([null, null, null, null]);
-    // Xáo trộn các mảnh ghép
-    setAvailableJigsawPieces([...puzzle.pieces].sort(() => 0.5 - Math.random()));
     setSelectedJigsawPiece(null);
+    setHoveredJigsawSlotIdx(null);
     setIsVictory(false);
     setHintActive(false);
-  }, []);
 
-  useEffect(() => {
+    jigsawSlotScaleAnims.forEach((anim) => anim.setValue(1));
+  };
+
+  // Xếp lại bài hiện tại (Reset riêng bài đang chơi)
+  const resetCurrentPuzzle = () => {
     if (mode === 'tangram') {
-      startNewTangram(currentTangramIdx);
+      setTangramProgress((prev) => ({
+        ...prev,
+        [currentTangram.id]: {},
+      }));
+      setSelectedPieceId(null);
+      setHoveredTangramSlotId(null);
+      setIsVictory(false);
+      showToast('🔄 Đã làm mới bài xếp hình!');
     } else {
-      startNewJigsaw(currentJigsawIdx);
+      setJigsawProgress((prev) => ({
+        ...prev,
+        [currentJigsaw.id]: [null, null, null, null],
+      }));
+      setSelectedJigsawPiece(null);
+      setHoveredJigsawSlotIdx(null);
+      setIsVictory(false);
+      showToast('🔄 Đã làm mới bài ghép tranh!');
     }
-  }, [mode, currentTangramIdx, currentJigsawIdx, startNewTangram, startNewJigsaw]);
+  };
 
   // Hiệu ứng Snap nảy
   const triggerSnapAnim = () => {
@@ -497,52 +553,30 @@ export const TangramPuzzleGameScreen: React.FC<TangramPuzzleGameScreenProps> = (
     ]).start();
   };
 
-  // 3. Xử lý đặt mảnh Tangram vào đúng vị trí
-  const handlePlaceTangramPiece = (piece: TangramPiece) => {
-    if (placedTangramPieces[piece.id]) return;
+  // 3. Xử lý đặt mảnh Tangram vào đúng vị trí (Dùng functional update để không bao giờ bị mất mảnh)
+  const handlePlaceTangramPiece = useCallback((piece: TangramPiece) => {
+    setTangramProgress((prev) => {
+      const currentPieces = prev[currentTangram.id] || {};
+      if (currentPieces[piece.id]) return prev; // Đã ghép rồi
 
-    triggerSnapAnim();
-    const updated = { ...placedTangramPieces, [piece.id]: true };
-    setPlacedTangramPieces(updated);
-    setSelectedPieceId(null);
-    setHintActive(false);
-    showToast(`✨ Khớp hoàn hảo: ${piece.name}!`);
-
-    // Kiểm tra hoàn thành tất cả các mảnh
-    if (Object.keys(updated).length === currentTangram.pieces.length) {
-      setIsVictory(true);
-      Animated.spring(victoryScale, {
-        toValue: 1,
-        friction: 4,
-        tension: 50,
-        useNativeDriver: true,
-      }).start();
-    }
-  };
-
-  // 4. Xử lý đặt mảnh Jigsaw vào ô trên lưới
-  const handlePlaceJigsawSlot = (slotIdx: number) => {
-    if (!selectedJigsawPiece) {
-      showToast('👆 Hãy chọn 1 mảnh ghép ở khay bên dưới trước nhé!');
-      return;
-    }
-
-    // Kiểm tra xem ô này có đúng với mảnh ghép không
-    if (selectedJigsawPiece.index === slotIdx) {
       triggerSnapAnim();
-      const updatedGrid = [...jigsawGrid];
-      updatedGrid[slotIdx] = selectedJigsawPiece;
-      setJigsawGrid(updatedGrid);
+      const updated = { ...currentPieces, [piece.id]: true };
 
-      // Bỏ mảnh ghép ra khỏi danh sách còn lại
-      const updatedAvailable = availableJigsawPieces.filter((p) => p.id !== selectedJigsawPiece.id);
-      setAvailableJigsawPieces(updatedAvailable);
-      setSelectedJigsawPiece(null);
+      setSelectedPieceId(null);
+      setHoveredTangramSlotId(null);
       setHintActive(false);
-      showToast(`🧩 Khớp chính xác mảnh ghép!`);
+
+      if (tangramSlotScaleAnims[piece.id]) {
+        Animated.spring(tangramSlotScaleAnims[piece.id], {
+          toValue: 1,
+          useNativeDriver: false,
+        }).start();
+      }
+
+      showToast(`✨ Khớp hoàn hảo: ${piece.name}!`);
 
       // Kiểm tra thắng
-      if (updatedAvailable.length === 0) {
+      if (Object.keys(updated).length === currentTangram.pieces.length) {
         setIsVictory(true);
         Animated.spring(victoryScale, {
           toValue: 1,
@@ -551,10 +585,190 @@ export const TangramPuzzleGameScreen: React.FC<TangramPuzzleGameScreenProps> = (
           useNativeDriver: true,
         }).start();
       }
+
+      return {
+        ...prev,
+        [currentTangram.id]: updated,
+      };
+    });
+  }, [currentTangram, tangramSlotScaleAnims, victoryScale]);
+
+  // 4. Xử lý đặt mảnh Jigsaw vào ô trên lưới (Dùng functional update)
+  const handlePlaceJigsawSlot = useCallback((slotIdx: number, targetPiece?: JigsawPiece) => {
+    const pieceToPlace = targetPiece || selectedJigsawPiece;
+    if (!pieceToPlace) {
+      showToast('👆 Hãy kéo mảnh ghép ở khay bên dưới vào ô này nhé!');
+      return;
+    }
+
+    if (pieceToPlace.index === slotIdx) {
+      setJigsawProgress((prev) => {
+        const currentGrid = prev[currentJigsaw.id] || [null, null, null, null];
+        const updatedGrid = [...currentGrid];
+        updatedGrid[slotIdx] = pieceToPlace;
+
+        triggerSnapAnim();
+        setSelectedJigsawPiece(null);
+        setHoveredJigsawSlotIdx(null);
+        setHintActive(false);
+
+        if (jigsawSlotScaleAnims[slotIdx]) {
+          Animated.spring(jigsawSlotScaleAnims[slotIdx], {
+            toValue: 1,
+            useNativeDriver: false,
+          }).start();
+        }
+
+        showToast(`🧩 Khớp chính xác mảnh ghép!`);
+
+        // Kiểm tra xem đã ghép hết 4 ô chưa
+        const isAllFilled = updatedGrid.every((slot) => slot !== null);
+        if (isAllFilled) {
+          setIsVictory(true);
+          Animated.spring(victoryScale, {
+            toValue: 1,
+            friction: 4,
+            tension: 50,
+            useNativeDriver: true,
+          }).start();
+        }
+
+        return {
+          ...prev,
+          [currentJigsaw.id]: updatedGrid,
+        };
+      });
     } else {
       showToast('💡 Vị trí này chưa đúng rồi, bé thử ô khác nhé!');
     }
-  };
+  }, [selectedJigsawPiece, currentJigsaw, jigsawSlotScaleAnims, victoryScale]);
+
+  // Xử lý khi ngón tay đang rê (Hover) qua các ô Tangram
+  const handleTangramDragHover = useCallback((draggedPieceId: string, moveX: number, moveY: number) => {
+    const board = boardLayoutRef.current;
+    if (board.width === 0) return;
+
+    const piece = currentTangram.pieces.find((p) => p.id === draggedPieceId);
+    if (!piece || placedTangramPieces[piece.id]) return;
+
+    // Tính tâm của slot mục tiêu trên toàn màn hình
+    const targetCenterX = board.x + piece.targetX + piece.width / 2;
+    const targetCenterY = board.y + piece.targetY + piece.height / 2;
+    const dist = Math.hypot(moveX - targetCenterX, moveY - targetCenterY);
+    const snapRadius = Math.max(piece.width, piece.height) * 0.85;
+
+    if (dist < snapRadius) {
+      if (hoveredTangramSlotId !== piece.id) {
+        setHoveredTangramSlotId(piece.id);
+        if (tangramSlotScaleAnims[piece.id]) {
+          Animated.spring(tangramSlotScaleAnims[piece.id], {
+            toValue: 1.22,
+            friction: 4,
+            tension: 60,
+            useNativeDriver: false,
+          }).start();
+        }
+      }
+    } else {
+      if (hoveredTangramSlotId === piece.id) {
+        setHoveredTangramSlotId(null);
+        if (tangramSlotScaleAnims[piece.id]) {
+          Animated.spring(tangramSlotScaleAnims[piece.id], {
+            toValue: 1,
+            friction: 5,
+            useNativeDriver: false,
+          }).start();
+        }
+      }
+    }
+  }, [currentTangram, placedTangramPieces, hoveredTangramSlotId, tangramSlotScaleAnims]);
+
+  // Xử lý khi buông tay (Drop) mảnh Tangram
+  const handleTangramDragRelease = useCallback((draggedPieceId: string, dropX: number, dropY: number) => {
+    const board = boardLayoutRef.current;
+    const piece = currentTangram.pieces.find((p) => p.id === draggedPieceId);
+    if (!piece || placedTangramPieces[piece.id]) return;
+
+    // Reset animation scale của slot
+    if (tangramSlotScaleAnims[piece.id]) {
+      Animated.spring(tangramSlotScaleAnims[piece.id], {
+        toValue: 1,
+        friction: 5,
+        useNativeDriver: false,
+      }).start();
+    }
+    setHoveredTangramSlotId(null);
+
+    const targetCenterX = board.x + piece.targetX + piece.width / 2;
+    const targetCenterY = board.y + piece.targetY + piece.height / 2;
+    const dist = Math.hypot(dropX - targetCenterX, dropY - targetCenterY);
+    const snapRadius = Math.max(piece.width, piece.height) * 0.9;
+
+    if (dist < snapRadius) {
+      handlePlaceTangramPiece(piece);
+    }
+  }, [currentTangram, placedTangramPieces, tangramSlotScaleAnims, handlePlaceTangramPiece]);
+
+  // Xử lý khi ngón tay đang rê (Hover) qua các ô Jigsaw
+  const handleJigsawDragHover = useCallback((draggedPiece: JigsawPiece, moveX: number, moveY: number) => {
+    const board = boardLayoutRef.current;
+    if (board.width === 0) return;
+
+    const slotW = board.width / 2;
+    const slotH = board.height / 2;
+    const relX = moveX - board.x;
+    const relY = moveY - board.y;
+
+    if (relX >= 0 && relX <= board.width && relY >= 0 && relY <= board.height) {
+      const col = Math.floor(relX / slotW);
+      const row = Math.floor(relY / slotH);
+      const slotIdx = row * 2 + col;
+
+      if (slotIdx >= 0 && slotIdx < 4) {
+        if (hoveredJigsawSlotIdx !== slotIdx) {
+          setHoveredJigsawSlotIdx(slotIdx);
+          jigsawSlotScaleAnims.forEach((anim, idx) => {
+            Animated.spring(anim, {
+              toValue: idx === slotIdx ? 1.18 : 1,
+              friction: 4,
+              useNativeDriver: false,
+            }).start();
+          });
+        }
+        return;
+      }
+    }
+
+    if (hoveredJigsawSlotIdx !== null) {
+      setHoveredJigsawSlotIdx(null);
+      jigsawSlotScaleAnims.forEach((anim) => {
+        Animated.spring(anim, { toValue: 1, friction: 5, useNativeDriver: false }).start();
+      });
+    }
+  }, [hoveredJigsawSlotIdx, jigsawSlotScaleAnims]);
+
+  // Xử lý khi buông tay (Drop) mảnh Jigsaw
+  const handleJigsawDragRelease = useCallback((draggedPiece: JigsawPiece, dropX: number, dropY: number) => {
+    const board = boardLayoutRef.current;
+    jigsawSlotScaleAnims.forEach((anim) => {
+      Animated.spring(anim, { toValue: 1, friction: 5, useNativeDriver: false }).start();
+    });
+    setHoveredJigsawSlotIdx(null);
+
+    const slotW = board.width / 2;
+    const slotH = board.height / 2;
+    const relX = dropX - board.x;
+    const relY = dropY - board.y;
+
+    if (relX >= 0 && relX <= board.width && relY >= 0 && relY <= board.height) {
+      const col = Math.floor(relX / slotW);
+      const row = Math.floor(relY / slotH);
+      const slotIdx = row * 2 + col;
+      if (slotIdx >= 0 && slotIdx < 4) {
+        handlePlaceJigsawSlot(slotIdx, draggedPiece);
+      }
+    }
+  }, [jigsawSlotScaleAnims, handlePlaceJigsawSlot]);
 
   // Gợi ý mảnh ghép
   const handleShowHint = () => {
@@ -563,12 +777,24 @@ export const TangramPuzzleGameScreen: React.FC<TangramPuzzleGameScreenProps> = (
       const remaining = currentTangram.pieces.find((p) => !placedTangramPieces[p.id]);
       if (remaining) {
         setSelectedPieceId(remaining.id);
-        showToast(`💡 Gợi ý: Hãy đặt mảnh "${remaining.name}" vào vị trí phát sáng!`);
+        if (tangramSlotScaleAnims[remaining.id]) {
+          Animated.sequence([
+            Animated.timing(tangramSlotScaleAnims[remaining.id], { toValue: 1.25, duration: 180, useNativeDriver: false }),
+            Animated.timing(tangramSlotScaleAnims[remaining.id], { toValue: 1, duration: 180, useNativeDriver: false }),
+          ]).start();
+        }
+        showToast(`💡 Gợi ý: Hãy kéo hoặc chạm mảnh "${remaining.name}" vào vị trí phát sáng!`);
       }
     } else {
       if (availableJigsawPieces.length > 0) {
         const nextPiece = availableJigsawPieces[0];
         setSelectedJigsawPiece(nextPiece);
+        if (jigsawSlotScaleAnims[nextPiece.index]) {
+          Animated.sequence([
+            Animated.timing(jigsawSlotScaleAnims[nextPiece.index], { toValue: 1.22, duration: 180, useNativeDriver: false }),
+            Animated.timing(jigsawSlotScaleAnims[nextPiece.index], { toValue: 1, duration: 180, useNativeDriver: false }),
+          ]).start();
+        }
         showToast(`💡 Gợi ý: Hãy đặt mảnh "${nextPiece.label}" vào ô số ${nextPiece.index + 1}!`);
       }
     }
@@ -630,7 +856,7 @@ export const TangramPuzzleGameScreen: React.FC<TangramPuzzleGameScreenProps> = (
                   <TouchableOpacity
                     key={pz.id}
                     style={[styles.puzzleChip, isSelected && styles.puzzleChipActive]}
-                    onPress={() => startNewTangram(pIdx)}
+                    onPress={() => selectTangramPuzzle(pIdx)}
                     activeOpacity={0.8}
                   >
                     <Text style={styles.puzzleChipEmoji}>{pz.emoji}</Text>
@@ -646,7 +872,7 @@ export const TangramPuzzleGameScreen: React.FC<TangramPuzzleGameScreenProps> = (
                   <TouchableOpacity
                     key={pz.id}
                     style={[styles.puzzleChip, isSelected && styles.puzzleChipActive]}
-                    onPress={() => startNewJigsaw(pIdx)}
+                    onPress={() => selectJigsawPuzzle(pIdx)}
                     activeOpacity={0.8}
                   >
                     <Text style={styles.puzzleChipEmoji}>{pz.emoji}</Text>
@@ -671,6 +897,11 @@ export const TangramPuzzleGameScreen: React.FC<TangramPuzzleGameScreenProps> = (
         {mode === 'tangram' ? (
           /* BẢNG TANGRAM */
           <Animated.View
+            onLayout={(e) => {
+              e.target.measureInWindow((x: number, y: number, w: number, h: number) => {
+                boardLayoutRef.current = { x, y, width: w, height: h };
+              });
+            }}
             style={[
               styles.tangramBoard,
               {
@@ -681,16 +912,16 @@ export const TangramPuzzleGameScreen: React.FC<TangramPuzzleGameScreenProps> = (
               },
             ]}
           >
-            {/* ĐƯỜNG NÉT HƯỚNG DẪN HOẶC MẢNH GHÉP ĐÃ KHỚP */}
+            {/* CÁC VÙNG / MẢNH GHÉP TRÊN BẢNG */}
             {currentTangram.pieces.map((piece) => {
               const isPlaced = placedTangramPieces[piece.id];
+              const isHovered = hoveredTangramSlotId === piece.id;
               const isHinted = hintActive && selectedPieceId === piece.id;
+              const slotScale = tangramSlotScaleAnims[piece.id] || new Animated.Value(1);
 
               return (
-                <TouchableOpacity
+                <Animated.View
                   key={piece.id}
-                  activeOpacity={0.8}
-                  onPress={() => handlePlaceTangramPiece(piece)}
                   style={[
                     styles.tangramPieceTarget,
                     {
@@ -705,33 +936,56 @@ export const TangramPuzzleGameScreen: React.FC<TangramPuzzleGameScreenProps> = (
                       borderBottomRightRadius: piece.borderBottomRightRadius || 0,
                       backgroundColor: isPlaced
                         ? piece.color
+                        : isHovered
+                        ? 'rgba(254, 240, 138, 0.95)'
                         : isHinted
-                        ? 'rgba(254, 240, 138, 0.7)'
+                        ? 'rgba(254, 240, 138, 0.75)'
                         : 'rgba(0, 0, 0, 0.08)',
                       borderColor: isPlaced
                         ? piece.borderColor
+                        : isHovered
+                        ? '#F59E0B'
                         : isHinted
                         ? '#F59E0B'
-                        : 'rgba(0, 0, 0, 0.25)',
-                      borderWidth: isPlaced ? 3 : 2,
+                        : 'rgba(0, 0, 0, 0.28)',
+                      borderWidth: isPlaced ? 3 : isHovered ? 4 : 2,
                       borderStyle: isPlaced ? 'solid' : 'dashed',
+                      zIndex: isHovered ? 99 : isPlaced ? 1 : 2,
+                      transform: [{ scale: slotScale }],
+                      shadowColor: isHovered ? '#F59E0B' : '#000',
+                      shadowOpacity: isHovered ? 0.6 : 0.15,
+                      shadowRadius: isHovered ? 8 : 3,
+                      elevation: isHovered ? 12 : 3,
                     },
                   ]}
                 >
-                  {isPlaced ? (
-                    <Text style={styles.placedPieceEmoji}>{piece.emoji}</Text>
-                  ) : (
-                    showHelperLines && (
-                      <Text style={styles.piecePlaceholderText}>{piece.name}</Text>
-                    )
-                  )}
-                </TouchableOpacity>
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={() => handlePlaceTangramPiece(piece)}
+                    style={styles.slotTouchable}
+                  >
+                    {isPlaced ? (
+                      <Text style={styles.placedPieceEmoji}>{piece.emoji}</Text>
+                    ) : isHovered ? (
+                      <Text style={styles.pieceHoveredText}>✨ Thả vào đây!</Text>
+                    ) : (
+                      showHelperLines && (
+                        <Text style={styles.piecePlaceholderText}>{piece.name}</Text>
+                      )
+                    )}
+                  </TouchableOpacity>
+                </Animated.View>
               );
             })}
           </Animated.View>
         ) : (
           /* BẢNG JIGSAW 2x2 */
           <Animated.View
+            onLayout={(e) => {
+              e.target.measureInWindow((x: number, y: number, w: number, h: number) => {
+                boardLayoutRef.current = { x, y, width: w, height: h };
+              });
+            }}
             style={[
               styles.jigsawBoard,
               { borderColor: currentJigsaw.themeColor, transform: [{ scale: snapAnim }] },
@@ -739,62 +993,76 @@ export const TangramPuzzleGameScreen: React.FC<TangramPuzzleGameScreenProps> = (
           >
             {jigsawGrid.map((piece, slotIdx) => {
               const isFilled = piece !== null;
+              const isHovered = hoveredJigsawSlotIdx === slotIdx;
               const isHinted = hintActive && selectedJigsawPiece?.index === slotIdx;
+              const slotScale = jigsawSlotScaleAnims[slotIdx] || new Animated.Value(1);
 
               return (
-                <TouchableOpacity
+                <Animated.View
                   key={`slot_${slotIdx}`}
                   style={[
                     styles.jigsawSlot,
                     {
                       backgroundColor: isFilled
                         ? piece.color
-                        : isHinted
+                        : isHovered
                         ? '#FEF08A'
+                        : isHinted
+                        ? '#FEF9C3'
                         : '#F8FAFC',
                       borderColor: isFilled
                         ? currentJigsaw.themeColor
+                        : isHovered
+                        ? '#F59E0B'
                         : isHinted
                         ? '#F59E0B'
                         : '#CBD5E1',
+                      borderWidth: isHovered ? 3.5 : 1.5,
+                      zIndex: isHovered ? 99 : 1,
+                      transform: [{ scale: slotScale }],
                     },
                   ]}
-                  activeOpacity={0.8}
-                  onPress={() => handlePlaceJigsawSlot(slotIdx)}
                 >
-                  {isFilled ? (
-                    <View style={styles.jigsawFilledContent}>
-                      <Text style={styles.jigsawEmoji}>{piece.emoji}</Text>
-                      <Text style={styles.jigsawLabel}>{piece.label}</Text>
-                    </View>
-                  ) : (
-                    <View style={styles.jigsawEmptyContent}>
-                      <Text style={styles.jigsawSlotNumber}>Ô {slotIdx + 1}</Text>
-                      <Text style={styles.jigsawSlotHint}>Chạm để đặt</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.slotTouchable}
+                    activeOpacity={0.8}
+                    onPress={() => handlePlaceJigsawSlot(slotIdx)}
+                  >
+                    {isFilled ? (
+                      <View style={styles.jigsawFilledContent}>
+                        <Text style={styles.jigsawEmoji}>{piece.emoji}</Text>
+                        <Text style={styles.jigsawLabel}>{piece.label}</Text>
+                      </View>
+                    ) : isHovered ? (
+                      <View style={styles.jigsawEmptyContent}>
+                        <Text style={styles.jigsawSlotNumber}>✨ Ô {slotIdx + 1}</Text>
+                        <Text style={styles.jigsawHoveredHint}>Thả vào đây!</Text>
+                      </View>
+                    ) : (
+                      <View style={styles.jigsawEmptyContent}>
+                        <Text style={styles.jigsawSlotNumber}>Ô {slotIdx + 1}</Text>
+                        <Text style={styles.jigsawSlotHint}>Kéo/chạm để đặt</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                </Animated.View>
               );
             })}
           </Animated.View>
         )}
       </View>
 
-      {/* KHAY CHỨA CÁC MẢNH GHÉP (PIECES TRAY) */}
+      {/* KHAY CHỨA CÁC MẢNH GHÉP (PIECES TRAY - HỖ TRỢ KÉO THẢ TRỰC TIẾP) */}
       <View style={styles.traySection}>
         <View style={styles.trayHeader}>
           <Text style={styles.trayTitle}>
             {mode === 'tangram'
-              ? '👇 CHẠM MẢNH GHÉP VÀO KHUNG Ở TRÊN:'
-              : '👇 CHỌN MẢNH GHÉP RỒI CHẠM VÀO Ô TRỐNG:'}
+              ? '👇 KÉO HOẶC CHẠM MẢNH GHÉP VÀO KHUNG Ở TRÊN:'
+              : '👇 KÉO MẢNH GHÉP VÀO Ô TRỐNG PHÙ HỢP:'}
           </Text>
           <TouchableOpacity
             style={styles.resetBtn}
-            onPress={() =>
-              mode === 'tangram'
-                ? startNewTangram(currentTangramIdx)
-                : startNewJigsaw(currentJigsawIdx)
-            }
+            onPress={resetCurrentPuzzle}
           >
             <Text style={styles.resetBtnText}>🔄 Xếp Lại</Text>
           </TouchableOpacity>
@@ -820,43 +1088,33 @@ export const TangramPuzzleGameScreen: React.FC<TangramPuzzleGameScreenProps> = (
                 }
 
                 return (
-                  <TouchableOpacity
+                  <DraggableTangramCard
                     key={piece.id}
-                    style={[
-                      styles.pieceCard,
-                      { backgroundColor: piece.color, borderColor: piece.borderColor },
-                      isSelected && styles.pieceCardSelected,
-                    ]}
-                    activeOpacity={0.75}
-                    onPress={() => {
+                    piece={piece}
+                    isSelected={isSelected}
+                    onTap={() => {
                       setSelectedPieceId(piece.id);
                       handlePlaceTangramPiece(piece);
                     }}
-                  >
-                    <Text style={styles.pieceCardEmoji}>{piece.emoji}</Text>
-                    <Text style={styles.pieceCardName}>{piece.name}</Text>
-                  </TouchableOpacity>
+                    onDragHover={handleTangramDragHover}
+                    onDragRelease={handleTangramDragRelease}
+                  />
                 );
               })
             : availableJigsawPieces.map((piece) => {
                 const isSelected = selectedJigsawPiece?.id === piece.id;
                 return (
-                  <TouchableOpacity
+                  <DraggableJigsawCard
                     key={piece.id}
-                    style={[
-                      styles.jigsawPieceCard,
-                      { backgroundColor: piece.color },
-                      isSelected && styles.jigsawPieceCardSelected,
-                    ]}
-                    activeOpacity={0.75}
-                    onPress={() => {
+                    piece={piece}
+                    isSelected={isSelected}
+                    onTap={() => {
                       setSelectedJigsawPiece(piece);
-                      showToast(`Đã chọn "${piece.label}". Hãy chạm vào ô phù hợp ở trên!`);
+                      showToast(`Đã chọn "${piece.label}". Hãy kéo hoặc chạm vào ô phù hợp ở trên!`);
                     }}
-                  >
-                    <Text style={styles.jigsawCardEmoji}>{piece.emoji}</Text>
-                    <Text style={styles.jigsawCardLabel}>{piece.label}</Text>
-                  </TouchableOpacity>
+                    onDragHover={handleJigsawDragHover}
+                    onDragRelease={handleJigsawDragRelease}
+                  />
                 );
               })}
         </ScrollView>
@@ -895,10 +1153,10 @@ export const TangramPuzzleGameScreen: React.FC<TangramPuzzleGameScreenProps> = (
                 onPress={() => {
                   if (mode === 'tangram') {
                     const nextIdx = (currentTangramIdx + 1) % TANGRAM_PUZZLES.length;
-                    startNewTangram(nextIdx);
+                    selectTangramPuzzle(nextIdx);
                   } else {
                     const nextIdx = (currentJigsawIdx + 1) % JIGSAW_PUZZLES.length;
-                    startNewJigsaw(nextIdx);
+                    selectJigsawPuzzle(nextIdx);
                   }
                 }}
               >
@@ -908,10 +1166,7 @@ export const TangramPuzzleGameScreen: React.FC<TangramPuzzleGameScreenProps> = (
               <TouchableOpacity
                 style={styles.victoryReplayBtn}
                 activeOpacity={0.85}
-                onPress={() => {
-                  if (mode === 'tangram') startNewTangram(currentTangramIdx);
-                  else startNewJigsaw(currentJigsawIdx);
-                }}
+                onPress={resetCurrentPuzzle}
               >
                 <Text style={styles.victoryReplayText}>🔄 Xếp Lại Bài Này</Text>
               </TouchableOpacity>
@@ -931,6 +1186,177 @@ export const TangramPuzzleGameScreen: React.FC<TangramPuzzleGameScreenProps> = (
         </View>
       </Modal>
     </SafeAreaView>
+  );
+};
+
+// ============================================================
+// DRAGGABLE TANGRAM CARD COMPONENT
+// ============================================================
+interface DraggableTangramCardProps {
+  piece: TangramPiece;
+  isSelected: boolean;
+  onTap: () => void;
+  onDragHover: (pieceId: string, moveX: number, moveY: number) => void;
+  onDragRelease: (pieceId: string, dropX: number, dropY: number) => void;
+}
+
+const DraggableTangramCard: React.FC<DraggableTangramCardProps> = ({
+  piece,
+  isSelected,
+  onTap,
+  onDragHover,
+  onDragRelease,
+}) => {
+  const pan = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const isDragging = useRef(false);
+
+  const onDragHoverRef = useRef(onDragHover);
+  const onDragReleaseRef = useRef(onDragRelease);
+  const onTapRef = useRef(onTap);
+
+  useEffect(() => {
+    onDragHoverRef.current = onDragHover;
+    onDragReleaseRef.current = onDragRelease;
+    onTapRef.current = onTap;
+  });
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return Math.abs(gestureState.dx) > 3 || Math.abs(gestureState.dy) > 3;
+      },
+      onPanResponderGrant: () => {
+        isDragging.current = false;
+        Animated.spring(scaleAnim, { toValue: 1.18, friction: 4, useNativeDriver: false }).start();
+      },
+      onPanResponderMove: (_, gestureState) => {
+        if (Math.abs(gestureState.dx) > 4 || Math.abs(gestureState.dy) > 4) {
+          isDragging.current = true;
+        }
+        pan.setValue({ x: gestureState.dx, y: gestureState.dy });
+        onDragHoverRef.current(piece.id, gestureState.moveX, gestureState.moveY);
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        Animated.spring(scaleAnim, { toValue: 1, friction: 5, useNativeDriver: false }).start();
+        if (isDragging.current) {
+          onDragReleaseRef.current(piece.id, gestureState.moveX, gestureState.moveY);
+          Animated.spring(pan, { toValue: { x: 0, y: 0 }, friction: 5, useNativeDriver: false }).start();
+        } else {
+          onTapRef.current();
+          Animated.spring(pan, { toValue: { x: 0, y: 0 }, friction: 5, useNativeDriver: false }).start();
+        }
+      },
+      onPanResponderTerminate: () => {
+        Animated.spring(scaleAnim, { toValue: 1, friction: 5, useNativeDriver: false }).start();
+        Animated.spring(pan, { toValue: { x: 0, y: 0 }, friction: 5, useNativeDriver: false }).start();
+      },
+    })
+  ).current;
+
+  return (
+    <Animated.View
+      {...panResponder.panHandlers}
+      style={[
+        styles.pieceCard,
+        {
+          backgroundColor: piece.color,
+          borderColor: piece.borderColor,
+          transform: [...pan.getTranslateTransform(), { scale: scaleAnim }],
+          zIndex: isSelected ? 999 : 10,
+        },
+        isSelected && styles.pieceCardSelected,
+      ]}
+    >
+      <Text style={styles.pieceCardEmoji}>{piece.emoji}</Text>
+      <Text style={styles.pieceCardName}>{piece.name}</Text>
+    </Animated.View>
+  );
+};
+
+// ============================================================
+// DRAGGABLE JIGSAW CARD COMPONENT
+// ============================================================
+interface DraggableJigsawCardProps {
+  piece: JigsawPiece;
+  isSelected: boolean;
+  onTap: () => void;
+  onDragHover: (piece: JigsawPiece, moveX: number, moveY: number) => void;
+  onDragRelease: (piece: JigsawPiece, dropX: number, dropY: number) => void;
+}
+
+const DraggableJigsawCard: React.FC<DraggableJigsawCardProps> = ({
+  piece,
+  isSelected,
+  onTap,
+  onDragHover,
+  onDragRelease,
+}) => {
+  const pan = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const isDragging = useRef(false);
+
+  const onDragHoverRef = useRef(onDragHover);
+  const onDragReleaseRef = useRef(onDragRelease);
+  const onTapRef = useRef(onTap);
+
+  useEffect(() => {
+    onDragHoverRef.current = onDragHover;
+    onDragReleaseRef.current = onDragRelease;
+    onTapRef.current = onTap;
+  });
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return Math.abs(gestureState.dx) > 3 || Math.abs(gestureState.dy) > 3;
+      },
+      onPanResponderGrant: () => {
+        isDragging.current = false;
+        Animated.spring(scaleAnim, { toValue: 1.18, friction: 4, useNativeDriver: false }).start();
+      },
+      onPanResponderMove: (_, gestureState) => {
+        if (Math.abs(gestureState.dx) > 4 || Math.abs(gestureState.dy) > 4) {
+          isDragging.current = true;
+        }
+        pan.setValue({ x: gestureState.dx, y: gestureState.dy });
+        onDragHoverRef.current(piece, gestureState.moveX, gestureState.moveY);
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        Animated.spring(scaleAnim, { toValue: 1, friction: 5, useNativeDriver: false }).start();
+        if (isDragging.current) {
+          onDragReleaseRef.current(piece, gestureState.moveX, gestureState.moveY);
+          Animated.spring(pan, { toValue: { x: 0, y: 0 }, friction: 5, useNativeDriver: false }).start();
+        } else {
+          onTapRef.current();
+          Animated.spring(pan, { toValue: { x: 0, y: 0 }, friction: 5, useNativeDriver: false }).start();
+        }
+      },
+      onPanResponderTerminate: () => {
+        Animated.spring(scaleAnim, { toValue: 1, friction: 5, useNativeDriver: false }).start();
+        Animated.spring(pan, { toValue: { x: 0, y: 0 }, friction: 5, useNativeDriver: false }).start();
+      },
+    })
+  ).current;
+
+  return (
+    <Animated.View
+      {...panResponder.panHandlers}
+      style={[
+        styles.jigsawPieceCard,
+        {
+          backgroundColor: piece.color,
+          transform: [...pan.getTranslateTransform(), { scale: scaleAnim }],
+          zIndex: isSelected ? 999 : 10,
+        },
+        isSelected && styles.jigsawPieceCardSelected,
+      ]}
+    >
+      <Text style={styles.jigsawCardEmoji}>{piece.emoji}</Text>
+      <Text style={styles.jigsawCardLabel}>{piece.label}</Text>
+    </Animated.View>
   );
 };
 
@@ -1081,7 +1507,7 @@ const styles = StyleSheet.create({
   tangramBoard: {
     borderRadius: 24,
     position: 'relative',
-    overflow: 'hidden',
+    overflow: 'visible',
     borderWidth: 4,
     borderColor: '#4F46E5',
     shadowColor: '#000',
@@ -1100,6 +1526,12 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 3,
   },
+  slotTouchable: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   placedPieceEmoji: {
     fontSize: 20,
   },
@@ -1108,6 +1540,18 @@ const styles = StyleSheet.create({
     color: 'rgba(0, 0, 0, 0.5)',
     fontWeight: '800',
     textAlign: 'center',
+  },
+  pieceHoveredText: {
+    fontSize: 10,
+    color: '#92400E',
+    fontWeight: '900',
+    textAlign: 'center',
+  },
+  jigsawHoveredHint: {
+    fontSize: 10,
+    color: '#B45309',
+    fontWeight: '900',
+    marginTop: 2,
   },
   jigsawBoard: {
     width: 250,
