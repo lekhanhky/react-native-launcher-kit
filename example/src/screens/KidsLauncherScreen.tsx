@@ -29,6 +29,9 @@ import { ColoringGameScreen } from './ColoringGameScreen';
 import { SortingGameScreen } from './SortingGameScreen';
 import { MazeGameScreen } from './MazeGameScreen';
 import { TangramPuzzleGameScreen } from './TangramPuzzleGameScreen';
+import { MathQuizGameScreen } from './MathQuizGameScreen';
+import { WordSpellingGameScreen } from './WordSpellingGameScreen';
+import { ConnectDotsGameScreen } from './ConnectDotsGameScreen';
 import { LockOverlay } from '../components/LockOverlay';
 import { ParentPinModal } from '../components/ParentPinModal';
 import { DeviceAdminGuideModal } from '../components/DeviceAdminGuideModal';
@@ -79,6 +82,15 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
 
   // Tangram Puzzle Game Screen state
   const [showTangramGame, setShowTangramGame] = useState<boolean>(false);
+
+  // Math Quiz Game Screen state
+  const [showMathGame, setShowMathGame] = useState<boolean>(false);
+
+  // Word Spelling Game Screen state
+  const [showWordSpellingGame, setShowWordSpellingGame] = useState<boolean>(false);
+
+  // Connect Dots Game Screen state
+  const [showConnectDotsGame, setShowConnectDotsGame] = useState<boolean>(false);
 
   // Device Admin Guide Modal state
   const [showAdminGuideModal, setShowAdminGuideModal] = useState<boolean>(false);
@@ -139,10 +151,31 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
         icon: '',
       };
 
+      // Game 6: Bé vui học toán & Đua tốc độ
+      const mathGameApp: AppDetail = {
+        label: 'Bé Học Toán',
+        packageName: 'internal.game.math',
+        icon: '',
+      };
+
+      // Game 7: Ghép vần & Nối từ tiếng Việt
+      const wordSpellingApp: AppDetail = {
+        label: 'Ghép Vần',
+        packageName: 'internal.game.wordspelling',
+        icon: '',
+      };
+
       // Game 8: Mê cung tìm đường về tổ
       const mazeGameApp: AppDetail = {
         label: 'Mê Cung Kỳ Thú',
         packageName: 'internal.game.maze',
+        icon: '',
+      };
+
+      // Game 9: Nối điểm theo thứ tự số
+      const connectDotsApp: AppDetail = {
+        label: 'Nối Điểm Số',
+        packageName: 'internal.game.connectdots',
         icon: '',
       };
 
@@ -153,6 +186,19 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
         icon: '',
       };
 
+      const allKidsGames = [
+        memoryGameApp,
+        bubblePopApp,
+        animalSoundApp,
+        coloringGameApp,
+        sortingGameApp,
+        mathGameApp,
+        wordSpellingApp,
+        mazeGameApp,
+        connectDotsApp,
+        tangramGameApp,
+      ];
+
       // Thêm ứng dụng YouTube an toàn nếu phụ huynh cho phép
       if (youtubeService.isYouTubeEnabled()) {
         const ytApp: AppDetail = {
@@ -160,9 +206,9 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
           packageName: 'internal.safe.youtube',
           icon: '',
         };
-        filtered = [memoryGameApp, bubblePopApp, animalSoundApp, coloringGameApp, sortingGameApp, mazeGameApp, tangramGameApp, ytApp, ...filtered];
+        filtered = [...allKidsGames, ytApp, ...filtered];
       } else {
-        filtered = [memoryGameApp, bubblePopApp, animalSoundApp, coloringGameApp, sortingGameApp, mazeGameApp, tangramGameApp, ...filtered];
+        filtered = [...allKidsGames, ...filtered];
       }
 
       setVisibleApps(filtered);
@@ -274,6 +320,18 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
         setShowMazeGame(false);
         return true;
       }
+      if (showMathGame) {
+        setShowMathGame(false);
+        return true;
+      }
+      if (showWordSpellingGame) {
+        setShowWordSpellingGame(false);
+        return true;
+      }
+      if (showConnectDotsGame) {
+        setShowConnectDotsGame(false);
+        return true;
+      }
       if (showTangramGame) {
         setShowTangramGame(false);
         return true;
@@ -301,7 +359,10 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
     showAnimalSoundGame,
     showColoringGame,
     showSortingGame,
+    showMathGame,
+    showWordSpellingGame,
     showMazeGame,
+    showConnectDotsGame,
     showTangramGame,
     showYouTubeScreen,
     showSettingsScreen,
@@ -344,9 +405,27 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
       return;
     }
 
+    // Mở Game 6: Bé Vui Học Toán & Đua Tốc Độ
+    if (packageName === 'internal.game.math') {
+      setShowMathGame(true);
+      return;
+    }
+
+    // Mở Game 7: Ghép Vần & Nối Từ Tiếng Việt
+    if (packageName === 'internal.game.wordspelling') {
+      setShowWordSpellingGame(true);
+      return;
+    }
+
     // Mở Game 8: Mê Cung Tìm Đường Về Tổ
     if (packageName === 'internal.game.maze') {
       setShowMazeGame(true);
+      return;
+    }
+
+    // Mở Game 9: Nối Điểm Theo Thứ Tự Số
+    if (packageName === 'internal.game.connectdots') {
+      setShowConnectDotsGame(true);
       return;
     }
 
@@ -441,6 +520,16 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
     );
   }
 
+  // Mở màn hình Game 6: Bé Vui Học Toán & Đua Tốc Độ
+  if (showMathGame) {
+    return <MathQuizGameScreen onClose={() => setShowMathGame(false)} />;
+  }
+
+  // Mở màn hình Game 7: Ghép Vần & Nối Từ Tiếng Việt
+  if (showWordSpellingGame) {
+    return <WordSpellingGameScreen onClose={() => setShowWordSpellingGame(false)} />;
+  }
+
   // Mở màn hình Game 8: Mê Cung Tìm Đường
   if (showMazeGame) {
     return (
@@ -449,6 +538,11 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
         onClose={() => setShowMazeGame(false)}
       />
     );
+  }
+
+  // Mở màn hình Game 9: Nối Điểm Theo Số
+  if (showConnectDotsGame) {
+    return <ConnectDotsGameScreen onClose={() => setShowConnectDotsGame(false)} />;
   }
 
   // Mở màn hình Game 10: Xếp Hình Trí Tuệ Tangram / Jigsaw
@@ -583,6 +677,9 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
             const isColoringGame = item.packageName === 'internal.game.coloring';
             const isSortingGame = item.packageName === 'internal.game.sorting';
             const isMazeGame = item.packageName === 'internal.game.maze';
+            const isMathGame = item.packageName === 'internal.game.math';
+            const isWordSpelling = item.packageName === 'internal.game.wordspelling';
+            const isConnectDots = item.packageName === 'internal.game.connectdots';
             const isTangramGame = item.packageName === 'internal.game.tangram';
             return (
               <TouchableOpacity
@@ -621,10 +718,28 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
                       <Text style={styles.sortingEmojiIcon}>♻️</Text>
                     </View>
                   </View>
+                ) : isMathGame ? (
+                  <View style={[styles.appIcon, styles.mathIconContainer]}>
+                    <View style={styles.mathInnerBadge}>
+                      <Text style={styles.mathEmojiIcon}>🧮</Text>
+                    </View>
+                  </View>
+                ) : isWordSpelling ? (
+                  <View style={[styles.appIcon, styles.wordSpellingIconContainer]}>
+                    <View style={styles.wordSpellingInnerBadge}>
+                      <Text style={styles.wordSpellingEmojiIcon}>📝</Text>
+                    </View>
+                  </View>
                 ) : isMazeGame ? (
                   <View style={[styles.appIcon, styles.mazeIconContainer]}>
                     <View style={styles.mazeInnerBadge}>
                       <Text style={styles.mazeEmojiIcon}>🌀</Text>
+                    </View>
+                  </View>
+                ) : isConnectDots ? (
+                  <View style={[styles.appIcon, styles.connectDotsIconContainer]}>
+                    <View style={styles.connectDotsInnerBadge}>
+                      <Text style={styles.connectDotsEmojiIcon}>🔢</Text>
                     </View>
                   </View>
                 ) : isTangramGame ? (
@@ -984,6 +1099,54 @@ const styles = StyleSheet.create({
     fontSize: 24,
   },
 
+  // GAME 6: MATH QUIZ ICON
+  mathIconContainer: {
+    backgroundColor: '#3B82F6',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#1D4ED8',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 4,
+  },
+  mathInnerBadge: {
+    width: 44,
+    height: 44,
+    backgroundColor: '#DBEAFE',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  mathEmojiIcon: {
+    fontSize: 24,
+  },
+
+  // GAME 7: WORD SPELLING ICON
+  wordSpellingIconContainer: {
+    backgroundColor: '#059669',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#047857',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 4,
+  },
+  wordSpellingInnerBadge: {
+    width: 44,
+    height: 44,
+    backgroundColor: '#ECFDF5',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  wordSpellingEmojiIcon: {
+    fontSize: 24,
+  },
+
   // GAME 8: MAZE GAME ICON
   mazeIconContainer: {
     backgroundColor: '#0284C7',
@@ -1005,6 +1168,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   mazeEmojiIcon: {
+    fontSize: 24,
+  },
+
+  // GAME 9: CONNECT DOTS ICON
+  connectDotsIconContainer: {
+    backgroundColor: '#0D9488',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#0F766E',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 4,
+  },
+  connectDotsInnerBadge: {
+    width: 44,
+    height: 44,
+    backgroundColor: '#CCFBF1',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  connectDotsEmojiIcon: {
     fontSize: 24,
   },
 

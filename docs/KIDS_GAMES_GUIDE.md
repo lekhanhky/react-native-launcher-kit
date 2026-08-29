@@ -67,14 +67,23 @@
 
 ---
 
-#### 🐶 3. Nghe Tiếng Đoán Con Vật (Animal Sound Explorer)
-* **Độ tuổi**: 3 – 5 tuổi
-* **Lợi ích**: Phát triển thính giác, mở rộng vốn hiểu biết về thế giới tự nhiên.
+#### 🐶 3. Nghe Tiếng Đoán Con Vật & Màu Sắc Song Ngữ (Animal Sound & Color Explorer)
+* **Độ tuổi**: 2 – 6 tuổi
+* **Lợi ích**: Phát triển thính giác, tư duy ngôn ngữ song ngữ kép (Việt - Anh), nhận biết màu sắc và thế giới tự nhiên.
 * **Cách chơi**:
-  - Ứng dụng phát âm thanh kêu đặc trưng (Tiếng Hổ gầm, Vịt cạp cạp, Chim hót...).
-  - Trên màn hình xuất hiện 3 thẻ hình ảnh con vật ngộ nghĩnh.
-  - Bé chạm chọn con vật đúng: Con vật sẽ nhảy múa, phát tên tiếng Việt và tiếng kêu lần nữa để bé ghi nhớ.
-* **Kỹ thuật**: Phát audio mp3 ngắn, kết hợp ảnh động GIF/Lottie.
+  - **3 Chế độ ngôn ngữ linh hoạt**: 🇻🇳 *Tiếng Việt*, 🇬🇧 *Tiếng Anh*, 🌐 *Song Ngữ Toàn Diện* (kèm phiên âm quốc tế `IPA`).
+  - **3 Dạng câu đố thông minh (Quiz Modes)**:
+    - 🔊 **Đoán Tiếng Kêu (Sound Quiz)**: Ứng dụng phát âm thanh kêu thực tế (`sound_mp3_url`), bé chạm chọn đúng con vật.
+    - 🎨 **Đoán Màu Sắc (Color Quiz)**: Bé học nhận diện màu đặc trưng (*"Chú Heo con màu gì?"* $\rightarrow$ Chọn thẻ *Màu Hồng / Pink* từ bảng `kids_colors`).
+    - 🏡 **Đoán Nơi Sống (Habitat Quiz)**: Đố môi trường sống (*Nông Trại, Rừng Xanh, Đại Dương, Bầu Trời* từ bảng `kids_habitats`).
+  - **Chế độ Bách Khoa Khám Phá (Interactive Explorer & Flashcards)**:
+    - Lọc động vật theo môi trường sống.
+    - Chạm vào từng con vật để nghe tiếng kêu, phát âm giọng đọc bản xứ (`voice_en_url`, `voice_vi_url`), xem ảnh HD (`image_url`) và mở hộp tri thức (Sự thật thú vị, Thức ăn yêu thích).
+* **Kỹ thuật & Đám Mây**:
+  - Đồng bộ động từ Supabase Database (`kids_animals`, `kids_colors`, `kids_habitats`).
+  - Phát âm thanh trực tuyến kết hợp **Offline-First Cache (`MMKV`)** giúp bé chơi mượt mà khi không có mạng.
+  - Lưu trữ kết quả và tiến độ học tập vào bảng `kids_animal_learning_logs`.
+  - 📖 *Xem tài liệu chi tiết*: [ANIMAL_GAME_SUPABASE_BILINGUAL_GUIDE.md](file:///c:/react-native-launcher-kit/docs/ANIMAL_GAME_SUPABASE_BILINGUAL_GUIDE.md)
 
 ---
 

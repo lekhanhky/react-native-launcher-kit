@@ -946,7 +946,7 @@ const styles = StyleSheet.create({
   },
   playerEmoji: {},
   controlsSection: {
-    paddingBottom: 14,
+    paddingBottom: 38,
     alignItems: 'center',
   },
   dpadContainer: {

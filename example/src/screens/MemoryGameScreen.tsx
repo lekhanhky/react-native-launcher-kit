@@ -506,7 +506,7 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
     alignItems: 'center',
-    paddingBottom: 40,
+    paddingBottom: 70,
   },
 
   /* FILTER SECTION */

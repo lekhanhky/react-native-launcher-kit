@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import {
   YouTubeChannel,
+  YouTubeVideo,
   youtubeService,
 } from '../services/youtubeService';
 import { ThemeConfig } from '../services/themes';
@@ -256,6 +257,7 @@ export const KidsYouTubeScreen: React.FC<KidsYouTubeScreenProps> = ({
         {selectedChannelForDetail && (
           <YouTubeVideoDetailScreen
             channel={selectedChannelForDetail}
+            initialVideo={youtubeService.getVideosForChannel(selectedChannelForDetail)[0]}
             onClose={() => setSelectedChannelForDetail(null)}
           />
         )}

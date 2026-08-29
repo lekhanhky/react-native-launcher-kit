@@ -3,9 +3,9 @@
  * Fast, lightweight and zero native dependency footprint
  */
 
-export const SUPABASE_URL = 'https://meqijrlstoyjcvletmgi.supabase.co';
+export const SUPABASE_URL = 'https://jlfemayqttjcfjualfsv.supabase.co';
 export const SUPABASE_ANON_KEY =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1lcWlqcmxzdG95amN2bGV0bWdpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzNjc2NTEsImV4cCI6MjEwMDk0MzY1MX0.-b-mjfDmk7n_SmGytryR1OZ_FH7INWHb-7lvwxGwwOw';
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpsZmVtYXlxdHRqY2ZqdWFsZnN2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc3Mzc0NzEsImV4cCI6MjEwMzMxMzQ3MX0.rUNun-PUw_e0Mg1WBUvMmoEJbG8GkagIn8QRP4ZGsRk';
 
 export interface SupabaseResponse<T = any> {
   data: T | null;

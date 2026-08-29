@@ -34,30 +34,11 @@ export const YouTubeVideoDetailScreen: React.FC<YouTubeVideoDetailScreenProps> =
   const { width } = useWindowDimensions();
   const playerHeight = Math.round((width * 9) / 16);
 
-  // 1. Chỉ lấy danh sách video thuộc về kênh này
-  const [channelVideos, setChannelVideos] = useState<YouTubeVideo[]>(() =>
-    channel ? youtubeService.getVideosForChannel(channel) : []
-  );
+  // 1. Lấy danh sách video thuộc kênh này
+  const [channelVideos, setChannelVideos] = useState<YouTubeVideo[]>([]);
 
-  // 2. Video đang phát hiện tại
-  const [activeVideo, setActiveVideo] = useState<YouTubeVideo>(() => {
-    if (initialVideo) return initialVideo;
-    const initialList = channel ? youtubeService.getVideosForChannel(channel) : [];
-    if (initialList.length > 0) return initialList[0];
-    return {
-      id: 'default_video',
-      videoId: channel?.sampleVideoId || 'WRVsOCh907o',
-      title: `${channel?.name || 'Kênh YouTube'} - Video đặc sắc cho bé`,
-      channelId: channel?.id || 'cocomelon',
-      channelName: channel?.name || 'Kênh Thiếu Nhi',
-      channelAvatar: channel?.avatar || `https://img.youtube.com/vi/${channel?.sampleVideoId || 'WRVsOCh907o'}/hqdefault.jpg`,
-      category: 'music',
-      duration: '04:30',
-      thumbnail: `https://img.youtube.com/vi/${channel?.sampleVideoId || 'WRVsOCh907o'}/hqdefault.jpg`,
-      views: '5.8 Tr lượt xem',
-      publishedAt: '1 tuần trước',
-    };
-  });
+  // 2. Video đang phát hiện tại  
+  const [activeVideo, setActiveVideo] = useState<YouTubeVideo | null>(null);
 
   const [isPlaying, setIsPlaying] = useState<boolean>(true);
   const [isLiked, setIsLiked] = useState<boolean>(false);
@@ -65,20 +46,57 @@ export const YouTubeVideoDetailScreen: React.FC<YouTubeVideoDetailScreenProps> =
 
   // Cập nhật khi channel thay đổi & tải thêm video thực tế của kênh
   useEffect(() => {
-    const list = youtubeService.getVideosForChannel(channel);
-    setChannelVideos(list);
+    if (!channel) return;
 
-    if (initialVideo) {
+    const list = youtubeService.getVideosForChannel(channel);
+
+    // Ưu tiên: initialVideo > video đầu tiên trong list
+    if (initialVideo && initialVideo.channelId === channel.id) {
+      setChannelVideos(list);
       setActiveVideo(initialVideo);
-    } else if (list.length > 0) {
+    } else if (list.length > 0 && list[0].channelId === channel.id) {
+      // Video local đã tồn tại và đúng kênh → hiển thị ngay
+      setChannelVideos(list);
       setActiveVideo(list[0]);
+    } else {
+      // Chưa có video local cho kênh này → fetch thật từ YouTube trước
+      // KHÔNG dùng fallback hardcoded vì sẽ phát video kênh khác
+      setChannelVideos([]);
+      setActiveVideo(null); // Hiển thị loading...
+
+      youtubeService.fetchAndSaveChannelVideos(channel).then(() => {
+        const fetched = youtubeService.getVideosForChannel(channel);
+        if (fetched.length > 0) {
+          setChannelVideos(fetched);
+          setActiveVideo(fetched[0]);
+        } else {
+          // Fetch thất bại → tạo video từ sampleVideoId của chính kênh này
+          const vidId = channel.sampleVideoId || channel.id;
+          const fallbackVideo: YouTubeVideo = {
+            id: `fallback_${channel.id}`,
+            videoId: vidId,
+            title: `${channel.name} - Video đặc sắc cho bé`,
+            channelId: channel.id,
+            channelName: channel.name,
+            channelAvatar: channel.avatar || `https://img.youtube.com/vi/${vidId}/hqdefault.jpg`,
+            category: 'music',
+            duration: '04:30',
+            thumbnail: `https://img.youtube.com/vi/${vidId}/hqdefault.jpg`,
+            views: '1.2 Tr lượt xem',
+            publishedAt: 'Mới cập nhật',
+          };
+          setChannelVideos([fallbackVideo]);
+          setActiveVideo(fallbackVideo);
+        }
+      });
+      return; // Không cần chạy fetch bên dưới nữa
     }
 
-    // Tự động tải thêm video thực tế từ YouTube của kênh này nếu danh sách còn ít
+    // Nếu có video local nhưng ít → fetch thêm ở background
     if (list.length <= 2) {
       youtubeService.fetchAndSaveChannelVideos(channel).then(() => {
         const updated = youtubeService.getVideosForChannel(channel);
-        if (updated.length > 0) {
+        if (updated.length > list.length) {
           setChannelVideos(updated);
         }
       });
@@ -87,12 +105,28 @@ export const YouTubeVideoDetailScreen: React.FC<YouTubeVideoDetailScreenProps> =
 
   // Xử lý chia sẻ video
   const handleShare = async () => {
+    if (!activeVideo) return;
     try {
       await Share.share({
         message: `Xem video "${activeVideo.title}" trên Kids Launcher: https://youtu.be/${activeVideo.videoId}`,
       });
     } catch {}
   };
+
+  if (!activeVideo) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+        <View style={styles.topBar}>
+          <TouchableOpacity style={styles.backBtn} onPress={onClose} activeOpacity={0.7}>
+            <Text style={styles.backArrow}>←</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Đang tải video...</Text>
+          <View style={{ width: 40 }} />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>

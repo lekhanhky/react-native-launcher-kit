@@ -208,6 +208,9 @@ export const SortingGameScreen: React.FC<SortingGameScreenProps> = ({ onClose })
   const victoryScale = useRef(new Animated.Value(0.3)).current;
   const shakeAnim = useRef(new Animated.Value(0)).current;
 
+  // Ref để PanResponder luôn gọi được hàm xử lý mới nhất (tránh stale closure)
+  const handleDropRef = useRef<(bin: SortTargetBin) => void>(() => {});
+
   // Khởi tạo animation scale cho từng thùng
   activeBins.forEach((bin) => {
     if (!binScaleAnim[bin.id]) {
@@ -215,8 +218,11 @@ export const SortingGameScreen: React.FC<SortingGameScreenProps> = ({ onClose })
     }
   });
 
+  const isDroppingRef = useRef(false);
+
   // 1. Khởi động màn chơi mới
   const startNewGame = useCallback((targetMode: SortingCategoryMode) => {
+    isDroppingRef.current = false;
     let bins = RECYCLE_BINS;
     let pool = [...RECYCLE_ITEMS];
 
@@ -254,10 +260,10 @@ export const SortingGameScreen: React.FC<SortingGameScreenProps> = ({ onClose })
   // Rung lắc khi trả lời sai
   const triggerShake = () => {
     Animated.sequence([
-      Animated.timing(shakeAnim, { toValue: 10, duration: 60, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: -10, duration: 60, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: 6, duration: 60, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: 0, duration: 60, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 10, duration: 60, useNativeDriver: false }),
+      Animated.timing(shakeAnim, { toValue: -10, duration: 60, useNativeDriver: false }),
+      Animated.timing(shakeAnim, { toValue: 6, duration: 60, useNativeDriver: false }),
+      Animated.timing(shakeAnim, { toValue: 0, duration: 60, useNativeDriver: false }),
     ]).start();
   };
 
@@ -273,7 +279,10 @@ export const SortingGameScreen: React.FC<SortingGameScreenProps> = ({ onClose })
 
   // 2. Xử lý khi bé phân loại vào thùng (Dù bằng Kéo thả hay Chạm nút)
   const handleDropIntoBin = useCallback((targetBin: SortTargetBin) => {
-    if (!currentItem || feedbackState !== 'idle') return;
+    if (!currentItem || feedbackState !== 'idle') {
+      isDroppingRef.current = false;
+      return;
+    }
 
     if (currentItem.targetBinId === targetBin.id) {
       // ✅ ĐÚNG!
@@ -285,7 +294,7 @@ export const SortingGameScreen: React.FC<SortingGameScreenProps> = ({ onClose })
 
       // Hiệu ứng thu nhỏ vật phẩm vào thùng
       Animated.parallel([
-        Animated.timing(itemScale, { toValue: 0.1, duration: 250, useNativeDriver: true }),
+        Animated.timing(itemScale, { toValue: 0.1, duration: 250, useNativeDriver: false }),
       ]).start(() => {
         const nextSorted = sortedCount + 1;
         setSortedCount(nextSorted);
@@ -299,6 +308,7 @@ export const SortingGameScreen: React.FC<SortingGameScreenProps> = ({ onClose })
           setHintActive(false);
           pan.setValue({ x: 0, y: 0 });
           itemScale.setValue(1);
+          isDroppingRef.current = false;
         } else {
           // 🎉 Chiến thắng toàn bộ màn chơi!
           setIsVictory(true);
@@ -308,6 +318,7 @@ export const SortingGameScreen: React.FC<SortingGameScreenProps> = ({ onClose })
             tension: 50,
             useNativeDriver: true,
           }).start();
+          isDroppingRef.current = false;
         }
       });
     } else {
@@ -325,47 +336,78 @@ export const SortingGameScreen: React.FC<SortingGameScreenProps> = ({ onClose })
       }).start(() => {
         setTimeout(() => {
           setFeedbackState('idle');
+          isDroppingRef.current = false;
         }, 1200);
       });
     }
   }, [currentItem, feedbackState, combo, sortedCount, remainingItems, itemScale, pan, victoryScale]);
+
+  // Cập nhật ref mỗi khi hàm được tạo mới (đảm bảo PanResponder dùng đúng version)
+  handleDropRef.current = handleDropIntoBin;
+
+  const hoveredBinRef = useRef<string | null>(null);
 
   // 3. Kéo thả đồ vật qua PanResponder
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onPanResponderGrant: () => {
-        Animated.spring(itemScale, { toValue: 1.15, useNativeDriver: true }).start();
+        Animated.spring(itemScale, { toValue: 1.15, useNativeDriver: false }).start();
+        hoveredBinRef.current = null;
       },
-      onPanResponderMove: Animated.event([null, { dx: pan.x, dy: pan.y }], { useNativeDriver: false }),
-      onPanResponderRelease: (e, gestureState) => {
-        Animated.spring(itemScale, { toValue: 1, useNativeDriver: true }).start();
-
+      onPanResponderMove: (e, gestureState) => {
+        pan.setValue({ x: gestureState.dx, y: gestureState.dy });
+        
+        const { width: screenW, height: screenH } = require('react-native').Dimensions.get('window');
         const dropX = gestureState.moveX;
         const dropY = gestureState.moveY;
 
-        let droppedBin: SortTargetBin | null = null;
+        let currentlyHoveredId = null;
 
-        // Kiểm tra xem vị trí thả có nằm trong khung thùng chứa nào không
-        for (const bin of activeBins) {
-          const layout = binLayouts.current[bin.id];
-          if (layout) {
-            if (
-              dropX >= layout.x &&
-              dropX <= layout.x + layout.width &&
-              dropY >= layout.y &&
-              dropY <= layout.y + layout.height
-            ) {
-              droppedBin = bin;
-              break;
-            }
+        // Xác định xem ngón tay đang ở vùng của thùng nào (33% dưới màn hình)
+        if (dropY > screenH * 0.33 && gestureState.numberActiveTouches > 0) {
+          const binIndex = Math.floor(dropX / (screenW / activeBins.length));
+          if (binIndex >= 0 && binIndex < activeBins.length) {
+            currentlyHoveredId = activeBins[binIndex].id;
           }
         }
 
+        // Cập nhật hiệu ứng phình to cho thùng đang được lướt qua
+        if (currentlyHoveredId !== hoveredBinRef.current) {
+          activeBins.forEach((bin) => {
+            if (binScaleAnim[bin.id]) {
+               Animated.spring(binScaleAnim[bin.id], { 
+                 toValue: bin.id === currentlyHoveredId ? 1.15 : 1, 
+                 useNativeDriver: true 
+               }).start();
+            }
+          });
+          hoveredBinRef.current = currentlyHoveredId;
+        }
+      },
+      onPanResponderRelease: (e, gestureState) => {
+        Animated.spring(itemScale, { toValue: 1, useNativeDriver: false }).start();
+        
+        let droppedBin: SortTargetBin | null = null;
+
+        // Nếu lúc buông tay ra, có thùng đang được hút (lưu trong hoveredBinRef)
+        if (hoveredBinRef.current) {
+          droppedBin = activeBins.find((b) => b.id === hoveredBinRef.current) || null;
+          
+          // Reset hiệu ứng phình to của tất cả các thùng khi nhấc ngón tay lên
+          activeBins.forEach((bin) => {
+            if (binScaleAnim[bin.id]) {
+               Animated.spring(binScaleAnim[bin.id], { toValue: 1, useNativeDriver: true }).start();
+            }
+          });
+          hoveredBinRef.current = null;
+        }
+
         if (droppedBin) {
-          handleDropIntoBin(droppedBin);
+          // Xử lý kiểm tra đúng/sai và xuất hiện thông báo - gọi qua ref để tránh stale closure
+          handleDropRef.current(droppedBin);
         } else {
-          // Bay trở về vị trí cũ nếu thả ra ngoài
+          // Bay trở về vị trí cũ nếu thả ra ngoài không trúng thùng nào
           Animated.spring(pan, {
             toValue: { x: 0, y: 0 },
             friction: 5,
@@ -820,7 +862,7 @@ const styles = StyleSheet.create({
   binsSection: {
     backgroundColor: '#065F46',
     paddingTop: 10,
-    paddingBottom: 16,
+    paddingBottom: 38,
     paddingHorizontal: 10,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,

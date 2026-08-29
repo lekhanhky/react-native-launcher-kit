@@ -289,110 +289,423 @@ export const DISCOVERY_CHANNELS_CATALOG: YouTubeChannel[] = [
 ];
 
 export const DEFAULT_CURATED_VIDEOS: YouTubeVideo[] = [
+  // ====== SUPER SIMPLE SONGS ======
   {
-    id: 'yt_1',
-    videoId: '71_hD4v25xo',
+    id: 'yt_1', videoId: '71_hD4v25xo',
     title: 'Twinkle Twinkle Little Star - Bài hát ru bé ngủ ngon hay nhất',
-    channelId: 'super_simple_songs',
-    channelName: 'Super Simple Songs',
+    channelId: 'super_simple_songs', channelName: 'Super Simple Songs',
     channelAvatar: 'https://img.youtube.com/vi/71_hD4v25xo/hqdefault.jpg',
-    channelEmoji: '🎶',
-    channelColor: '#0284C7',
-    category: 'music',
-    duration: '03:12',
-    thumbnail: 'https://img.youtube.com/vi/71_hD4v25xo/hqdefault.jpg',
-    views: '2.1 Tr lượt xem',
-    publishedAt: '3 ngày trước',
+    channelEmoji: '🎶', channelColor: '#0284C7', category: 'music',
+    duration: '03:12', thumbnail: 'https://img.youtube.com/vi/71_hD4v25xo/hqdefault.jpg',
+    views: '2.1 Tr lượt xem', publishedAt: '3 ngày trước',
   },
   {
-    id: 'yt_2',
-    videoId: 'yCjJyiqpAuU',
-    title: 'The Wheels on the Bus Go Round and Round - Xe buýt trường học',
-    channelId: 'cocomelon',
-    channelName: 'Cocomelon Tiếng Anh',
-    channelAvatar: 'https://img.youtube.com/vi/yCjJyiqpAuU/hqdefault.jpg',
-    channelEmoji: '🍉',
-    channelColor: '#16A34A',
-    category: 'music',
-    duration: '03:30',
-    thumbnail: 'https://img.youtube.com/vi/yCjJyiqpAuU/hqdefault.jpg',
-    views: '5.8 Tr lượt xem',
-    publishedAt: '1 tuần trước',
-  },
-  {
-    id: 'yt_3',
-    videoId: 'hq3yfQnllfQ',
-    title: 'ABC Song - Bài hát bảng chữ cái tiếng Anh phát âm chuẩn bản xứ',
-    channelId: 'super_simple_songs',
-    channelName: 'Super Simple Songs',
-    channelAvatar: 'https://img.youtube.com/vi/71_hD4v25xo/hqdefault.jpg',
-    channelEmoji: '🎶',
-    channelColor: '#0284C7',
-    category: 'english',
-    duration: '04:05',
-    thumbnail: 'https://img.youtube.com/vi/hq3yfQnllfQ/hqdefault.jpg',
-    views: '1.4 Tr lượt xem',
-    publishedAt: '5 ngày trước',
-  },
-  {
-    id: 'yt_4',
-    videoId: 'WRVsOCh907o',
-    title: 'Bath Song - Bài Hát Giờ Đi Tắm Vui Nhộn Cho Bé',
-    channelId: 'cocomelon',
-    channelName: 'Cocomelon Tiếng Anh',
-    channelAvatar: 'https://img.youtube.com/vi/yCjJyiqpAuU/hqdefault.jpg',
-    channelEmoji: '🍉',
-    channelColor: '#16A34A',
-    category: 'music',
-    duration: '02:50',
-    thumbnail: 'https://img.youtube.com/vi/WRVsOCh907o/hqdefault.jpg',
-    views: '6.2 Tr lượt xem',
-    publishedAt: '2 tuần trước',
-  },
-  {
-    id: 'yt_5',
-    videoId: '_6HzoUcx3eo',
+    id: 'yt_sss_2', videoId: '_6HzoUcx3eo',
     title: 'Old MacDonald Had A Farm - Nông trại vui vẻ cùng các con vật',
-    channelId: 'super_simple_songs',
-    channelName: 'Super Simple Songs',
+    channelId: 'super_simple_songs', channelName: 'Super Simple Songs',
     channelAvatar: 'https://img.youtube.com/vi/71_hD4v25xo/hqdefault.jpg',
-    channelEmoji: '🎶',
-    channelColor: '#0284C7',
-    category: 'english',
-    duration: '03:40',
-    thumbnail: 'https://img.youtube.com/vi/_6HzoUcx3eo/hqdefault.jpg',
-    views: '3.6 Tr lượt xem',
-    publishedAt: '1 ngày trước',
+    channelEmoji: '🎶', channelColor: '#0284C7', category: 'english',
+    duration: '03:40', thumbnail: 'https://img.youtube.com/vi/_6HzoUcx3eo/hqdefault.jpg',
+    views: '3.6 Tr lượt xem', publishedAt: '1 ngày trước',
   },
   {
-    id: 'yt_6',
-    videoId: 'fF_l0C7u1tU',
+    id: 'yt_sss_3', videoId: 'hq3yfQnllfQ',
+    title: 'ABC Song - Bài hát bảng chữ cái tiếng Anh phát âm chuẩn bản xứ',
+    channelId: 'super_simple_songs', channelName: 'Super Simple Songs',
+    channelAvatar: 'https://img.youtube.com/vi/71_hD4v25xo/hqdefault.jpg',
+    channelEmoji: '🎶', channelColor: '#0284C7', category: 'english',
+    duration: '04:05', thumbnail: 'https://img.youtube.com/vi/hq3yfQnllfQ/hqdefault.jpg',
+    views: '1.4 Tr lượt xem', publishedAt: '5 ngày trước',
+  },
+  {
+    id: 'yt_sss_4', videoId: 'tpiyEe_CqB4',
+    title: 'Johny Johny Yes Papa - Bài học ngoan ngoãn với ba',
+    channelId: 'super_simple_songs', channelName: 'Super Simple Songs',
+    channelAvatar: 'https://img.youtube.com/vi/71_hD4v25xo/hqdefault.jpg',
+    channelEmoji: '🎶', channelColor: '#0284C7', category: 'music',
+    duration: '02:58', thumbnail: 'https://img.youtube.com/vi/tpiyEe_CqB4/hqdefault.jpg',
+    views: '4.8 Tr lượt xem', publishedAt: '2 tuần trước',
+  },
+
+  // ====== COCOMELON ======
+  {
+    id: 'yt_2', videoId: 'yCjJyiqpAuU',
+    title: 'The Wheels on the Bus Go Round and Round - Xe buýt trường học',
+    channelId: 'cocomelon', channelName: 'Cocomelon Tiếng Anh',
+    channelAvatar: 'https://img.youtube.com/vi/yCjJyiqpAuU/hqdefault.jpg',
+    channelEmoji: '🍉', channelColor: '#16A34A', category: 'music',
+    duration: '03:30', thumbnail: 'https://img.youtube.com/vi/yCjJyiqpAuU/hqdefault.jpg',
+    views: '5.8 Tr lượt xem', publishedAt: '1 tuần trước',
+  },
+  {
+    id: 'yt_coco_2', videoId: 'WRVsOCh907o',
+    title: 'Bath Song - Bài Hát Giờ Đi Tắm Vui Nhộn Cho Bé',
+    channelId: 'cocomelon', channelName: 'Cocomelon Tiếng Anh',
+    channelAvatar: 'https://img.youtube.com/vi/yCjJyiqpAuU/hqdefault.jpg',
+    channelEmoji: '🍉', channelColor: '#16A34A', category: 'music',
+    duration: '02:50', thumbnail: 'https://img.youtube.com/vi/WRVsOCh907o/hqdefault.jpg',
+    views: '6.2 Tr lượt xem', publishedAt: '2 tuần trước',
+  },
+  {
+    id: 'yt_coco_3', videoId: 'sXd6U3gI-1U',
+    title: 'Yes Yes Vegetables Song - Bài hát ăn rau củ bổ dưỡng',
+    channelId: 'cocomelon', channelName: 'Cocomelon Tiếng Anh',
+    channelAvatar: 'https://img.youtube.com/vi/yCjJyiqpAuU/hqdefault.jpg',
+    channelEmoji: '🍉', channelColor: '#16A34A', category: 'music',
+    duration: '02:45', thumbnail: 'https://img.youtube.com/vi/sXd6U3gI-1U/hqdefault.jpg',
+    views: '3.9 Tr lượt xem', publishedAt: '3 ngày trước',
+  },
+  {
+    id: 'yt_coco_4', videoId: 'IhbxVP1VBLo',
+    title: 'Finger Family - Gia đình ngón tay siêu dễ thương',
+    channelId: 'cocomelon', channelName: 'Cocomelon Tiếng Anh',
+    channelAvatar: 'https://img.youtube.com/vi/yCjJyiqpAuU/hqdefault.jpg',
+    channelEmoji: '🍉', channelColor: '#16A34A', category: 'music',
+    duration: '03:10', thumbnail: 'https://img.youtube.com/vi/IhbxVP1VBLo/hqdefault.jpg',
+    views: '7.1 Tr lượt xem', publishedAt: '5 ngày trước',
+  },
+
+  // ====== WOLFOO TIẾNG VIỆT ======
+  {
+    id: 'yt_6', videoId: 'fF_l0C7u1tU',
     title: 'Wolfoo - Những Thói Quen Tốt Hàng Ngày & Phép Lịch Sự Của Bé',
-    channelId: 'wolfoo_vn',
-    channelName: 'Wolfoo Tiếng Việt',
+    channelId: 'wolfoo_vn', channelName: 'Wolfoo Tiếng Việt',
     channelAvatar: 'https://img.youtube.com/vi/Y5yL4xPqYyo/hqdefault.jpg',
-    channelEmoji: '🐺',
-    channelColor: '#7C3AED',
-    category: 'cartoon',
-    duration: '10:15',
-    thumbnail: 'https://img.youtube.com/vi/fF_l0C7u1tU/hqdefault.jpg',
-    views: '4.2 Tr lượt xem',
-    publishedAt: '4 ngày trước',
+    channelEmoji: '🐺', channelColor: '#7C3AED', category: 'cartoon',
+    duration: '10:15', thumbnail: 'https://img.youtube.com/vi/fF_l0C7u1tU/hqdefault.jpg',
+    views: '4.2 Tr lượt xem', publishedAt: '4 ngày trước',
   },
   {
-    id: 'yt_7',
-    videoId: 'z0jQ9U_0NMo',
+    id: 'yt_wolfoo_2', videoId: 'Y5yL4xPqYyo',
+    title: 'Wolfoo Học Cách Chia Sẻ Và Yêu Thương Bạn Bè',
+    channelId: 'wolfoo_vn', channelName: 'Wolfoo Tiếng Việt',
+    channelAvatar: 'https://img.youtube.com/vi/Y5yL4xPqYyo/hqdefault.jpg',
+    channelEmoji: '🐺', channelColor: '#7C3AED', category: 'cartoon',
+    duration: '08:42', thumbnail: 'https://img.youtube.com/vi/Y5yL4xPqYyo/hqdefault.jpg',
+    views: '2.8 Tr lượt xem', publishedAt: '1 tuần trước',
+  },
+  {
+    id: 'yt_wolfoo_3', videoId: 'VDkNtAl1rFk',
+    title: 'Wolfoo Và Câu Chuyện Đi Học - Bài Học Về Sự Kiên Nhẫn',
+    channelId: 'wolfoo_vn', channelName: 'Wolfoo Tiếng Việt',
+    channelAvatar: 'https://img.youtube.com/vi/Y5yL4xPqYyo/hqdefault.jpg',
+    channelEmoji: '🐺', channelColor: '#7C3AED', category: 'cartoon',
+    duration: '11:20', thumbnail: 'https://img.youtube.com/vi/VDkNtAl1rFk/hqdefault.jpg',
+    views: '1.9 Tr lượt xem', publishedAt: '2 tuần trước',
+  },
+
+  // ====== CỔ TÍCH VIỆT NAM ======
+  {
+    id: 'yt_7', videoId: 'z0jQ9U_0NMo',
     title: 'Cổ Tích Việt Nam: Cậu Bé Thông Minh Và Bài Học Trí Tuệ',
-    channelId: 'fairy_tales_vn',
-    channelName: 'Cổ Tích Việt Nam',
+    channelId: 'fairy_tales_vn', channelName: 'Cổ Tích Việt Nam',
     channelAvatar: 'https://img.youtube.com/vi/2Z1tU5B1V58/hqdefault.jpg',
-    channelEmoji: '🐉',
-    channelColor: '#D97706',
-    category: 'story',
-    duration: '08:30',
-    thumbnail: 'https://img.youtube.com/vi/z0jQ9U_0NMo/hqdefault.jpg',
-    views: '850 N lượt xem',
-    publishedAt: '3 tuần trước',
+    channelEmoji: '🐉', channelColor: '#D97706', category: 'story',
+    duration: '08:30', thumbnail: 'https://img.youtube.com/vi/z0jQ9U_0NMo/hqdefault.jpg',
+    views: '850 N lượt xem', publishedAt: '3 tuần trước',
+  },
+  {
+    id: 'yt_fairy_2', videoId: '2Z1tU5B1V58',
+    title: 'Tấm Cám - Câu Chuyện Cổ Tích Nổi Tiếng Nhất Việt Nam',
+    channelId: 'fairy_tales_vn', channelName: 'Cổ Tích Việt Nam',
+    channelAvatar: 'https://img.youtube.com/vi/2Z1tU5B1V58/hqdefault.jpg',
+    channelEmoji: '🐉', channelColor: '#D97706', category: 'story',
+    duration: '14:20', thumbnail: 'https://img.youtube.com/vi/2Z1tU5B1V58/hqdefault.jpg',
+    views: '1.2 Tr lượt xem', publishedAt: '1 tháng trước',
+  },
+  {
+    id: 'yt_fairy_3', videoId: 'HBxn56l9WcU',
+    title: 'Sơn Tinh Thủy Tinh - Huyền Thoại Núi & Biển Việt Nam',
+    channelId: 'fairy_tales_vn', channelName: 'Cổ Tích Việt Nam',
+    channelAvatar: 'https://img.youtube.com/vi/2Z1tU5B1V58/hqdefault.jpg',
+    channelEmoji: '🐉', channelColor: '#D97706', category: 'story',
+    duration: '12:10', thumbnail: 'https://img.youtube.com/vi/HBxn56l9WcU/hqdefault.jpg',
+    views: '980 N lượt xem', publishedAt: '2 tháng trước',
+  },
+
+  // ====== NUMBERBLOCKS ======
+  {
+    id: 'yt_nb_1', videoId: 'pZw9veQ76fo',
+    title: 'Numberblocks - Học Đếm Số 1 Đến 10 Vui Nhộn',
+    channelId: 'numberblocks', channelName: 'Numberblocks Official',
+    channelAvatar: 'https://img.youtube.com/vi/pZw9veQ76fo/hqdefault.jpg',
+    channelEmoji: '🔢', channelColor: '#EA580C', category: 'english',
+    duration: '06:20', thumbnail: 'https://img.youtube.com/vi/pZw9veQ76fo/hqdefault.jpg',
+    views: '3.4 Tr lượt xem', publishedAt: '1 tuần trước',
+  },
+  {
+    id: 'yt_nb_2', videoId: 'RMaHBTRBMG4',
+    title: 'Numberblocks - Phép Cộng Đơn Giản Cho Bé Mầm Non',
+    channelId: 'numberblocks', channelName: 'Numberblocks Official',
+    channelAvatar: 'https://img.youtube.com/vi/pZw9veQ76fo/hqdefault.jpg',
+    channelEmoji: '🔢', channelColor: '#EA580C', category: 'english',
+    duration: '05:45', thumbnail: 'https://img.youtube.com/vi/RMaHBTRBMG4/hqdefault.jpg',
+    views: '2.1 Tr lượt xem', publishedAt: '3 ngày trước',
+  },
+  {
+    id: 'yt_nb_3', videoId: 'YpDOuoP5pNI',
+    title: 'Numberblocks - Khám Phá Hình Khối Và Màu Sắc',
+    channelId: 'numberblocks', channelName: 'Numberblocks Official',
+    channelAvatar: 'https://img.youtube.com/vi/pZw9veQ76fo/hqdefault.jpg',
+    channelEmoji: '🔢', channelColor: '#EA580C', category: 'english',
+    duration: '04:38', thumbnail: 'https://img.youtube.com/vi/YpDOuoP5pNI/hqdefault.jpg',
+    views: '1.8 Tr lượt xem', publishedAt: '5 ngày trước',
+  },
+
+  // ====== BABYBUS TIẾNG VIỆT ======
+  {
+    id: 'yt_bb_1', videoId: '5Bw4_zV25pM',
+    title: 'BabyBus - Bài Học Về An Toàn Giao Thông Cho Bé',
+    channelId: 'babybus_vn', channelName: 'BabyBus Tiếng Việt',
+    channelAvatar: 'https://img.youtube.com/vi/5Bw4_zV25pM/hqdefault.jpg',
+    channelEmoji: '🐼', channelColor: '#E11D48', category: 'cartoon',
+    duration: '09:15', thumbnail: 'https://img.youtube.com/vi/5Bw4_zV25pM/hqdefault.jpg',
+    views: '5.3 Tr lượt xem', publishedAt: '2 ngày trước',
+  },
+  {
+    id: 'yt_bb_2', videoId: 'jquNTNdBbsA',
+    title: 'BabyBus - Bé Học Vệ Sinh Cá Nhân & Rửa Tay Đúng Cách',
+    channelId: 'babybus_vn', channelName: 'BabyBus Tiếng Việt',
+    channelAvatar: 'https://img.youtube.com/vi/5Bw4_zV25pM/hqdefault.jpg',
+    channelEmoji: '🐼', channelColor: '#E11D48', category: 'cartoon',
+    duration: '07:40', thumbnail: 'https://img.youtube.com/vi/jquNTNdBbsA/hqdefault.jpg',
+    views: '4.1 Tr lượt xem', publishedAt: '1 tuần trước',
+  },
+  {
+    id: 'yt_bb_3', videoId: 'vI8R9jMuC5U',
+    title: 'BabyBus - Giải Cứu Bé Yêu Khỏi Những Tình Huống Nguy Hiểm',
+    channelId: 'babybus_vn', channelName: 'BabyBus Tiếng Việt',
+    channelAvatar: 'https://img.youtube.com/vi/5Bw4_zV25pM/hqdefault.jpg',
+    channelEmoji: '🐼', channelColor: '#E11D48', category: 'cartoon',
+    duration: '11:05', thumbnail: 'https://img.youtube.com/vi/vI8R9jMuC5U/hqdefault.jpg',
+    views: '6.7 Tr lượt xem', publishedAt: '3 tuần trước',
+  },
+
+  // ====== PINKFONG BABY SHARK ======
+  {
+    id: 'yt_pf_1', videoId: 'XqZsoesa55w',
+    title: 'Baby Shark Dance - Bài Nhảy Baby Shark Nổi Tiếng Thế Giới',
+    channelId: 'pinkfong_shark', channelName: 'Pinkfong Baby Shark',
+    channelAvatar: 'https://img.youtube.com/vi/XqZsoesa55w/hqdefault.jpg',
+    channelEmoji: '🎈', channelColor: '#06B6D4', category: 'music',
+    duration: '02:16', thumbnail: 'https://img.youtube.com/vi/XqZsoesa55w/hqdefault.jpg',
+    views: '13 Tỷ lượt xem', publishedAt: '5 năm trước',
+  },
+  {
+    id: 'yt_pf_2', videoId: 'OcCDJTvS7aQ',
+    title: 'Five Little Monkeys - Pinkfong Bài Hát 5 Chú Khỉ Tinh Nghịch',
+    channelId: 'pinkfong_shark', channelName: 'Pinkfong Baby Shark',
+    channelAvatar: 'https://img.youtube.com/vi/XqZsoesa55w/hqdefault.jpg',
+    channelEmoji: '🎈', channelColor: '#06B6D4', category: 'music',
+    duration: '03:02', thumbnail: 'https://img.youtube.com/vi/OcCDJTvS7aQ/hqdefault.jpg',
+    views: '2.4 Tr lượt xem', publishedAt: '1 tháng trước',
+  },
+  {
+    id: 'yt_pf_3', videoId: '7DGFnFmj9Oo',
+    title: 'Pinkfong - Colors Song - Bé Học Màu Sắc Vui Nhộn',
+    channelId: 'pinkfong_shark', channelName: 'Pinkfong Baby Shark',
+    channelAvatar: 'https://img.youtube.com/vi/XqZsoesa55w/hqdefault.jpg',
+    channelEmoji: '🎈', channelColor: '#06B6D4', category: 'music',
+    duration: '02:48', thumbnail: 'https://img.youtube.com/vi/7DGFnFmj9Oo/hqdefault.jpg',
+    views: '890 N lượt xem', publishedAt: '2 tuần trước',
+  },
+
+  // ====== MASHA AND THE BEAR ======
+  {
+    id: 'yt_mb_1', videoId: 'KYniUCGPGLs',
+    title: 'Masha and The Bear - Cuộc Phiêu Lưu Kỳ Thú Tập 1',
+    channelId: 'masha_and_bear', channelName: 'Masha and The Bear',
+    channelAvatar: 'https://img.youtube.com/vi/KYniUCGPGLs/hqdefault.jpg',
+    channelEmoji: '🐻', channelColor: '#F43F5E', category: 'cartoon',
+    duration: '07:30', thumbnail: 'https://img.youtube.com/vi/KYniUCGPGLs/hqdefault.jpg',
+    views: '8.2 Tr lượt xem', publishedAt: '1 tháng trước',
+  },
+  {
+    id: 'yt_mb_2', videoId: 'rvGXv2bUCJk',
+    title: 'Masha and The Bear - Masha Nấu Ăn Cùng Gấu Bông',
+    channelId: 'masha_and_bear', channelName: 'Masha and The Bear',
+    channelAvatar: 'https://img.youtube.com/vi/KYniUCGPGLs/hqdefault.jpg',
+    channelEmoji: '🐻', channelColor: '#F43F5E', category: 'cartoon',
+    duration: '06:55', thumbnail: 'https://img.youtube.com/vi/rvGXv2bUCJk/hqdefault.jpg',
+    views: '5.6 Tr lượt xem', publishedAt: '3 tuần trước',
+  },
+  {
+    id: 'yt_mb_3', videoId: '0lNnuFKhFkI',
+    title: 'Masha and The Bear - Sinh Nhật Đặc Biệt Của Masha',
+    channelId: 'masha_and_bear', channelName: 'Masha and The Bear',
+    channelAvatar: 'https://img.youtube.com/vi/KYniUCGPGLs/hqdefault.jpg',
+    channelEmoji: '🐻', channelColor: '#F43F5E', category: 'cartoon',
+    duration: '08:15', thumbnail: 'https://img.youtube.com/vi/0lNnuFKhFkI/hqdefault.jpg',
+    views: '4.3 Tr lượt xem', publishedAt: '2 tháng trước',
+  },
+
+  // ====== PEPPA PIG TIẾNG VIỆT ======
+  {
+    id: 'yt_pp_1', videoId: '_9WwF750eT4',
+    title: 'Peppa Pig Tiếng Việt - Peppa Đi Chơi Công Viên',
+    channelId: 'peppa_pig_vn', channelName: 'Peppa Pig Tiếng Việt',
+    channelAvatar: 'https://img.youtube.com/vi/_9WwF750eT4/hqdefault.jpg',
+    channelEmoji: '🐷', channelColor: '#EC4899', category: 'cartoon',
+    duration: '05:22', thumbnail: 'https://img.youtube.com/vi/_9WwF750eT4/hqdefault.jpg',
+    views: '3.8 Tr lượt xem', publishedAt: '1 tuần trước',
+  },
+  {
+    id: 'yt_pp_2', videoId: 'lBVN0-QLRbE',
+    title: 'Peppa Pig - Gia Đình Peppa Đi Dã Ngoại Cuối Tuần',
+    channelId: 'peppa_pig_vn', channelName: 'Peppa Pig Tiếng Việt',
+    channelAvatar: 'https://img.youtube.com/vi/_9WwF750eT4/hqdefault.jpg',
+    channelEmoji: '🐷', channelColor: '#EC4899', category: 'cartoon',
+    duration: '04:45', thumbnail: 'https://img.youtube.com/vi/lBVN0-QLRbE/hqdefault.jpg',
+    views: '2.9 Tr lượt xem', publishedAt: '2 tuần trước',
+  },
+  {
+    id: 'yt_pp_3', videoId: 'pjhDVNjJABo',
+    title: 'Peppa Pig - Peppa Học Bơi Cùng Bố Mẹ',
+    channelId: 'peppa_pig_vn', channelName: 'Peppa Pig Tiếng Việt',
+    channelAvatar: 'https://img.youtube.com/vi/_9WwF750eT4/hqdefault.jpg',
+    channelEmoji: '🐷', channelColor: '#EC4899', category: 'cartoon',
+    duration: '06:10', thumbnail: 'https://img.youtube.com/vi/pjhDVNjJABo/hqdefault.jpg',
+    views: '1.7 Tr lượt xem', publishedAt: '1 tháng trước',
+  },
+
+  // ====== PAW PATROL ======
+  {
+    id: 'yt_paw_1', videoId: 'H6F-tZp6a3c',
+    title: 'PAW Patrol - Biệt Đội Cứu Hộ Giải Cứu Thành Phố',
+    channelId: 'paw_patrol_vn', channelName: 'PAW Patrol Cứu Hộ',
+    channelAvatar: 'https://img.youtube.com/vi/H6F-tZp6a3c/hqdefault.jpg',
+    channelEmoji: '🐶', channelColor: '#E11D48', category: 'cartoon',
+    duration: '11:30', thumbnail: 'https://img.youtube.com/vi/H6F-tZp6a3c/hqdefault.jpg',
+    views: '6.5 Tr lượt xem', publishedAt: '3 ngày trước',
+  },
+  {
+    id: 'yt_paw_2', videoId: 'yRUCOQBHvvY',
+    title: 'PAW Patrol - Chase Và Skye Giải Cứu Trong Đêm Tối',
+    channelId: 'paw_patrol_vn', channelName: 'PAW Patrol Cứu Hộ',
+    channelAvatar: 'https://img.youtube.com/vi/H6F-tZp6a3c/hqdefault.jpg',
+    channelEmoji: '🐶', channelColor: '#E11D48', category: 'cartoon',
+    duration: '09:50', thumbnail: 'https://img.youtube.com/vi/yRUCOQBHvvY/hqdefault.jpg',
+    views: '4.2 Tr lượt xem', publishedAt: '1 tuần trước',
+  },
+
+  // ====== BLIPPI ======
+  {
+    id: 'yt_bl_1', videoId: 'Wv-9rM9hHjg',
+    title: 'Blippi - Khám Phá Sở Thú Cùng Các Loài Động Vật',
+    channelId: 'blippi_official', channelName: 'Blippi Khám Phá Thế Giới',
+    channelAvatar: 'https://img.youtube.com/vi/Wv-9rM9hHjg/hqdefault.jpg',
+    channelEmoji: '🚀', channelColor: '#F59E0B', category: 'english',
+    duration: '15:20', thumbnail: 'https://img.youtube.com/vi/Wv-9rM9hHjg/hqdefault.jpg',
+    views: '7.8 Tr lượt xem', publishedAt: '4 ngày trước',
+  },
+  {
+    id: 'yt_bl_2', videoId: 'J1YnLZUjDJ8',
+    title: 'Blippi - Tìm Hiểu Các Loại Xe Đặc Biệt Tại Công Trường',
+    channelId: 'blippi_official', channelName: 'Blippi Khám Phá Thế Giới',
+    channelAvatar: 'https://img.youtube.com/vi/Wv-9rM9hHjg/hqdefault.jpg',
+    channelEmoji: '🚀', channelColor: '#F59E0B', category: 'english',
+    duration: '12:35', thumbnail: 'https://img.youtube.com/vi/J1YnLZUjDJ8/hqdefault.jpg',
+    views: '5.1 Tr lượt xem', publishedAt: '2 tuần trước',
+  },
+
+  // ====== ART FOR KIDS ======
+  {
+    id: 'yt_art_1', videoId: '1k8yWn0jPzo',
+    title: 'Art for Kids - Hướng Dẫn Bé Vẽ Rồng귀여운 Step by Step',
+    channelId: 'art_for_kids', channelName: 'Art for Kids Hub - Học Vẽ',
+    channelAvatar: 'https://img.youtube.com/vi/1k8yWn0jPzo/hqdefault.jpg',
+    channelEmoji: '🎨', channelColor: '#8B5CF6', category: 'english',
+    duration: '08:45', thumbnail: 'https://img.youtube.com/vi/1k8yWn0jPzo/hqdefault.jpg',
+    views: '2.2 Tr lượt xem', publishedAt: '1 ngày trước',
+  },
+  {
+    id: 'yt_art_2', videoId: 'KZNO49h-JQ0',
+    title: 'Art for Kids - Vẽ Mèo Hoạt Hình Cute Cực Đơn Giản',
+    channelId: 'art_for_kids', channelName: 'Art for Kids Hub - Học Vẽ',
+    channelAvatar: 'https://img.youtube.com/vi/1k8yWn0jPzo/hqdefault.jpg',
+    channelEmoji: '🎨', channelColor: '#8B5CF6', category: 'english',
+    duration: '07:12', thumbnail: 'https://img.youtube.com/vi/KZNO49h-JQ0/hqdefault.jpg',
+    views: '1.5 Tr lượt xem', publishedAt: '3 ngày trước',
+  },
+
+  // ====== CHUCHU TV ======
+  {
+    id: 'yt_chu_1', videoId: '2v8q4_XhM2I',
+    title: 'ChuChu TV - Bài Hát Học Chữ Cái ABC Vui Nhộn Cho Bé',
+    channelId: 'chuchu_tv', channelName: 'ChuChu TV Nursery Rhymes',
+    channelAvatar: 'https://img.youtube.com/vi/2v8q4_XhM2I/hqdefault.jpg',
+    channelEmoji: '🌈', channelColor: '#14B8A6', category: 'music',
+    duration: '04:30', thumbnail: 'https://img.youtube.com/vi/2v8q4_XhM2I/hqdefault.jpg',
+    views: '9.4 Tr lượt xem', publishedAt: '2 ngày trước',
+  },
+  {
+    id: 'yt_chu_2', videoId: 'hyBUc0HkEcU',
+    title: 'ChuChu TV - Bài Hát Về Màu Sắc Và Hình Dạng Cho Bé',
+    channelId: 'chuchu_tv', channelName: 'ChuChu TV Nursery Rhymes',
+    channelAvatar: 'https://img.youtube.com/vi/2v8q4_XhM2I/hqdefault.jpg',
+    channelEmoji: '🌈', channelColor: '#14B8A6', category: 'music',
+    duration: '03:55', thumbnail: 'https://img.youtube.com/vi/hyBUc0HkEcU/hqdefault.jpg',
+    views: '6.1 Tr lượt xem', publishedAt: '1 tuần trước',
+  },
+
+  // ====== VTV7 KIDS ======
+  {
+    id: 'yt_vtv_1', videoId: 'e-ORhEE9VVg',
+    title: 'VTV7 Kids - Bé Học Tiếng Anh Vui Nhộn Cùng Bạn Bè',
+    channelId: 'vtv7_kids', channelName: 'VTV7 Kids - Bé Học Vui',
+    channelAvatar: 'https://img.youtube.com/vi/e-ORhEE9VVg/hqdefault.jpg',
+    channelEmoji: '📺', channelColor: '#0284C7', category: 'english',
+    duration: '13:40', thumbnail: 'https://img.youtube.com/vi/e-ORhEE9VVg/hqdefault.jpg',
+    views: '1.6 Tr lượt xem', publishedAt: '5 ngày trước',
+  },
+  {
+    id: 'yt_vtv_2', videoId: 'wOGGZOlZBkc',
+    title: 'VTV7 Kids - Chương Trình Học Toán Vui Cho Bé Mầm Non',
+    channelId: 'vtv7_kids', channelName: 'VTV7 Kids - Bé Học Vui',
+    channelAvatar: 'https://img.youtube.com/vi/e-ORhEE9VVg/hqdefault.jpg',
+    channelEmoji: '📺', channelColor: '#0284C7', category: 'english',
+    duration: '10:25', thumbnail: 'https://img.youtube.com/vi/wOGGZOlZBkc/hqdefault.jpg',
+    views: '980 N lượt xem', publishedAt: '2 tuần trước',
+  },
+
+  // ====== QUÀ TẶNG TÂM HỒN ======
+  {
+    id: 'yt_qt_1', videoId: '9bZkp7q19f0',
+    title: 'Quà Tặng Tâm Hồn - Câu Chuyện Về Lòng Tốt Và Sự Chia Sẻ',
+    channelId: 'qua_tang_tam_hon', channelName: 'Quà Tặng Tâm Hồn Thiếu Nhi',
+    channelAvatar: 'https://img.youtube.com/vi/9bZkp7q19f0/hqdefault.jpg',
+    channelEmoji: '🎪', channelColor: '#10B981', category: 'story',
+    duration: '09:15', thumbnail: 'https://img.youtube.com/vi/9bZkp7q19f0/hqdefault.jpg',
+    views: '750 N lượt xem', publishedAt: '4 ngày trước',
+  },
+  {
+    id: 'yt_qt_2', videoId: 'ixMYxnbGJYk',
+    title: 'Quà Tặng Tâm Hồn - Bài Học Yêu Thương Gia Đình',
+    channelId: 'qua_tang_tam_hon', channelName: 'Quà Tặng Tâm Hồn Thiếu Nhi',
+    channelAvatar: 'https://img.youtube.com/vi/9bZkp7q19f0/hqdefault.jpg',
+    channelEmoji: '🎪', channelColor: '#10B981', category: 'story',
+    duration: '07:40', thumbnail: 'https://img.youtube.com/vi/ixMYxnbGJYk/hqdefault.jpg',
+    views: '540 N lượt xem', publishedAt: '2 tuần trước',
+  },
+
+  // ====== BÉ HỌC ĐỘNG VẬT ======
+  {
+    id: 'yt_dv_1', videoId: 'hq3yfQnllfQ',
+    title: 'Bé Học Động Vật - Khám Phá Thế Giới Hoang Dã Rừng Nhiệt Đới',
+    channelId: 'be_hoc_dong_vat', channelName: 'Bé Học Động Vật & Thiên Nhiên',
+    channelAvatar: 'https://img.youtube.com/vi/hq3yfQnllfQ/hqdefault.jpg',
+    channelEmoji: '🦁', channelColor: '#D97706', category: 'english',
+    duration: '08:00', thumbnail: 'https://img.youtube.com/vi/hq3yfQnllfQ/hqdefault.jpg',
+    views: '2.3 Tr lượt xem', publishedAt: '6 ngày trước',
+  },
+  {
+    id: 'yt_dv_2', videoId: 'IOWF4MnZ4AQ',
+    title: 'Bé Học Động Vật - Những Chú Vật Dưới Đại Dương Bí Ẩn',
+    channelId: 'be_hoc_dong_vat', channelName: 'Bé Học Động Vật & Thiên Nhiên',
+    channelAvatar: 'https://img.youtube.com/vi/hq3yfQnllfQ/hqdefault.jpg',
+    channelEmoji: '🦁', channelColor: '#D97706', category: 'english',
+    duration: '10:30', thumbnail: 'https://img.youtube.com/vi/IOWF4MnZ4AQ/hqdefault.jpg',
+    views: '1.9 Tr lượt xem', publishedAt: '3 tuần trước',
   },
 ];
 
@@ -1184,15 +1497,14 @@ export const youtubeService = {
   // 4.1. Lấy danh sách video thuộc về một kênh cụ thể
   getVideosForChannel(channel: YouTubeChannel): YouTubeVideo[] {
     const all = this.getVideos(false);
-    const q = channel.name.toLowerCase().trim();
     const chId = channel.id.toLowerCase().trim();
+    const chName = channel.name.toLowerCase().trim();
 
-    // 1. Lọc theo channelId hoặc tên kênh
+    // Chỉ lọc theo channelId hoặc channelName (KHÔNG dùng sampleVideoId vì dễ bắt nhầm kênh khác)
     let matched = all.filter(
       (v) =>
         (v.channelId && v.channelId.toLowerCase() === chId) ||
-        (v.channelName && v.channelName.toLowerCase().includes(q)) ||
-        (channel.sampleVideoId && v.videoId === channel.sampleVideoId)
+        (v.channelName && v.channelName.toLowerCase() === chName)
     );
 
     // 2. Nếu có mảng videos gắn liền trong channel
@@ -1201,26 +1513,6 @@ export const youtubeService = {
         if (!matched.some((m) => m.videoId === cv.videoId)) {
           matched.push(cv);
         }
-      });
-    }
-
-    // 3. Nếu chưa có video nào, tự động tạo video mẫu từ sampleVideoId hoặc fallback
-    if (matched.length === 0) {
-      const vidId = channel.sampleVideoId || 'WRVsOCh907o';
-      matched.push({
-        id: `vid_${vidId}`,
-        videoId: vidId,
-        title: `${channel.name} - Video hay nhất cho bé`,
-        channelId: channel.id,
-        channelName: channel.name,
-        channelAvatar: channel.avatar,
-        channelEmoji: channel.emoji || '📺',
-        channelColor: channel.color || '#2563EB',
-        category: (channel.category as any) || 'cartoon',
-        duration: '04:15',
-        thumbnail: `https://img.youtube.com/vi/${vidId}/hqdefault.jpg`,
-        views: '1.2 Tr lượt xem',
-        publishedAt: 'Mới cập nhật',
       });
     }
 

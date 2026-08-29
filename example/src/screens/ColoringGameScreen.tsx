@@ -11,6 +11,7 @@ import {
   Animated,
   PanResponder,
   useWindowDimensions,
+  Platform,
 } from 'react-native';
 import { ThemeConfig } from '../services/themes';
 
@@ -196,11 +197,14 @@ interface PlacedSticker {
 }
 
 export const ColoringGameScreen: React.FC<ColoringGameScreenProps> = ({ onClose }) => {
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
 
   const [activeTab, setActiveTab] = useState<ActiveTab>('templates');
   const [selectedTemplateIndex, setSelectedTemplateIndex] = useState<number>(0);
   const currentTemplate = ART_TEMPLATES[selectedTemplateIndex];
+
+  // Trạng thái hiển thị menu màu sắc/công cụ nổi (Popup Bottom Sheet)
+  const [isToolsModalVisible, setIsToolsModalVisible] = useState<boolean>(false);
 
   // Màu đang chọn
   const [selectedColorHex, setSelectedColorHex] = useState<string>(COLOR_PALETTE[0].hex);
@@ -272,47 +276,70 @@ export const ColoringGameScreen: React.FC<ColoringGameScreenProps> = ({ onClose 
     showToast('🧹 Đã tẩy sạch tranh!');
   };
 
+  // Ref lưu trạng thái hiện tại để PanResponder không bị dính closure cũ
+  const stateRef = useRef({
+    activeTab,
+    selectedSticker,
+    brushType,
+    selectedColorHex,
+    strokeWidth,
+  });
+
+  // Cập nhật ref mỗi khi state thay đổi
+  stateRef.current = {
+    activeTab,
+    selectedSticker,
+    brushType,
+    selectedColorHex,
+    strokeWidth,
+  };
+
   // 2. Xử lý vẽ tự do ngón tay (Freehand PanResponder)
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => activeTab === 'doodle' || activeTab === 'stickers',
-      onMoveShouldSetPanResponder: () => activeTab === 'doodle',
+      onStartShouldSetPanResponder: () => {
+        const tab = stateRef.current.activeTab;
+        return tab === 'doodle' || tab === 'stickers';
+      },
+      onMoveShouldSetPanResponder: () => stateRef.current.activeTab === 'doodle',
       onPanResponderGrant: (evt) => {
         const { locationX, locationY } = evt.nativeEvent;
-        if (activeTab === 'stickers') {
+        const { activeTab: tab, selectedSticker: stk, brushType: bt, selectedColorHex: clr, strokeWidth: sw } = stateRef.current;
+
+        if (tab === 'stickers') {
           // Dán sticker ngay tại vị trí chạm
           const newSticker: PlacedSticker = {
             id: `stk_${Date.now()}_${Math.random()}`,
             x: locationX - 20,
             y: locationY - 20,
-            emoji: selectedSticker,
+            emoji: stk,
             size: 38,
           };
           setPlacedStickers((prev) => [...prev, newSticker]);
-          showToast(`Dán sticker ${selectedSticker}! ✨`);
+          showToast(`Dán sticker ${stk}! ✨`);
           return;
         }
 
-        if (activeTab === 'doodle') {
+        if (tab === 'doodle') {
           const colorToUse =
-            brushType === 'eraser'
+            bt === 'eraser'
               ? '#FFFFFF'
-              : brushType === 'rainbow'
+              : bt === 'rainbow'
               ? COLOR_PALETTE[Math.floor(Math.random() * (COLOR_PALETTE.length - 2))].hex
-              : selectedColorHex;
+              : clr;
 
           const stroke: DoodleStroke = {
             id: `stroke_${Date.now()}`,
             points: [{ x: locationX, y: locationY }],
             color: colorToUse,
-            width: strokeWidth,
-            type: brushType,
+            width: sw,
+            type: bt,
           };
           setCurrentStroke(stroke);
         }
       },
       onPanResponderMove: (evt) => {
-        if (activeTab === 'doodle') {
+        if (stateRef.current.activeTab === 'doodle') {
           const { locationX, locationY } = evt.nativeEvent;
           setCurrentStroke((prev) => {
             if (!prev) return null;
@@ -324,7 +351,7 @@ export const ColoringGameScreen: React.FC<ColoringGameScreenProps> = ({ onClose 
         }
       },
       onPanResponderRelease: () => {
-        if (activeTab === 'doodle') {
+        if (stateRef.current.activeTab === 'doodle') {
           setCurrentStroke((prev) => {
             if (prev && prev.points.length > 0) {
               setStrokes((all) => [...all, prev]);
@@ -389,7 +416,7 @@ export const ColoringGameScreen: React.FC<ColoringGameScreenProps> = ({ onClose 
           activeOpacity={0.8}
           onPress={onClose}
         >
-          <Text style={styles.backBtnText}>⬅ Thoát</Text>
+          <Text style={styles.backBtnText}>⬅</Text>
         </TouchableOpacity>
 
         <View style={styles.headerCenter}>
@@ -398,8 +425,8 @@ export const ColoringGameScreen: React.FC<ColoringGameScreenProps> = ({ onClose 
             {activeTab === 'templates'
               ? `${currentTemplate.emoji} ${currentTemplate.title} (${countColoredParts()}/${currentTemplate.parts.length})`
               : activeTab === 'doodle'
-              ? '✏️ Bảng Vẽ Tự Do Kỳ Diệu'
-              : '✨ Bộ Sưu Tập Dán Sticker'}
+              ? '✏️ Vẽ Tự Do'
+              : '✨ Bảng Sticker'}
           </Text>
         </View>
 
@@ -408,7 +435,7 @@ export const ColoringGameScreen: React.FC<ColoringGameScreenProps> = ({ onClose 
           activeOpacity={0.8}
           onPress={handleFinishArtwork}
         >
-          <Text style={styles.finishBtnText}>🌟 Xong Rồi!</Text>
+          <Text style={styles.finishBtnText}>🌟</Text>
         </TouchableOpacity>
       </View>
 
@@ -420,7 +447,7 @@ export const ColoringGameScreen: React.FC<ColoringGameScreenProps> = ({ onClose 
           activeOpacity={0.8}
         >
           <Text style={[styles.tabButtonText, activeTab === 'templates' && styles.tabButtonTextActive]}>
-            🖼️ Tranh Mẫu
+            🖼️ Tranh
           </Text>
         </TouchableOpacity>
 
@@ -430,7 +457,7 @@ export const ColoringGameScreen: React.FC<ColoringGameScreenProps> = ({ onClose 
           activeOpacity={0.8}
         >
           <Text style={[styles.tabButtonText, activeTab === 'doodle' && styles.tabButtonTextActive]}>
-            ✏️ Nét Vẽ Tự Do
+            ✏️ Vẽ
           </Text>
         </TouchableOpacity>
 
@@ -440,44 +467,38 @@ export const ColoringGameScreen: React.FC<ColoringGameScreenProps> = ({ onClose 
           activeOpacity={0.8}
         >
           <Text style={[styles.tabButtonText, activeTab === 'stickers' && styles.tabButtonTextActive]}>
-            ✨ Dán Sticker
+            ✨ Dán
           </Text>
         </TouchableOpacity>
       </View>
 
-      {/* DANH SÁCH CHỌN BỨC TRANH (CHỈ HIỆN KHI Ở TAB TRANH MẪU) */}
-      {activeTab === 'templates' && (
-        <View style={styles.templateSelectorWrapper}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.templateScrollList}
-          >
-            {ART_TEMPLATES.map((tmpl, idx) => {
-              const isSelected = idx === selectedTemplateIndex;
-              return (
-                <TouchableOpacity
-                  key={tmpl.id}
-                  style={[styles.templateCard, isSelected && styles.templateCardSelected]}
-                  onPress={() => setSelectedTemplateIndex(idx)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.templateEmoji}>{tmpl.emoji}</Text>
-                  <Text
-                    style={[styles.templateCardTitle, isSelected && styles.templateCardTitleSelected]}
-                    numberOfLines={1}
-                  >
-                    {tmpl.title}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        </View>
-      )}
-
-      {/* KHUNG VÙNG CANVAS TRANH VẼ */}
+      {/* KHUNG VÙNG CANVAS TRANH VẼ TỐI ĐA TRẢI DÀI */}
       <View style={styles.canvasContainer}>
+        {/* DANH SÁCH CHỌN BỨC TRANH (CHỈ HIỆN KHI Ở TAB TRANH MẪU) NỔI TRÊN CANVAS */}
+        {activeTab === 'templates' && (
+          <View style={styles.templateSelectorWrapper}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.templateScrollList}
+            >
+              {ART_TEMPLATES.map((tmpl, idx) => {
+                const isSelected = idx === selectedTemplateIndex;
+                return (
+                  <TouchableOpacity
+                    key={tmpl.id}
+                    style={[styles.templateCard, isSelected && styles.templateCardSelected]}
+                    onPress={() => setSelectedTemplateIndex(idx)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.templateEmoji}>{tmpl.emoji}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        )}
+
         {/* THÔNG BÁO POPUP NHỎ */}
         {toastMessage !== '' && (
           <View style={styles.toastBadge}>
@@ -501,6 +522,13 @@ export const ColoringGameScreen: React.FC<ColoringGameScreenProps> = ({ onClose 
               const key = `${currentTemplate.id}_${part.id}`;
               const partBg = filledColors[key] || '#FFFFFF';
               const isColored = Boolean(filledColors[key]);
+              
+              // Scale the part if the screen is too small (scaling factor)
+              const scaleFactor = Math.min(width / 380, 1);
+              const scaledStyle = {
+                ...part.style,
+                transform: [{ scale: scaleFactor }],
+              };
 
               return (
                 <TouchableOpacity
@@ -509,7 +537,7 @@ export const ColoringGameScreen: React.FC<ColoringGameScreenProps> = ({ onClose 
                   onPress={() => handleColorPart(part.id, part.name)}
                   style={[
                     styles.partTouchTarget,
-                    part.style,
+                    scaledStyle,
                     {
                       backgroundColor: partBg,
                       borderWidth: isColored ? 2 : 3,
@@ -617,143 +645,154 @@ export const ColoringGameScreen: React.FC<ColoringGameScreenProps> = ({ onClose 
             )}
           </View>
         )}
-      </View>
 
-      {/* THANH CÔNG CỤ ĐIỀU KHIỂN BÚT / STICKER / HÀNH ĐỘNG */}
-      <View style={styles.toolsBar}>
-        {/* Nút Hoàn tác & Phép thuật */}
-        <View style={styles.quickActionRow}>
+        {/* CÁC NÚT HÀNH ĐỘNG NỔI (FLOATING SIDEBAR) */}
+        <View style={styles.floatingActionSidebar}>
           {activeTab === 'templates' ? (
             <>
-              <TouchableOpacity
-                style={styles.magicBtn}
-                onPress={handleMagicAutoFill}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.magicBtnText}>🪄 Tô Phép Thuật</Text>
+              <TouchableOpacity style={styles.floatingActionBtn} onPress={handleMagicAutoFill}>
+                <Text style={styles.floatingActionEmoji}>🪄</Text>
               </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.actionSmallBtn}
-                onPress={handleClearCurrentTemplate}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.actionSmallBtnText}>🧹 Xóa Trắng</Text>
+              <TouchableOpacity style={styles.floatingActionBtn} onPress={handleClearCurrentTemplate}>
+                <Text style={styles.floatingActionEmoji}>🧹</Text>
               </TouchableOpacity>
             </>
           ) : (
             <>
-              <TouchableOpacity
-                style={styles.actionSmallBtn}
-                onPress={handleUndo}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.actionSmallBtnText}>↺ Hoàn tác</Text>
+              <TouchableOpacity style={styles.floatingActionBtn} onPress={handleUndo}>
+                <Text style={styles.floatingActionEmoji}>↺</Text>
               </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.actionSmallBtn}
-                onPress={handleClearAllDoodles}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.actionSmallBtnText}>🧹 Xóa Hết</Text>
+              <TouchableOpacity style={styles.floatingActionBtn} onPress={handleClearAllDoodles}>
+                <Text style={styles.floatingActionEmoji}>🧹</Text>
               </TouchableOpacity>
             </>
           )}
-
-          {/* Chọn loại cọ vẽ khi ở tab Doodle */}
-          {activeTab === 'doodle' && (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }}>
-              <TouchableOpacity
-                style={[styles.brushTypeBtn, brushType === 'crayon' && styles.brushTypeBtnActive]}
-                onPress={() => setBrushType('crayon')}
-              >
-                <Text style={styles.brushTypeText}>🖍️ Màu Sáp</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.brushTypeBtn, brushType === 'neon' && styles.brushTypeBtnActive]}
-                onPress={() => setBrushType('neon')}
-              >
-                <Text style={styles.brushTypeText}>💡 Phát Sáng</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.brushTypeBtn, brushType === 'rainbow' && styles.brushTypeBtnActive]}
-                onPress={() => setBrushType('rainbow')}
-              >
-                <Text style={styles.brushTypeText}>🌈 7 Màu</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.brushTypeBtn, brushType === 'eraser' && styles.brushTypeBtnActive]}
-                onPress={() => setBrushType('eraser')}
-              >
-                <Text style={styles.brushTypeText}>🧽 Tẩy</Text>
-              </TouchableOpacity>
-            </ScrollView>
-          )}
+          
+          {/* Nút to nhất để mở Modal chọn màu/sticker */}
+          <TouchableOpacity 
+            style={styles.floatingPaletteBtn} 
+            onPress={() => setIsToolsModalVisible(true)}
+          >
+            <View style={[styles.paletteColorIndicator, { backgroundColor: selectedColorHex }]} />
+            <Text style={styles.floatingPaletteEmoji}>{activeTab === 'stickers' ? selectedSticker : '🎨'}</Text>
+          </TouchableOpacity>
         </View>
 
-        {/* NẾU Ở TAB STICKER: HIỂN THỊ DANH SÁCH STICKERS */}
-        {activeTab === 'stickers' ? (
-          <View style={styles.stickerSelectorWrapper}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {STICKERS.map((stk, sIdx) => {
-                const isSelected = stk === selectedSticker;
-                return (
-                  <TouchableOpacity
-                    key={`stk_item_${sIdx}`}
-                    style={[styles.stickerThumb, isSelected && styles.stickerThumbSelected]}
-                    onPress={() => {
-                      setSelectedSticker(stk);
-                      showToast(`Đã chọn sticker ${stk}! Chạm lên canvas để dán nhé.`);
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.stickerEmoji}>{stk}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          </View>
-        ) : (
-          /* NẾU Ở TAB TRANH MẪU HOẶC VẼ: HIỂN THỊ BẢNG 18 MÀU RỰC RỠ */
-          <View style={styles.paletteWrapper}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.paletteScrollList}
-            >
-              {COLOR_PALETTE.map((c) => {
-                const isSelected = c.hex === selectedColorHex;
-                return (
-                  <TouchableOpacity
-                    key={c.id}
-                    activeOpacity={0.8}
-                    onPress={() => {
-                      setSelectedColorHex(c.hex);
-                      if (brushType === 'eraser') setBrushType('crayon');
-                      showToast(`🎨 Bé chọn màu: ${c.name}`);
-                    }}
-                    style={[
-                      styles.colorDropBtn,
-                      { backgroundColor: c.hex, borderColor: c.border },
-                      isSelected && styles.colorDropBtnSelected,
-                    ]}
-                  >
-                    {isSelected && (
-                      <View style={styles.colorSelectedIndicator}>
-                        <Text style={styles.checkmarkIcon}>✓</Text>
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          </View>
-        )}
       </View>
+
+      {/* BẢNG MÀU & CÔNG CỤ DẠNG BOTTOM SHEET (MODAL) ĐỂ RESPONSIVE TỐT HƠN */}
+      <Modal
+        visible={isToolsModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setIsToolsModalVisible(false)}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay} 
+          activeOpacity={1} 
+          onPress={() => setIsToolsModalVisible(false)}
+        >
+          <TouchableOpacity 
+            activeOpacity={1} 
+            style={[
+              styles.toolsBottomSheet, 
+              { paddingBottom: Platform.OS === 'android' ? 40 : 20 }
+            ]}
+          >
+            <View style={styles.bottomSheetDragHandle} />
+            
+            {/* Nếu ở Tab Doodle: Hiện chọn loại cọ */}
+            {activeTab === 'doodle' && (
+              <View style={styles.brushTypeContainer}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }}>
+                  <TouchableOpacity
+                    style={[styles.brushTypeBtn, brushType === 'crayon' && styles.brushTypeBtnActive]}
+                    onPress={() => setBrushType('crayon')}
+                  >
+                    <Text style={styles.brushTypeText}>🖍️ Màu Sáp</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.brushTypeBtn, brushType === 'neon' && styles.brushTypeBtnActive]}
+                    onPress={() => setBrushType('neon')}
+                  >
+                    <Text style={styles.brushTypeText}>💡 Phát Sáng</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.brushTypeBtn, brushType === 'rainbow' && styles.brushTypeBtnActive]}
+                    onPress={() => setBrushType('rainbow')}
+                  >
+                    <Text style={styles.brushTypeText}>🌈 7 Màu</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.brushTypeBtn, brushType === 'eraser' && styles.brushTypeBtnActive]}
+                    onPress={() => setBrushType('eraser')}
+                  >
+                    <Text style={styles.brushTypeText}>🧽 Tẩy</Text>
+                  </TouchableOpacity>
+                </ScrollView>
+              </View>
+            )}
+
+            {/* Hiển thị danh sách Sticker (Nếu tab là Sticker) */}
+            {activeTab === 'stickers' ? (
+              <View style={styles.gridContainer}>
+                <Text style={styles.sheetTitle}>Chọn Sticker</Text>
+                <ScrollView contentContainerStyle={styles.gridContent}>
+                  {STICKERS.map((stk, sIdx) => {
+                    const isSelected = stk === selectedSticker;
+                    return (
+                      <TouchableOpacity
+                        key={`stk_item_${sIdx}`}
+                        style={[styles.gridItem, isSelected && styles.gridItemSelected]}
+                        onPress={() => {
+                          setSelectedSticker(stk);
+                          showToast(`Đã chọn sticker ${stk}!`);
+                          setIsToolsModalVisible(false);
+                        }}
+                      >
+                        <Text style={styles.gridEmoji}>{stk}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            ) : (
+              /* Bảng màu (Grid lớn) */
+              <View style={styles.gridContainer}>
+                <Text style={styles.sheetTitle}>Chọn Màu Sắc</Text>
+                <ScrollView contentContainerStyle={styles.gridContent}>
+                  {COLOR_PALETTE.map((c) => {
+                    const isSelected = c.hex === selectedColorHex;
+                    return (
+                      <TouchableOpacity
+                        key={c.id}
+                        activeOpacity={0.8}
+                        onPress={() => {
+                          setSelectedColorHex(c.hex);
+                          if (brushType === 'eraser') setBrushType('crayon');
+                          showToast(`🎨 Chạm để tô màu: ${c.name}`);
+                          setIsToolsModalVisible(false); // Auto close on select
+                        }}
+                        style={[
+                          styles.colorGridBtn,
+                          { backgroundColor: c.hex, borderColor: c.border },
+                          isSelected && styles.colorGridBtnSelected,
+                        ]}
+                      >
+                        {isSelected && (
+                          <View style={styles.colorSelectedIndicator}>
+                            <Text style={styles.checkmarkIcon}>✓</Text>
+                          </View>
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            )}
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
 
       {/* MODAL KHEN THƯỞNG / CHIẾN THẮNG HỌA SĨ NHÍ */}
       <Modal
@@ -798,7 +837,7 @@ export const ColoringGameScreen: React.FC<ColoringGameScreenProps> = ({ onClose 
                 }}
                 activeOpacity={0.85}
               >
-                <Text style={styles.victoryCloseText}>🏠 Về Trang Chủ</Text>
+                <Text style={styles.victoryCloseText}>Về Màn Hình Chính</Text>
               </TouchableOpacity>
             </View>
           </Animated.View>
@@ -818,391 +857,412 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingVertical: 12,
     backgroundColor: '#1E1B4B',
-    borderBottomWidth: 2,
+    borderBottomWidth: 1,
     borderBottomColor: '#312E81',
   },
   backBtn: {
-    backgroundColor: '#3730A3',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#4F46E5',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#312E81',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   backBtnText: {
-    color: '#E0E7FF',
-    fontSize: 14,
-    fontWeight: '800',
+    color: '#FFF',
+    fontSize: 22,
+    fontWeight: '900',
   },
   headerCenter: {
     alignItems: 'center',
     flex: 1,
-    marginHorizontal: 8,
   },
   headerTitle: {
-    color: '#FDE047',
-    fontSize: 18,
+    color: '#F472B6',
+    fontSize: 22,
     fontWeight: '900',
+    textShadowColor: 'rgba(244, 114, 182, 0.4)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   },
   headerSubtitle: {
-    color: '#C7D2FE',
-    fontSize: 12,
-    fontWeight: '600',
+    color: '#E2E8F0',
+    fontSize: 14,
+    fontWeight: '700',
     marginTop: 2,
   },
   finishBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: '#F59E0B',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: '#FDE68A',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   finishBtnText: {
-    color: '#78350F',
-    fontSize: 14,
-    fontWeight: '900',
+    color: '#FFF',
+    fontSize: 20,
   },
   tabContainer: {
     flexDirection: 'row',
-    backgroundColor: '#1E293B',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    gap: 8,
+    backgroundColor: '#1E1B4B',
+    paddingHorizontal: 8,
+    paddingBottom: 8,
   },
   tabButton: {
     flex: 1,
-    paddingVertical: 8,
-    borderRadius: 12,
+    paddingVertical: 10,
+    marginHorizontal: 4,
+    borderRadius: 20,
+    backgroundColor: '#312E81',
     alignItems: 'center',
-    backgroundColor: '#334155',
+    borderWidth: 2,
+    borderColor: 'transparent',
   },
   tabButtonActive: {
-    backgroundColor: '#8B5CF6',
-    borderWidth: 1.5,
-    borderColor: '#DDD6FE',
+    backgroundColor: '#EC4899',
+    borderColor: '#FBCFE8',
   },
   tabButtonText: {
     color: '#94A3B8',
-    fontSize: 13,
-    fontWeight: '700',
+    fontSize: 15,
+    fontWeight: '800',
   },
   tabButtonTextActive: {
-    color: '#FFFFFF',
-    fontWeight: '900',
-  },
-  templateSelectorWrapper: {
-    backgroundColor: '#1E1B4B',
-    paddingVertical: 6,
-    borderBottomWidth: 1,
-    borderBottomColor: '#312E81',
-  },
-  templateScrollList: {
-    paddingHorizontal: 12,
-    gap: 8,
-  },
-  templateCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#312E81',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: '#4338CA',
-  },
-  templateCardSelected: {
-    backgroundColor: '#F43F5E',
-    borderColor: '#FFE4E6',
-  },
-  templateEmoji: {
-    fontSize: 18,
-    marginRight: 6,
-  },
-  templateCardTitle: {
-    color: '#C7D2FE',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  templateCardTitleSelected: {
-    color: '#FFFFFF',
-    fontWeight: '900',
+    color: '#FFF',
   },
   canvasContainer: {
     flex: 1,
-    margin: 12,
-    borderRadius: 24,
-    overflow: 'hidden',
-    borderWidth: 4,
-    borderColor: '#4F46E5',
-    backgroundColor: '#FFFFFF',
     position: 'relative',
+    backgroundColor: '#FFFFFF',
+    overflow: 'hidden',
+  },
+  templateSelectorWrapper: {
+    paddingVertical: 12,
+    backgroundColor: 'rgba(255,255,255,0.4)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
+  },
+  templateScrollList: {
+    paddingHorizontal: 12,
+  },
+  templateCard: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+    borderWidth: 2,
+    borderColor: '#E2E8F0',
+    elevation: 3,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  templateCardSelected: {
+    borderColor: '#EC4899',
+    backgroundColor: '#FDF2F8',
+    transform: [{ scale: 1.1 }],
+  },
+  templateEmoji: {
+    fontSize: 26,
+  },
+  toastBadge: {
+    position: 'absolute',
+    top: 80,
+    alignSelf: 'center',
+    backgroundColor: 'rgba(30, 41, 59, 0.85)',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 24,
+    zIndex: 100,
+  },
+  toastText: {
+    color: '#FFF',
+    fontSize: 15,
+    fontWeight: '800',
   },
   artworkBoard: {
     flex: 1,
-    width: '100%',
-    height: '100%',
     position: 'relative',
   },
   partTouchTarget: {
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 3,
-    elevation: 3,
+    overflow: 'hidden',
   },
   partEmoji: {
-    fontSize: 22,
+    fontSize: 28,
   },
   partLabel: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '900',
-    letterSpacing: 0.5,
+    textAlign: 'center',
+    marginTop: 4,
   },
   doodleBoard: {
     flex: 1,
     backgroundColor: '#FFFFFF',
-    position: 'relative',
   },
   doodlePlaceholder: {
-    flex: 1,
+    position: 'absolute',
+    top: '40%',
+    left: 40,
+    right: 40,
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 30,
   },
   doodlePlaceholderIcon: {
-    fontSize: 50,
-    marginBottom: 10,
+    fontSize: 60,
+    opacity: 0.3,
+    marginBottom: 16,
   },
   doodlePlaceholderText: {
     color: '#94A3B8',
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '700',
     textAlign: 'center',
+    opacity: 0.8,
   },
-  toastBadge: {
+  floatingActionSidebar: {
     position: 'absolute',
-    top: 14,
-    alignSelf: 'center',
-    backgroundColor: 'rgba(15, 23, 42, 0.88)',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    zIndex: 99,
-    borderWidth: 1.5,
-    borderColor: '#FDE047',
-  },
-  toastText: {
-    color: '#FEF08A',
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  toolsBar: {
-    backgroundColor: '#1E1B4B',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderTopWidth: 2,
-    borderTopColor: '#312E81',
-  },
-  quickActionRow: {
-    flexDirection: 'row',
+    right: 16,
+    bottom: 24,
     alignItems: 'center',
-    marginBottom: 10,
-    gap: 8,
+    zIndex: 50,
   },
-  magicBtn: {
-    backgroundColor: '#EC4899',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: '#FDF2F8',
-  },
-  magicBtnText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '900',
-  },
-  actionSmallBtn: {
-    backgroundColor: '#3730A3',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#6366F1',
-  },
-  actionSmallBtnText: {
-    color: '#E0E7FF',
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  brushTypeBtn: {
-    backgroundColor: '#312E81',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
-    marginRight: 6,
-    borderWidth: 1,
-    borderColor: '#4338CA',
-  },
-  brushTypeBtnActive: {
-    backgroundColor: '#10B981',
-    borderColor: '#D1FAE5',
-  },
-  brushTypeText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  paletteWrapper: {
-    paddingVertical: 2,
-  },
-  paletteScrollList: {
-    gap: 10,
-    paddingHorizontal: 4,
-  },
-  colorDropBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 3,
+  floatingActionBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3,
+    marginBottom: 12,
+    borderWidth: 2,
+    borderColor: '#E2E8F0',
     elevation: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 3 },
   },
-  colorDropBtnSelected: {
-    transform: [{ scale: 1.15 }],
-    borderColor: '#FFFFFF',
+  floatingActionEmoji: {
+    fontSize: 22,
+  },
+  floatingPaletteBtn: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#EC4899',
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 4,
+    borderColor: '#FBCFE8',
+    elevation: 6,
+    shadowColor: '#EC4899',
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
   },
-  colorSelectedIndicator: {
+  floatingPaletteEmoji: {
+    fontSize: 30,
+  },
+  paletteColorIndicator: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderWidth: 2,
+    borderColor: '#FFF',
+    elevation: 2,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-end',
+  },
+  toolsBottomSheet: {
+    width: '100%',
+    backgroundColor: '#1E1B4B',
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    paddingTop: 12,
+    maxHeight: '60%',
+  },
+  bottomSheetDragHandle: {
+    width: 48,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#4338CA',
+    alignSelf: 'center',
+    marginBottom: 16,
+  },
+  brushTypeContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#312E81',
+    marginBottom: 8,
+  },
+  brushTypeBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: '#312E81',
+    borderRadius: 20,
+    marginRight: 10,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  brushTypeBtnActive: {
+    backgroundColor: '#F59E0B',
+    borderColor: '#FDE68A',
+  },
+  brushTypeText: {
+    color: '#FFF',
+    fontWeight: '800',
+    fontSize: 15,
+  },
+  gridContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 20,
+  },
+  sheetTitle: {
+    color: '#F472B6',
+    fontSize: 18,
+    fontWeight: '900',
+    marginBottom: 12,
+  },
+  gridContent: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-start',
+  },
+  colorGridBtn: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    margin: 8,
+    borderWidth: 3,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  colorGridBtnSelected: {
+    borderWidth: 4,
+    borderColor: '#FFFFFF',
+    transform: [{ scale: 1.15 }],
+  },
+  colorSelectedIndicator: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0,0,0,0.3)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   checkmarkIcon: {
-    color: '#FFFFFF',
-    fontSize: 12,
+    color: '#FFF',
+    fontSize: 14,
     fontWeight: '900',
   },
-  stickerSelectorWrapper: {
-    paddingVertical: 4,
-  },
-  stickerThumb: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+  gridItem: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     backgroundColor: '#312E81',
-    marginRight: 8,
+    margin: 6,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: '#4338CA',
+    borderWidth: 2,
+    borderColor: 'transparent',
   },
-  stickerThumbSelected: {
-    backgroundColor: '#F43F5E',
-    borderColor: '#FFE4E6',
-    transform: [{ scale: 1.12 }],
+  gridItemSelected: {
+    borderColor: '#EC4899',
+    backgroundColor: '#4C1D95',
   },
-  stickerEmoji: {
-    fontSize: 24,
+  gridEmoji: {
+    fontSize: 32,
   },
   victoryModalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(15, 23, 42, 0.85)',
-    alignItems: 'center',
     justifyContent: 'center',
+    alignItems: 'center',
     padding: 20,
   },
   victoryCard: {
-    width: '90%',
-    maxWidth: 380,
     backgroundColor: '#1E1B4B',
-    borderRadius: 28,
-    borderWidth: 4,
-    borderColor: '#FDE047',
-    padding: 24,
+    borderRadius: 32,
+    padding: 30,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    elevation: 10,
+    width: '100%',
+    maxWidth: 400,
+    borderWidth: 4,
+    borderColor: '#F59E0B',
   },
   victoryTrophy: {
-    fontSize: 50,
-    marginBottom: 8,
+    fontSize: 70,
+    marginBottom: 16,
   },
   victoryTitle: {
-    color: '#FDE047',
-    fontSize: 22,
+    color: '#FBBF24',
+    fontSize: 26,
     fontWeight: '900',
     textAlign: 'center',
     marginBottom: 8,
-    letterSpacing: 1,
+    textShadowColor: 'rgba(245, 158, 11, 0.5)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   },
   victorySubtitle: {
-    color: '#C7D2FE',
-    fontSize: 14,
-    fontWeight: '600',
+    color: '#E2E8F0',
+    fontSize: 16,
     textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 16,
+    lineHeight: 24,
+    marginBottom: 20,
   },
   victoryStarsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 20,
-    gap: 8,
+    marginBottom: 24,
   },
   starBig: {
-    fontSize: 32,
+    fontSize: 36,
+    marginHorizontal: 8,
   },
   victoryActions: {
     width: '100%',
-    gap: 10,
+    gap: 12,
   },
   victoryKeepPlayingBtn: {
-    backgroundColor: '#10B981',
-    paddingVertical: 14,
-    borderRadius: 16,
+    backgroundColor: '#EC4899',
+    paddingVertical: 16,
+    borderRadius: 24,
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#A7F3D0',
   },
   victoryKeepPlayingText: {
-    color: '#FFFFFF',
-    fontSize: 16,
+    color: '#FFF',
+    fontSize: 18,
     fontWeight: '900',
   },
   victoryCloseBtn: {
-    backgroundColor: '#3730A3',
-    paddingVertical: 12,
-    borderRadius: 16,
+    backgroundColor: '#312E81',
+    paddingVertical: 16,
+    borderRadius: 24,
     alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: '#6366F1',
   },
   victoryCloseText: {
-    color: '#E0E7FF',
-    fontSize: 14,
-    fontWeight: '800',
+    color: '#94A3B8',
+    fontSize: 18,
+    fontWeight: '900',
   },
 });
+
+export default ColoringGameScreen;

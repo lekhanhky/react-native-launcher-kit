@@ -507,6 +507,7 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#E0F2FE',
+    paddingBottom: 28,
   },
   header: {
     flexDirection: 'row',

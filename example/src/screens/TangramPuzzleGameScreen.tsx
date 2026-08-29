@@ -1162,7 +1162,8 @@ const styles = StyleSheet.create({
   },
   traySection: {
     backgroundColor: '#312E81',
-    paddingVertical: 10,
+    paddingTop: 10,
+    paddingBottom: 38,
     paddingHorizontal: 12,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
