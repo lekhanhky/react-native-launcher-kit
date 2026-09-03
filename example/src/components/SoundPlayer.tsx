@@ -31,6 +31,12 @@ export const soundManager = {
       SoundPlayerModule.speak(text, lang).catch(() => {});
     }
   },
+  playSuccess() {
+    this.speak('Chính xác! Hoan hô bé', 'vi');
+  },
+  playError() {
+    this.speak('Thử lại nào', 'vi');
+  },
   stop() {
     if (Platform.OS === 'android' && SoundPlayerModule) {
       SoundPlayerModule.stop().catch(() => {});

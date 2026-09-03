@@ -1,0 +1,18 @@
+{
+  "/_not-found/page": "app/_not-found/page.js",
+  "/api/v1/device/config/route": "app/api/v1/device/config/route.js",
+  "/api/v1/device/logs/route": "app/api/v1/device/logs/route.js",
+  "/api/v1/device/pair/route": "app/api/v1/device/pair/route.js",
+  "/page": "app/page.js",
+  "/(admin)/admin/animal-sounds/page": "app/(admin)/admin/animal-sounds/page.js",
+  "/(admin)/admin/app-catalog/page": "app/(admin)/admin/app-catalog/page.js",
+  "/(admin)/admin/categories/page": "app/(admin)/admin/categories/page.js",
+  "/(admin)/admin/dashboard/page": "app/(admin)/admin/dashboard/page.js",
+  "/(admin)/admin/math-generator/page": "app/(admin)/admin/math-generator/page.js",
+  "/(admin)/admin/youtube-curator/page": "app/(admin)/admin/youtube-curator/page.js",
+  "/(customer)/customer/dashboard/page": "app/(customer)/customer/dashboard/page.js",
+  "/(parent)/parent/analytics/page": "app/(parent)/parent/analytics/page.js",
+  "/(parent)/parent/children/page": "app/(parent)/parent/children/page.js",
+  "/(parent)/parent/dashboard/page": "app/(parent)/parent/dashboard/page.js",
+  "/(parent)/parent/rules/page": "app/(parent)/parent/rules/page.js"
+}

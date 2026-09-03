@@ -29,8 +29,12 @@
     "noEmit": false,
     "target": "esnext"
   },
+  "include": [
+    "src"
+  ],
   "exclude": [
     "example",
-    "example-0.80"
+    "example-0.80",
+    "web-portal"
   ]
 }

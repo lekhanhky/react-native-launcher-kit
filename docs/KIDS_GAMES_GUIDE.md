@@ -56,14 +56,59 @@
 
 ---
 
-#### 🎈 2. Game Nổ Bong Bóng Kỳ Diệu (Bubble / Balloon Pop)
-* **Độ tuổi**: 3 – 5 tuổi
-* **Lợi ích**: Luyện phản xạ nhanh tay tinh mắt, nhận biết màu sắc và con số.
-* **Cách chơi**:
-  - Các quả bóng bay rực rỡ màu sắc trôi từ dưới màn hình lên trên với tốc độ vừa phải.
-  - Bé chạm vào quả bóng nào thì bóng nổ "Bụp!" kèm các mảnh sao lấp lánh bung ra.
-  - **Chế độ học tập**: Loa đọc *"Bé hãy tìm bóng màu Đỏ"* hoặc *"Tìm bóng số 3"*, bé chạm đúng bóng yêu cầu được cộng điểm thưởng.
-* **Kỹ thuật**: RequestAnimationFrame hoặc vòng lặp timer tạo bóng rơi/bay tự do.
+#### 🎈 2. Game Nổ Bong Bóng Kỳ Diệu & Thợ Săn Màu Sắc (Voice-Guided Balloon Pop)
+* **Độ tuổi**: 2.5 – 6 tuổi
+* **Lợi ích**: 
+  - Nhận biết chuẩn xác 10+ màu sắc cơ bản và nâng cao qua thính giác và thị giác.
+  - Rèn luyện phản xạ nhanh tay tinh mắt, sự phối hợp giữa tay và mắt (Hand-Eye Coordination).
+  - Tăng cường khả năng lắng nghe và làm theo chỉ dẫn bằng giọng nói tiếng Việt thân thiện.
+
+* **Cơ Chế Giọng Đọc Thông Minh (Smart Voice Quest Engine)**:
+  - 🗣️ **Phát Yêu Cầu Giọng Đọc (Voice Challenge)**:
+    - Khi bắt đầu màn chơi hoặc sau khi bé hoàn thành 1 mục tiêu, hệ thống phát giọng đọc tiếng Việt ngọt ngào:  
+      👉 *"Bé ơi, hãy tìm và làm nổ quả bóng màu **[ĐỎ / XANH DƯƠNG / VÀNG / HỒNG / TÍM / CAM / XANH LÁ]** nhé!"*
+    - Đồng thời trên góc trên màn hình hiển thị biểu tượng gợi ý trực quan (Gương soi màu / Khung bóng mục tiêu phát sáng viền cầu vồng) để hỗ trợ cả bé chưa quen nghe.
+  - 🔁 **Cơ Chế Tự Động Nhắc Nhở (Auto-Prompt Remind)**:
+    - Nếu sau 7 – 10 giây bé chưa chạm đúng bóng yêu cầu, loa sẽ nhắc lại nhẹ nhàng:  
+      👉 *"Quả bóng màu [Đỏ] đang bay lên kìa, bé chạm vào nó đi nào!"*
+    - Bóng mục tiêu có thể phát hiệu ứng nhấp nháy lấp lánh nhẹ để hỗ trợ các bé nhỏ tuổi.
+
+* **Quy Tắc Tương Tác & Phản Hồi Khi Chạm (Touch & Pop Feedback)**:
+  - ✅ **Khi bé chạm ĐÚNG bóng màu yêu cầu**:
+    - Quả bóng nổ *"BỤP!"* kèm hiệu ứng vỡ hạt kim tuyến 360 độ (Confetti / Glitter Particle VFX).
+    - Giọng đọc khen ngợi ngẫu nhiên: *"Tuyệt vời!", "Chính xác rồi bé ơi!", "Bé giỏi quá!", "Xuất sắc!"* ⭐.
+    - Tăng thanh tiến độ nhiệm vụ (VD: Tìm đủ 5 bóng màu Đỏ $\rightarrow$ Mở khóa màu tiếp theo).
+    - Thưởng sao lấp lánh và chuyển sang thử thách màu sắc tiếp theo.
+  - ⚠️ **Khi bé chạm bóng KHÁC màu yêu cầu**:
+    - Quả bóng vẫn nổ vui tai (không phạt điểm hay phát tiếng còi chói tai làm bé sợ).
+    - Giọng đọc giải thích và nhắc lại mục tiêu:  
+      👉 *"Đây là bóng màu **Xanh Lá**! Bé hãy tìm tiếp bóng màu **Đỏ** nhé!"*  
+      *(Vừa giúp bé nhận biết màu của quả bóng vừa nổ, vừa củng cố màu đang cần tìm)*.
+
+* **Các Chế Độ Chơi Mở Rộng (Game Modes)**:
+  1. 🎨 **Thợ Săn Màu Sắc (Color Hunt)**: Nhận biết 10 màu (*Đỏ, Vàng, Xanh Dương, Xanh Lá, Cam, Tím, Hồng, Nâu, Đen, Trắng*).
+  2. 🔢 **Đếm Số Kỳ Diệu (Number Pop)**: Giọng đọc *"Bé hãy tìm bóng số [1..10]"* $\rightarrow$ Học nhận diện mặt số.
+  3. 🔤 **Chữ Cái Vui Nhộn (Alphabet Pop)**: Giọng đọc *"Bé hãy tìm chữ cái [A, B, C...]"* $\rightarrow$ Học chữ cái tiếng Việt.
+  4. 🎈 **Thư Giãn Tự Do (Zen Free Pop)**: Dành cho bé 2 - 3 tuổi, chạm nổ bóng tự do, mỗi lần nổ loa đọc to tên màu sắc hoặc con số của bóng đó.
+
+* **Kỹ Thuật & Hệ Thống Hiệu Ứng Nổ Đa Tầng Cực Đẹp (Multi-Layered Super Pop VFX System)**:
+  - 💥 **Tầng 1: Sóng Xung Kích & Hào Quang Phát Sáng (Shockwave Ring & Flash Glow)**:
+    - Khi ngón tay bé chạm vào, tâm bóng phát ra tia chớp sáng tức thì (*Flash Glow*).
+    - Một vòng tròn sóng xung kích màu neon lấp lánh nở rộng nhanh chóng từ tâm (`scale: 0.5 \rightarrow 2.4`, `opacity: 1.0 \rightarrow 0.0`) trong 300ms tạo cảm giác nổ có lực và đã mắt.
+  - ✨ **Tầng 2: Mưa Hạt Kim Tuyến & Sao 3D (3D Star & Confetti Particle Physics)**:
+    - Bắn ra từ **18 – 24 hạt đa sắc** (Ngôi sao vàng 5 cánh ⭐, Kim cương lấp lánh 💎, Hạt bong bóng nhỏ và Mảnh ruy băng cầu vồng 🎊).
+    - Mỗi hạt có vector vận tốc ngẫu nhiên bay tỏa 360 độ kèm mô phỏng trọng lực (Gravity rơi chậm) và xoay góc tự do (`rotation: 0 \rightarrow 720deg`).
+  - 🎈 **Tầng 3: Mảnh Vỏ Bóng Co Giãn (Elastic Rubber Shard Splatter)**:
+    - 4 – 6 mảnh vỏ bóng cùng tông màu quả bóng co rút nhanh và tan biến tự nhiên, mô phỏng chân thực độ đàn hồi của quả bóng cao su.
+  - ⭐ **Tầng 4: Nhãn Điểm Thưởng & Biểu Tượng Bồng Bềnh (Floating Score & Mini Badge)**:
+    - Xuất hiện nhãn `+10 ⭐` hoặc icon mặt cười vui nhộn bay bồng bềnh lên trên (`translateY: 0 \rightarrow -80px`, `opacity: 1 \rightarrow 0`) với hiệu ứng lò xo bật nảy (Spring bounce).
+  - 🌈 **Hiệu Ứng Đặc Biệt "Siêu Nổ Cầu Vồng" (Rainbow Jackpot Super Pop)**:
+    - Khi bé tìm đủ 5/5 quả bóng màu yêu cầu, quả bóng cuối cùng sẽ kích hoạt hiệu ứng **Pháo Hoa Cầu Vồng Siêu Khổng Lồ**: Màn hình rung nhẹ vui nhộn, pháo hoa nổ bung toàn màn hình kèm giai điệu chiến thắng thần kỳ.
+  - 📳 **Rung Phản Hồi Cảm Ứng (Haptic Feedback)**:
+    - Kích hoạt nhịp rung nhẹ dễ chịu (*Light Impact Haptic*) trên máy tính bảng giúp bé cảm nhận được cú chạm thực tế như đang bấm nổ bóng thật.
+  - 🔊 **Âm Thanh Nổ Không Gian (Spatial Pop & Magic Chime)**:
+    - Kết hợp tiếng nổ *"BỤP!"* giòn tan + chuông gió thần tiên ngân vang (*Magic Ting-a-ling*) kích thích tối đa sự phấn khích của bé.
+
 
 ---
 

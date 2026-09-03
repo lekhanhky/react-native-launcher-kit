@@ -13,6 +13,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { ThemeConfig } from '../services/themes';
+import { dynamicGameService } from '../services/dynamicGameService';
 
 interface TangramPuzzleGameScreenProps {
   theme?: ThemeConfig;
@@ -584,6 +585,8 @@ export const TangramPuzzleGameScreen: React.FC<TangramPuzzleGameScreenProps> = (
           tension: 50,
           useNativeDriver: true,
         }).start();
+        // Lưu tiến độ bé đã hoàn thành bài Tangram
+        dynamicGameService.saveProgress('default_child', 'tangram', currentTangram.id, 3, 100);
       }
 
       return {
@@ -631,6 +634,8 @@ export const TangramPuzzleGameScreen: React.FC<TangramPuzzleGameScreenProps> = (
             tension: 50,
             useNativeDriver: true,
           }).start();
+          // Lưu tiến độ bé đã hoàn thành bài Jigsaw
+          dynamicGameService.saveProgress('default_child', 'jigsaw', currentJigsaw.id, 3, 100);
         }
 
         return {
@@ -847,42 +852,74 @@ export const TangramPuzzleGameScreen: React.FC<TangramPuzzleGameScreenProps> = (
           </TouchableOpacity>
         </View>
 
-        {/* Danh sách các bài xếp hình */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.puzzleScroll}>
+        {/* Lưới các bài xếp hình dạng Grid Responsive */}
+        <View style={styles.puzzleGrid}>
           {mode === 'tangram'
             ? TANGRAM_PUZZLES.map((pz, pIdx) => {
                 const isSelected = pIdx === currentTangramIdx;
+                const isCompleted =
+                  tangramProgress[pz.id] &&
+                  Object.keys(tangramProgress[pz.id]).length === pz.pieces.length;
                 return (
                   <TouchableOpacity
                     key={pz.id}
-                    style={[styles.puzzleChip, isSelected && styles.puzzleChipActive]}
+                    style={[
+                      styles.puzzleGridItem,
+                      isSelected && styles.puzzleGridItemActive,
+                      isCompleted && !isSelected && styles.puzzleGridItemCompleted,
+                    ]}
                     onPress={() => selectTangramPuzzle(pIdx)}
                     activeOpacity={0.8}
                   >
-                    <Text style={styles.puzzleChipEmoji}>{pz.emoji}</Text>
-                    <Text style={[styles.puzzleChipText, isSelected && styles.puzzleChipTextActive]}>
+                    <Text style={styles.puzzleGridEmoji}>{pz.emoji}</Text>
+                    <Text
+                      style={[
+                        styles.puzzleGridText,
+                        isSelected && styles.puzzleGridTextActive,
+                      ]}
+                      numberOfLines={1}
+                    >
                       {pz.title}
                     </Text>
+                    {isCompleted && (
+                      <Text style={styles.completedBadge}>⭐</Text>
+                    )}
                   </TouchableOpacity>
                 );
               })
             : JIGSAW_PUZZLES.map((pz, pIdx) => {
                 const isSelected = pIdx === currentJigsawIdx;
+                const isCompleted =
+                  jigsawProgress[pz.id] &&
+                  jigsawProgress[pz.id].every((s) => s !== null);
                 return (
                   <TouchableOpacity
                     key={pz.id}
-                    style={[styles.puzzleChip, isSelected && styles.puzzleChipActive]}
+                    style={[
+                      styles.puzzleGridItem,
+                      isSelected && styles.puzzleGridItemActive,
+                      isCompleted && !isSelected && styles.puzzleGridItemCompleted,
+                    ]}
                     onPress={() => selectJigsawPuzzle(pIdx)}
                     activeOpacity={0.8}
                   >
-                    <Text style={styles.puzzleChipEmoji}>{pz.emoji}</Text>
-                    <Text style={[styles.puzzleChipText, isSelected && styles.puzzleChipTextActive]}>
+                    <Text style={styles.puzzleGridEmoji}>{pz.emoji}</Text>
+                    <Text
+                      style={[
+                        styles.puzzleGridText,
+                        isSelected && styles.puzzleGridTextActive,
+                      ]}
+                      numberOfLines={1}
+                    >
                       {pz.title}
                     </Text>
+                    {isCompleted && (
+                      <Text style={styles.completedBadge}>⭐</Text>
+                    )}
                   </TouchableOpacity>
                 );
               })}
-        </ScrollView>
+        </View>
       </View>
 
       {/* THÔNG BÁO POPUP */}
@@ -1419,11 +1456,11 @@ const styles = StyleSheet.create({
   },
   topControlSection: {
     backgroundColor: '#1E1B4B',
-    paddingVertical: 6,
-    paddingHorizontal: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#312E81',
-    gap: 6,
+    gap: 8,
   },
   modeTabs: {
     flexDirection: 'row',
@@ -1431,55 +1468,73 @@ const styles = StyleSheet.create({
   },
   modeTabBtn: {
     flex: 1,
-    paddingVertical: 6,
-    borderRadius: 12,
+    paddingVertical: 8,
+    borderRadius: 14,
     alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: '#312E81',
+    borderWidth: 1.5,
+    borderColor: '#4338CA',
   },
   modeTabBtnActive: {
-    backgroundColor: '#8B5CF6',
-    borderWidth: 1.5,
-    borderColor: '#DDD6FE',
+    backgroundColor: '#6366F1',
+    borderColor: '#C7D2FE',
+    borderWidth: 2,
+    elevation: 4,
   },
   modeTabText: {
     color: '#C7D2FE',
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
   },
   modeTabTextActive: {
     color: '#FFFFFF',
     fontWeight: '900',
   },
-  puzzleScroll: {
-    gap: 8,
-    paddingVertical: 2,
+  puzzleGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    justifyContent: 'space-between',
   },
-  puzzleChip: {
+  puzzleGridItem: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: '#312E81',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 7,
     borderRadius: 12,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: '#4338CA',
+    width: '32%',
+    minWidth: 95,
+    gap: 4,
   },
-  puzzleChipActive: {
+  puzzleGridItemActive: {
     backgroundColor: '#EC4899',
-    borderColor: '#FCE7F3',
+    borderColor: '#FDF2F8',
+    elevation: 4,
   },
-  puzzleChipEmoji: {
-    fontSize: 16,
-    marginRight: 4,
+  puzzleGridItemCompleted: {
+    borderColor: '#FDE047',
   },
-  puzzleChipText: {
-    color: '#C7D2FE',
-    fontSize: 12,
+  puzzleGridEmoji: {
+    fontSize: 14,
+  },
+  puzzleGridText: {
+    color: '#E0E7FF',
+    fontSize: 11,
     fontWeight: '700',
+    flexShrink: 1,
   },
-  puzzleChipTextActive: {
+  puzzleGridTextActive: {
     color: '#FFFFFF',
     fontWeight: '900',
+  },
+  completedBadge: {
+    fontSize: 10,
+    marginLeft: 2,
   },
   toastCard: {
     position: 'absolute',

@@ -12,6 +12,7 @@ import {
   useWindowDimensions,
   AppState,
   BackHandler,
+  Platform,
 } from 'react-native';
 import { InstalledApps, RNLauncherKitHelper } from 'react-native-launcher-kit';
 import type { AppDetail } from 'react-native-launcher-kit/src/interfaces/InstalledApps';
@@ -33,6 +34,19 @@ import { JigsawPuzzleGameScreen } from './JigsawPuzzleGameScreen';
 import { MathQuizGameScreen } from './MathQuizGameScreen';
 import { WordSpellingGameScreen } from './WordSpellingGameScreen';
 import { ConnectDotsGameScreen } from './ConnectDotsGameScreen';
+import { SnakeEduGameScreen } from './SnakeEduGameScreen';
+import { FlashcardGameScreen } from './FlashcardGameScreen';
+import { SpaceShooterGameScreen } from './SpaceShooterGameScreen';
+import { RobotCoderGameScreen } from './RobotCoderGameScreen';
+import { EmotionGardenGameScreen } from './EmotionGardenGameScreen';
+import { ShadowMatchingGameScreen } from './ShadowMatchingGameScreen';
+import { SpotDifferenceGameScreen } from './SpotDifferenceGameScreen';
+import { XylophoneGameScreen } from './XylophoneGameScreen';
+import { LittleGardenerGameScreen } from './LittleGardenerGameScreen';
+import { WeatherDressUpGameScreen } from './WeatherDressUpGameScreen';
+import { BalanceScaleGameScreen } from './BalanceScaleGameScreen';
+import { SolarSystemGameScreen } from './SolarSystemGameScreen';
+import { DentalHabitsGameScreen } from './DentalHabitsGameScreen';
 import { LockOverlay } from '../components/LockOverlay';
 import { ParentPinModal } from '../components/ParentPinModal';
 import { DeviceAdminGuideModal } from '../components/DeviceAdminGuideModal';
@@ -96,6 +110,27 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
   // Connect Dots Game Screen state
   const [showConnectDotsGame, setShowConnectDotsGame] = useState<boolean>(false);
 
+  // Snake Edu Game Screen state
+  const [showSnakeGame, setShowSnakeGame] = useState<boolean>(false);
+
+  // Flashcards Game Screen state
+  const [showFlashcardsGame, setShowFlashcardsGame] = useState<boolean>(false);
+
+  // Space Shooter Game Screen state
+  const [showSpaceShooterGame, setShowSpaceShooterGame] = useState<boolean>(false);
+
+  // 10 New Educational Games States
+  const [showRobotCoderGame, setShowRobotCoderGame] = useState<boolean>(false);
+  const [showEmotionGardenGame, setShowEmotionGardenGame] = useState<boolean>(false);
+  const [showShadowMatchingGame, setShowShadowMatchingGame] = useState<boolean>(false);
+  const [showSpotDifferenceGame, setShowSpotDifferenceGame] = useState<boolean>(false);
+  const [showXylophoneGame, setShowXylophoneGame] = useState<boolean>(false);
+  const [showLittleGardenerGame, setShowLittleGardenerGame] = useState<boolean>(false);
+  const [showWeatherDressUpGame, setShowWeatherDressUpGame] = useState<boolean>(false);
+  const [showBalanceScaleGame, setShowBalanceScaleGame] = useState<boolean>(false);
+  const [showSolarSystemGame, setShowSolarSystemGame] = useState<boolean>(false);
+  const [showDentalHabitsGame, setShowDentalHabitsGame] = useState<boolean>(false);
+
   // Device Admin Guide Modal state
   const [showAdminGuideModal, setShowAdminGuideModal] = useState<boolean>(false);
 
@@ -107,8 +142,13 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
   // 1. Tải danh sách app
   const loadApps = useCallback(async () => {
     try {
-      const apps = await InstalledApps.getSortedApps();
-      setAllApps(apps);
+      let apps: AppDetail[] = [];
+      try {
+        apps = (await InstalledApps.getSortedApps()) || [];
+        setAllApps(apps);
+      } catch (nativeErr) {
+        console.warn('InstalledApps.getSortedApps error:', nativeErr);
+      }
 
       let blockedList: string[] = ['com.android.settings'];
       try {
@@ -197,6 +237,79 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
         icon: '',
       };
 
+      // Game 12: Rắn săn mồi thông minh (Edu-Snake)
+      const snakeGameApp: AppDetail = {
+        label: 'Rắn Săn Mồi',
+        packageName: 'internal.game.snakeedu',
+        icon: '',
+      };
+
+      // Game 13: Thẻ bài từ vựng song ngữ Oxford (Flashcards)
+      const flashcardsApp: AppDetail = {
+        label: 'Bé Học Từ Vựng',
+        packageName: 'internal.game.flashcards',
+        icon: '',
+      };
+
+      // Game 14: Phi Hành Gia Nhí (Space Shooter)
+      const spaceShooterApp: AppDetail = {
+        label: 'Phi Hành Gia Nhí',
+        packageName: 'internal.game.spaceshooter',
+        icon: '',
+      };
+
+      // 10 Trò chơi giáo dục mới mở rộng
+      const robotCoderApp: AppDetail = {
+        label: 'Lập Trình Robot',
+        packageName: 'internal.game.robotcoder',
+        icon: '',
+      };
+      const emotionGardenApp: AppDetail = {
+        label: 'Khu Vườn Cảm Xúc',
+        packageName: 'internal.game.emotions',
+        icon: '',
+      };
+      const shadowMatchingApp: AppDetail = {
+        label: 'Chiếc Bóng Kỳ Diệu',
+        packageName: 'internal.game.shadowmatch',
+        icon: '',
+      };
+      const spotDifferenceApp: AppDetail = {
+        label: 'Tìm Điểm Khác',
+        packageName: 'internal.game.spotdiff',
+        icon: '',
+      };
+      const xylophoneApp: AppDetail = {
+        label: 'Đàn Xylophone',
+        packageName: 'internal.game.xylophone',
+        icon: '',
+      };
+      const littleGardenerApp: AppDetail = {
+        label: 'Bé Làm Vườn',
+        packageName: 'internal.game.gardener',
+        icon: '',
+      };
+      const weatherDressUpApp: AppDetail = {
+        label: 'Thời Tiết & Áo Quần',
+        packageName: 'internal.game.weatherdress',
+        icon: '',
+      };
+      const balanceScaleApp: AppDetail = {
+        label: 'Cân Thăng Bằng',
+        packageName: 'internal.game.balancescale',
+        icon: '',
+      };
+      const solarSystemApp: AppDetail = {
+        label: 'Hệ Mặt Trời',
+        packageName: 'internal.game.solarsystem',
+        icon: '',
+      };
+      const dentalHabitsApp: AppDetail = {
+        label: 'Bé Vui Đánh Răng',
+        packageName: 'internal.game.dentalhabits',
+        icon: '',
+      };
+
       const allKidsGames = [
         memoryGameApp,
         bubblePopApp,
@@ -209,6 +322,19 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
         connectDotsApp,
         tangramGameApp,
         jigsawGameApp,
+        snakeGameApp,
+        flashcardsApp,
+        spaceShooterApp,
+        robotCoderApp,
+        emotionGardenApp,
+        shadowMatchingApp,
+        spotDifferenceApp,
+        xylophoneApp,
+        littleGardenerApp,
+        weatherDressUpApp,
+        balanceScaleApp,
+        solarSystemApp,
+        dentalHabitsApp,
       ];
 
       // Thêm ứng dụng YouTube an toàn nếu phụ huynh cho phép
@@ -352,6 +478,58 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
         setShowJigsawGame(false);
         return true;
       }
+      if (showSnakeGame) {
+        setShowSnakeGame(false);
+        return true;
+      }
+      if (showFlashcardsGame) {
+        setShowFlashcardsGame(false);
+        return true;
+      }
+      if (showSpaceShooterGame) {
+        setShowSpaceShooterGame(false);
+        return true;
+      }
+      if (showRobotCoderGame) {
+        setShowRobotCoderGame(false);
+        return true;
+      }
+      if (showEmotionGardenGame) {
+        setShowEmotionGardenGame(false);
+        return true;
+      }
+      if (showShadowMatchingGame) {
+        setShowShadowMatchingGame(false);
+        return true;
+      }
+      if (showSpotDifferenceGame) {
+        setShowSpotDifferenceGame(false);
+        return true;
+      }
+      if (showXylophoneGame) {
+        setShowXylophoneGame(false);
+        return true;
+      }
+      if (showLittleGardenerGame) {
+        setShowLittleGardenerGame(false);
+        return true;
+      }
+      if (showWeatherDressUpGame) {
+        setShowWeatherDressUpGame(false);
+        return true;
+      }
+      if (showBalanceScaleGame) {
+        setShowBalanceScaleGame(false);
+        return true;
+      }
+      if (showSolarSystemGame) {
+        setShowSolarSystemGame(false);
+        return true;
+      }
+      if (showDentalHabitsGame) {
+        setShowDentalHabitsGame(false);
+        return true;
+      }
       if (showYouTubeScreen) {
         setShowYouTubeScreen(false);
         return true;
@@ -381,6 +559,19 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
     showConnectDotsGame,
     showTangramGame,
     showJigsawGame,
+    showSnakeGame,
+    showFlashcardsGame,
+    showSpaceShooterGame,
+    showRobotCoderGame,
+    showEmotionGardenGame,
+    showShadowMatchingGame,
+    showSpotDifferenceGame,
+    showXylophoneGame,
+    showLittleGardenerGame,
+    showWeatherDressUpGame,
+    showBalanceScaleGame,
+    showSolarSystemGame,
+    showDentalHabitsGame,
     showYouTubeScreen,
     showSettingsScreen,
   ]);
@@ -455,6 +646,66 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
     // Mở Game 11: Ghép Tranh Jigsaw Puzzle
     if (packageName === 'internal.game.jigsaw') {
       setShowJigsawGame(true);
+      return;
+    }
+
+    // Mở Game 12: Rắn Săn Mồi Thông Minh (Edu-Snake)
+    if (packageName === 'internal.game.snakeedu') {
+      setShowSnakeGame(true);
+      return;
+    }
+
+    // Mở Game 13: Thẻ Bài Từ Vựng Song Ngữ Oxford (Flashcards)
+    if (packageName === 'internal.game.flashcards') {
+      setShowFlashcardsGame(true);
+      return;
+    }
+
+    // Mở Game 14: Phi Hành Gia Nhí (Space Shooter)
+    if (packageName === 'internal.game.spaceshooter') {
+      setShowSpaceShooterGame(true);
+      return;
+    }
+
+    // 10 Games mới
+    if (packageName === 'internal.game.robotcoder') {
+      setShowRobotCoderGame(true);
+      return;
+    }
+    if (packageName === 'internal.game.emotions') {
+      setShowEmotionGardenGame(true);
+      return;
+    }
+    if (packageName === 'internal.game.shadowmatch') {
+      setShowShadowMatchingGame(true);
+      return;
+    }
+    if (packageName === 'internal.game.spotdiff') {
+      setShowSpotDifferenceGame(true);
+      return;
+    }
+    if (packageName === 'internal.game.xylophone') {
+      setShowXylophoneGame(true);
+      return;
+    }
+    if (packageName === 'internal.game.gardener') {
+      setShowLittleGardenerGame(true);
+      return;
+    }
+    if (packageName === 'internal.game.weatherdress') {
+      setShowWeatherDressUpGame(true);
+      return;
+    }
+    if (packageName === 'internal.game.balancescale') {
+      setShowBalanceScaleGame(true);
+      return;
+    }
+    if (packageName === 'internal.game.solarsystem') {
+      setShowSolarSystemGame(true);
+      return;
+    }
+    if (packageName === 'internal.game.dentalhabits') {
+      setShowDentalHabitsGame(true);
       return;
     }
 
@@ -588,6 +839,53 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
     );
   }
 
+  // Mở màn hình Game 12: Rắn Săn Mồi Giáo Dục (Edu-Snake)
+  if (showSnakeGame) {
+    return <SnakeEduGameScreen onClose={() => setShowSnakeGame(false)} />;
+  }
+
+  // Mở màn hình Game 13: Thẻ Bài Từ Vựng Song Ngữ Oxford (Flashcards)
+  if (showFlashcardsGame) {
+    return <FlashcardGameScreen onClose={() => setShowFlashcardsGame(false)} />;
+  }
+
+  // Mở màn hình Game 14: Phi Hành Gia Nhí (Space Shooter)
+  if (showSpaceShooterGame) {
+    return <SpaceShooterGameScreen onClose={() => setShowSpaceShooterGame(false)} />;
+  }
+
+  // 10 Game giáo dục mới
+  if (showRobotCoderGame) {
+    return <RobotCoderGameScreen onClose={() => setShowRobotCoderGame(false)} />;
+  }
+  if (showEmotionGardenGame) {
+    return <EmotionGardenGameScreen onClose={() => setShowEmotionGardenGame(false)} />;
+  }
+  if (showShadowMatchingGame) {
+    return <ShadowMatchingGameScreen onClose={() => setShowShadowMatchingGame(false)} />;
+  }
+  if (showSpotDifferenceGame) {
+    return <SpotDifferenceGameScreen onClose={() => setShowSpotDifferenceGame(false)} />;
+  }
+  if (showXylophoneGame) {
+    return <XylophoneGameScreen onClose={() => setShowXylophoneGame(false)} />;
+  }
+  if (showLittleGardenerGame) {
+    return <LittleGardenerGameScreen onClose={() => setShowLittleGardenerGame(false)} />;
+  }
+  if (showWeatherDressUpGame) {
+    return <WeatherDressUpGameScreen onClose={() => setShowWeatherDressUpGame(false)} />;
+  }
+  if (showBalanceScaleGame) {
+    return <BalanceScaleGameScreen onClose={() => setShowBalanceScaleGame(false)} />;
+  }
+  if (showSolarSystemGame) {
+    return <SolarSystemGameScreen onClose={() => setShowSolarSystemGame(false)} />;
+  }
+  if (showDentalHabitsGame) {
+    return <DentalHabitsGameScreen onClose={() => setShowDentalHabitsGame(false)} />;
+  }
+
   // Mở màn hình YouTube an toàn
   if (showYouTubeScreen) {
     return (
@@ -715,6 +1013,19 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
             const isConnectDots = item.packageName === 'internal.game.connectdots';
             const isTangramGame = item.packageName === 'internal.game.tangram';
             const isJigsawGame = item.packageName === 'internal.game.jigsaw';
+            const isSnakeGame = item.packageName === 'internal.game.snakeedu';
+            const isFlashcards = item.packageName === 'internal.game.flashcards';
+            const isSpaceShooter = item.packageName === 'internal.game.spaceshooter';
+            const isRobotCoder = item.packageName === 'internal.game.robotcoder';
+            const isEmotionGarden = item.packageName === 'internal.game.emotions';
+            const isShadowMatching = item.packageName === 'internal.game.shadowmatch';
+            const isSpotDifference = item.packageName === 'internal.game.spotdiff';
+            const isXylophone = item.packageName === 'internal.game.xylophone';
+            const isLittleGardener = item.packageName === 'internal.game.gardener';
+            const isWeatherDressUp = item.packageName === 'internal.game.weatherdress';
+            const isBalanceScale = item.packageName === 'internal.game.balancescale';
+            const isSolarSystem = item.packageName === 'internal.game.solarsystem';
+            const isDentalHabits = item.packageName === 'internal.game.dentalhabits';
             return (
               <TouchableOpacity
                 style={styles.appCard}
@@ -786,6 +1097,84 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
                   <View style={[styles.appIcon, styles.jigsawIconContainer]}>
                     <View style={styles.jigsawInnerBadge}>
                       <Text style={styles.jigsawEmojiIcon}>🖼️</Text>
+                    </View>
+                  </View>
+                ) : isSnakeGame ? (
+                  <View style={[styles.appIcon, styles.snakeIconContainer]}>
+                    <View style={styles.snakeInnerBadge}>
+                      <Text style={styles.snakeEmojiIcon}>🐍</Text>
+                    </View>
+                  </View>
+                ) : isFlashcards ? (
+                  <View style={[styles.appIcon, styles.flashcardIconContainer]}>
+                    <View style={styles.flashcardInnerBadge}>
+                      <Text style={styles.flashcardEmojiIcon}>🎴</Text>
+                    </View>
+                  </View>
+                ) : isSpaceShooter ? (
+                  <View style={[styles.appIcon, styles.spaceShooterIconContainer]}>
+                    <View style={styles.spaceShooterInnerBadge}>
+                      <Text style={styles.spaceShooterEmojiIcon}>🚀</Text>
+                    </View>
+                  </View>
+                ) : isRobotCoder ? (
+                  <View style={[styles.appIcon, styles.robotCoderIconContainer]}>
+                    <View style={styles.robotCoderInnerBadge}>
+                      <Text style={styles.robotCoderEmojiIcon}>🤖</Text>
+                    </View>
+                  </View>
+                ) : isEmotionGarden ? (
+                  <View style={[styles.appIcon, styles.emotionGardenIconContainer]}>
+                    <View style={styles.emotionGardenInnerBadge}>
+                      <Text style={styles.emotionGardenEmojiIcon}>😊</Text>
+                    </View>
+                  </View>
+                ) : isShadowMatching ? (
+                  <View style={[styles.appIcon, styles.shadowMatchIconContainer]}>
+                    <View style={styles.shadowMatchInnerBadge}>
+                      <Text style={styles.shadowMatchEmojiIcon}>👥</Text>
+                    </View>
+                  </View>
+                ) : isSpotDifference ? (
+                  <View style={[styles.appIcon, styles.spotDiffIconContainer]}>
+                    <View style={styles.spotDiffInnerBadge}>
+                      <Text style={styles.spotDiffEmojiIcon}>🔍</Text>
+                    </View>
+                  </View>
+                ) : isXylophone ? (
+                  <View style={[styles.appIcon, styles.xylophoneIconContainer]}>
+                    <View style={styles.xylophoneInnerBadge}>
+                      <Text style={styles.xylophoneEmojiIcon}>🎹</Text>
+                    </View>
+                  </View>
+                ) : isLittleGardener ? (
+                  <View style={[styles.appIcon, styles.gardenerIconContainer]}>
+                    <View style={styles.gardenerInnerBadge}>
+                      <Text style={styles.gardenerEmojiIcon}>🌱</Text>
+                    </View>
+                  </View>
+                ) : isWeatherDressUp ? (
+                  <View style={[styles.appIcon, styles.weatherDressIconContainer]}>
+                    <View style={styles.weatherDressInnerBadge}>
+                      <Text style={styles.weatherDressEmojiIcon}>👗</Text>
+                    </View>
+                  </View>
+                ) : isBalanceScale ? (
+                  <View style={[styles.appIcon, styles.balanceScaleIconContainer]}>
+                    <View style={styles.balanceScaleInnerBadge}>
+                      <Text style={styles.balanceScaleEmojiIcon}>⚖️</Text>
+                    </View>
+                  </View>
+                ) : isSolarSystem ? (
+                  <View style={[styles.appIcon, styles.solarSystemIconContainer]}>
+                    <View style={styles.solarSystemInnerBadge}>
+                      <Text style={styles.solarSystemEmojiIcon}>🪐</Text>
+                    </View>
+                  </View>
+                ) : isDentalHabits ? (
+                  <View style={[styles.appIcon, styles.dentalHabitsIconContainer]}>
+                    <View style={styles.dentalHabitsInnerBadge}>
+                      <Text style={styles.dentalHabitsEmojiIcon}>🦷</Text>
                     </View>
                   </View>
                 ) : isYouTube ? (
@@ -908,7 +1297,28 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
           visible={showAdminGuideModal}
           onClose={() => setShowAdminGuideModal(false)}
           onConfirm={() => {
-            launcherHelper.requestDeviceAdmin();
+            // Đóng modal trước
+            setShowAdminGuideModal(false);
+            // Gọi trực tiếp NativeModules để bypass mọi wrapper
+            const { DeviceAdminModule } = require('react-native').NativeModules;
+            if (DeviceAdminModule) {
+              DeviceAdminModule.requestDeviceAdmin()
+                .then(() => {
+                  console.log('Device Admin intent launched successfully');
+                })
+                .catch((err: any) => {
+                  console.warn('Device Admin error:', err);
+                  Alert.alert(
+                    'Không thể mở',
+                    'Vui lòng vào Cài đặt > Bảo mật > Quản trị viên thiết bị, chọn "rnlauncherkit" và kích hoạt thủ công.',
+                  );
+                });
+            } else {
+              Alert.alert(
+                'Module chưa sẵn sàng',
+                'DeviceAdminModule không tồn tại. Vui lòng vào Cài đặt > Bảo mật > Quản trị viên thiết bị để kích hoạt thủ công.',
+              );
+            }
           }}
         />
       </View>
@@ -928,7 +1338,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingTop:
+      Platform.OS === 'android'
+        ? (StatusBar.currentHeight ? StatusBar.currentHeight + 10 : 36)
+        : 16,
+    paddingBottom: 14,
     borderBottomWidth: 1,
   },
   greetingText: {
@@ -1280,6 +1694,268 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   jigsawEmojiIcon: {
+    fontSize: 24,
+  },
+
+  // GAME 12: SNAKE EDU ICON
+  snakeIconContainer: {
+    backgroundColor: '#10B981',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#059669',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 4,
+  },
+  snakeInnerBadge: {
+    width: 44,
+    height: 44,
+    backgroundColor: '#D1FAE5',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  snakeEmojiIcon: {
+    fontSize: 24,
+  },
+
+  // GAME 13: FLASHCARDS VOCABULARY ICON
+  flashcardIconContainer: {
+    backgroundColor: '#3B82F6',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#1D4ED8',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 4,
+  },
+  flashcardInnerBadge: {
+    width: 44,
+    height: 44,
+    backgroundColor: '#DBEAFE',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  flashcardEmojiIcon: {
+    fontSize: 24,
+  },
+
+  spaceShooterIconContainer: {
+    backgroundColor: '#1E1B4B',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#4F46E5',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.4,
+    shadowRadius: 5,
+    elevation: 4,
+  },
+  spaceShooterInnerBadge: {
+    width: 44,
+    height: 44,
+    backgroundColor: '#312E81',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  spaceShooterEmojiIcon: {
+    fontSize: 24,
+  },
+
+  // 10 New Educational Game Icons Styles
+  robotCoderIconContainer: {
+    backgroundColor: '#312E81',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 4,
+  },
+  robotCoderInnerBadge: {
+    width: 44,
+    height: 44,
+    backgroundColor: '#4338CA',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  robotCoderEmojiIcon: {
+    fontSize: 24,
+  },
+
+  emotionGardenIconContainer: {
+    backgroundColor: '#064E3B',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 4,
+  },
+  emotionGardenInnerBadge: {
+    width: 44,
+    height: 44,
+    backgroundColor: '#059669',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emotionGardenEmojiIcon: {
+    fontSize: 24,
+  },
+
+  shadowMatchIconContainer: {
+    backgroundColor: '#0C4A6E',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 4,
+  },
+  shadowMatchInnerBadge: {
+    width: 44,
+    height: 44,
+    backgroundColor: '#0284C7',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  shadowMatchEmojiIcon: {
+    fontSize: 24,
+  },
+
+  spotDiffIconContainer: {
+    backgroundColor: '#78350F',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 4,
+  },
+  spotDiffInnerBadge: {
+    width: 44,
+    height: 44,
+    backgroundColor: '#D97706',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  spotDiffEmojiIcon: {
+    fontSize: 24,
+  },
+
+  xylophoneIconContainer: {
+    backgroundColor: '#831843',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 4,
+  },
+  xylophoneInnerBadge: {
+    width: 44,
+    height: 44,
+    backgroundColor: '#DB2777',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  xylophoneEmojiIcon: {
+    fontSize: 24,
+  },
+
+  gardenerIconContainer: {
+    backgroundColor: '#14532D',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 4,
+  },
+  gardenerInnerBadge: {
+    width: 44,
+    height: 44,
+    backgroundColor: '#16A34A',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  gardenerEmojiIcon: {
+    fontSize: 24,
+  },
+
+  weatherDressIconContainer: {
+    backgroundColor: '#C2410C',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 4,
+  },
+  weatherDressInnerBadge: {
+    width: 44,
+    height: 44,
+    backgroundColor: '#EA580C',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  weatherDressEmojiIcon: {
+    fontSize: 24,
+  },
+
+  balanceScaleIconContainer: {
+    backgroundColor: '#1E293B',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 4,
+  },
+  balanceScaleInnerBadge: {
+    width: 44,
+    height: 44,
+    backgroundColor: '#334155',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  balanceScaleEmojiIcon: {
+    fontSize: 24,
+  },
+
+  solarSystemIconContainer: {
+    backgroundColor: '#0F172A',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 4,
+  },
+  solarSystemInnerBadge: {
+    width: 44,
+    height: 44,
+    backgroundColor: '#1E293B',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  solarSystemEmojiIcon: {
+    fontSize: 24,
+  },
+
+  dentalHabitsIconContainer: {
+    backgroundColor: '#155E75',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 4,
+  },
+  dentalHabitsInnerBadge: {
+    width: 44,
+    height: 44,
+    backgroundColor: '#0891B2',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  dentalHabitsEmojiIcon: {
     fontSize: 24,
   },
 

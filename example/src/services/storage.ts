@@ -14,6 +14,7 @@ export const STORAGE_KEYS = {
   PACKAGE_LIST: 'PACKAGE_LIST',
   SCHEDULE: 'SCHEDULE',
   CURRENT_THEME: 'CURRENT_THEME',
+  CUSTOM_VOCABULARY: 'CUSTOM_VOCABULARY',
 };
 
 // Cấu hình Supabase (Tự động đọc từ .env hoặc fallback cấu hình mặc định)
@@ -40,6 +41,18 @@ class StorageEngine {
 
   set(key: string, value: string | boolean | number): void {
     this.memoryStore.set(key, String(value));
+  }
+
+  getItem(key: string): string | null {
+    return this.memoryStore.get(key) ?? null;
+  }
+
+  setItem(key: string, value: string | boolean | number): void {
+    this.memoryStore.set(key, String(value));
+  }
+
+  removeItem(key: string): void {
+    this.memoryStore.delete(key);
   }
 
   getBoolean(key: string): boolean {

@@ -13,6 +13,8 @@ import {
   ActivityIndicator,
   useWindowDimensions,
   Modal,
+  Platform,
+  StatusBar,
 } from 'react-native';
 import { RNLauncherKitHelper } from 'react-native-launcher-kit';
 import type { AppDetail } from 'react-native-launcher-kit/src/interfaces/InstalledApps';
@@ -23,6 +25,8 @@ import {
   youtubeService,
   YouTubeChannel,
 } from '../services/youtubeService';
+import { vocabularyService } from '../services/vocabularyService';
+import { VocabCategory, VocabCard } from '../data/oxfordKidsVocabulary';
 import { YouTubeChannelSearchScreen } from './YouTubeChannelSearchScreen';
 import { YouTubeVideoDetailScreen } from './YouTubeVideoDetailScreen';
 
@@ -33,7 +37,7 @@ interface ParentSettingsScreenProps {
   onResetLicense: () => void;
 }
 
-type SettingsTab = 'apps' | 'youtube' | 'account';
+type SettingsTab = 'apps' | 'youtube' | 'vocab' | 'account';
 
 export const ParentSettingsScreen: React.FC<ParentSettingsScreenProps> = ({
   allApps,
@@ -106,6 +110,207 @@ export const ParentSettingsScreen: React.FC<ParentSettingsScreenProps> = ({
 
   // Kênh đang chọn xem Chi Tiết Video
   const [selectedDetailChannel, setSelectedDetailChannel] = useState<YouTubeChannel | null>(null);
+
+  // 5. Quản lý Từ Vựng (Vocabulary CMS)
+  const [vocabCategories, setVocabCategories] = useState<VocabCategory[]>(() =>
+    vocabularyService.getAllCategories()
+  );
+  const [selectedVocabCatId, setSelectedVocabCatId] = useState<string>(
+    vocabCategories[0]?.id || 'animals'
+  );
+  const selectedVocabCat =
+    vocabCategories.find((c) => c.id === selectedVocabCatId) || vocabCategories[0];
+
+  // Modal Thêm / Sửa Từ Vựng
+  const [showWordModal, setShowWordModal] = useState<boolean>(false);
+  const [editingWord, setEditingWord] = useState<VocabCard | null>(null);
+  const [wordForm, setWordForm] = useState({
+    english: '',
+    vietnamese: '',
+    ipa: '',
+    emoji: '⭐',
+    exampleEn: '',
+    exampleVi: '',
+    funFact: '',
+  });
+
+  // Modal Thêm Danh Mục Mới
+  const [showCategoryModal, setShowCategoryModal] = useState<boolean>(false);
+  const [categoryForm, setCategoryForm] = useState({
+    titleVi: '',
+    titleEn: '',
+    icon: '📚',
+    color: '#3B82F6',
+  });
+
+  // Đăng ký lắng nghe thay đổi từ vựng
+  useEffect(() => {
+    const unsub = vocabularyService.subscribe((updated) => {
+      setVocabCategories(updated);
+    });
+    return () => unsub();
+  }, []);
+
+  // Tổng số từ vựng
+  const totalVocabWords = vocabCategories.reduce(
+    (acc, cat) => acc + (cat.cards?.length || 0),
+    0
+  );
+
+  // Mở modal thêm từ vựng mới
+  const handleOpenAddWord = () => {
+    setEditingWord(null);
+    setWordForm({
+      english: '',
+      vietnamese: '',
+      ipa: '',
+      emoji: '⭐',
+      exampleEn: '',
+      exampleVi: '',
+      funFact: '',
+    });
+    setShowWordModal(true);
+  };
+
+  // Mở modal sửa từ vựng
+  const handleOpenEditWord = (card: VocabCard) => {
+    setEditingWord(card);
+    setWordForm({
+      english: card.english,
+      vietnamese: card.vietnamese,
+      ipa: card.ipa,
+      emoji: card.emoji,
+      exampleEn: card.exampleEn,
+      exampleVi: card.exampleVi,
+      funFact: card.funFact,
+    });
+    setShowWordModal(true);
+  };
+
+  // Lưu từ vựng (Thêm hoặc Sửa)
+  const handleSaveWord = () => {
+    if (!wordForm.english.trim() || !wordForm.vietnamese.trim()) {
+      Alert.alert('Thiếu thông tin', 'Vui lòng nhập Từ tiếng Anh và Nghĩa tiếng Việt!');
+      return;
+    }
+
+    if (editingWord) {
+      // Sửa từ
+      vocabularyService.updateCard(selectedVocabCat.id, editingWord.id, {
+        english: wordForm.english,
+        vietnamese: wordForm.vietnamese,
+        ipa: wordForm.ipa || `/${wordForm.english.toLowerCase()}/`,
+        emoji: wordForm.emoji || '⭐',
+        exampleEn: wordForm.exampleEn,
+        exampleVi: wordForm.exampleVi,
+        funFact: wordForm.funFact,
+      });
+      Alert.alert('Thành công', `Đã cập nhật từ "${wordForm.english}"!`);
+    } else {
+      // Thêm từ mới
+      vocabularyService.addCard(selectedVocabCat.id, {
+        english: wordForm.english,
+        vietnamese: wordForm.vietnamese,
+        ipa: wordForm.ipa,
+        emoji: wordForm.emoji,
+        exampleEn: wordForm.exampleEn,
+        exampleVi: wordForm.exampleVi,
+        funFact: wordForm.funFact,
+      });
+      Alert.alert('Thành công', `Đã thêm từ "${wordForm.english}" vào danh mục ${selectedVocabCat.titleVi}!`);
+    }
+
+    setVocabCategories(vocabularyService.getAllCategories());
+    setShowWordModal(false);
+  };
+
+  // Xóa từ vựng
+  const handleDeleteWord = (card: VocabCard) => {
+    Alert.alert(
+      'Xóa Từ Vựng',
+      `Bạn có chắc chắn muốn xóa từ "${card.english} (${card.vietnamese})" khỏi danh mục?`,
+      [
+        { text: 'Hủy', style: 'cancel' },
+        {
+          text: 'Xóa',
+          style: 'destructive',
+          onPress: () => {
+            vocabularyService.deleteCard(selectedVocabCat.id, card.id);
+            setVocabCategories(vocabularyService.getAllCategories());
+          },
+        },
+      ]
+    );
+  };
+
+  // Thêm danh mục mới
+  const handleSaveCategory = () => {
+    if (!categoryForm.titleVi.trim()) {
+      Alert.alert('Thiếu thông tin', 'Vui lòng nhập Tên chủ đề tiếng Việt!');
+      return;
+    }
+
+    const created = vocabularyService.addCategory({
+      titleVi: categoryForm.titleVi,
+      titleEn: categoryForm.titleEn || categoryForm.titleVi,
+      icon: categoryForm.icon || '📚',
+      color: categoryForm.color || '#3B82F6',
+    });
+
+    const updated = vocabularyService.getAllCategories();
+    setVocabCategories(updated);
+    setSelectedVocabCatId(created.id);
+    setShowCategoryModal(false);
+    setCategoryForm({ titleVi: '', titleEn: '', icon: '📚', color: '#3B82F6' });
+    Alert.alert('Thành công', `Đã tạo chủ đề mới "${created.titleVi}"!`);
+  };
+
+  // Xóa danh mục
+  const handleDeleteCategory = (cat: VocabCategory) => {
+    Alert.alert(
+      'Xóa Chủ Đề',
+      `Bạn có chắc chắn muốn xóa toàn bộ chủ đề "${cat.titleVi}" cùng ${cat.cards?.length || 0} từ vựng bên trong?`,
+      [
+        { text: 'Hủy', style: 'cancel' },
+        {
+          text: 'Xóa Toàn Bộ',
+          style: 'destructive',
+          onPress: () => {
+            vocabularyService.deleteCategory(cat.id);
+            const updated = vocabularyService.getAllCategories();
+            setVocabCategories(updated);
+            if (updated.length > 0) {
+              setSelectedVocabCatId(updated[0].id);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // Khôi phục từ vựng mặc định Oxford
+  const handleResetVocabDefault = () => {
+    Alert.alert(
+      'Khôi Phục Mặc Định',
+      'Bạn có muốn khôi phục lại danh sách từ vựng chuẩn 3000 từ Oxford ban đầu không?',
+      [
+        { text: 'Hủy', style: 'cancel' },
+        {
+          text: 'Khôi Phục',
+          style: 'destructive',
+          onPress: () => {
+            vocabularyService.resetToDefault();
+            const updated = vocabularyService.getAllCategories();
+            setVocabCategories(updated);
+            if (updated.length > 0) {
+              setSelectedVocabCatId(updated[0].id);
+            }
+            Alert.alert('Thành công', 'Đã khôi phục toàn bộ từ vựng chuẩn Oxford!');
+          },
+        },
+      ]
+    );
+  };
 
   // Kiểm tra trạng thái Device Admin khi mở màn hình
   useEffect(() => {
@@ -251,7 +456,7 @@ export const ParentSettingsScreen: React.FC<ParentSettingsScreenProps> = ({
         </TouchableOpacity>
       </View>
 
-      {/* 3 TAB CHÍNH */}
+      {/* 4 TAB CHÍNH - Grid Responsive 2x2 */}
       <View style={styles.tabBar}>
         <TouchableOpacity
           style={[styles.tabItem, activeTab === 'apps' && styles.tabItemActive]}
@@ -260,7 +465,7 @@ export const ParentSettingsScreen: React.FC<ParentSettingsScreenProps> = ({
         >
           <Text style={styles.tabIcon}>📱</Text>
           <Text style={[styles.tabTitle, activeTab === 'apps' && styles.tabTitleActive]}>
-            Quản Lý App
+            App
           </Text>
           <View style={[styles.tabBadge, activeTab === 'apps' && styles.tabBadgeActive]}>
             <Text style={[styles.tabBadgeText, activeTab === 'apps' && styles.tabBadgeTextActive]}>
@@ -276,11 +481,27 @@ export const ParentSettingsScreen: React.FC<ParentSettingsScreenProps> = ({
         >
           <Text style={styles.tabIcon}>📺</Text>
           <Text style={[styles.tabTitle, activeTab === 'youtube' && styles.tabTitleActive]}>
-            Quản Lý YouTube
+            YouTube
           </Text>
           <View style={[styles.tabBadge, activeTab === 'youtube' && styles.tabBadgeActive]}>
             <Text style={[styles.tabBadgeText, activeTab === 'youtube' && styles.tabBadgeTextActive]}>
               {allowedChannels.length}
+            </Text>
+          </View>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.tabItem, activeTab === 'vocab' && styles.tabItemActive]}
+          onPress={() => setActiveTab('vocab')}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.tabIcon}>📚</Text>
+          <Text style={[styles.tabTitle, activeTab === 'vocab' && styles.tabTitleActive]}>
+            Từ Vựng
+          </Text>
+          <View style={[styles.tabBadge, activeTab === 'vocab' && styles.tabBadgeActive]}>
+            <Text style={[styles.tabBadgeText, activeTab === 'vocab' && styles.tabBadgeTextActive]}>
+              {totalVocabWords}
             </Text>
           </View>
         </TouchableOpacity>
@@ -682,11 +903,191 @@ export const ParentSettingsScreen: React.FC<ParentSettingsScreenProps> = ({
         )}
 
         {/* ========================================================================= */}
-        {/* TAB 3: TÀI KHOẢN & BẢN QUYỀN (ACCOUNT) */}
+        {/* TAB 3: QUẢN LÝ TỪ VỰNG (VOCABULARY CMS) */}
+        {/* ========================================================================= */}
+        {activeTab === 'vocab' && (
+          <>
+            {/* 3.1. TỔNG QUAN TỪ VỰNG */}
+            <View style={styles.card}>
+              <View style={styles.cardHeaderRow}>
+                <Text style={styles.cardTitle}>📚 Quản Lý Thẻ Từ Vựng</Text>
+                <TouchableOpacity
+                  style={styles.resetVocabBtn}
+                  onPress={handleResetVocabDefault}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.resetVocabBtnText}>🔄 Khôi Phục Gốc</Text>
+                </TouchableOpacity>
+              </View>
+              <Text style={styles.cardDesc}>
+                Admin và Phụ huynh có thể thêm các chủ đề mới hoặc bổ sung từ vựng song ngữ Anh - Việt cho bé học tập.
+              </Text>
+
+              <View style={styles.vocabSummaryRow}>
+                <View style={styles.vocabSummaryBox}>
+                  <Text style={styles.vocabSummaryNumber}>{vocabCategories.length}</Text>
+                  <Text style={styles.vocabSummaryLabel}>Chủ Đề</Text>
+                </View>
+                <View style={styles.vocabSummaryBox}>
+                  <Text style={styles.vocabSummaryNumber}>{totalVocabWords}</Text>
+                  <Text style={styles.vocabSummaryLabel}>Tổng Từ Vựng</Text>
+                </View>
+                <View style={styles.vocabSummaryBox}>
+                  <Text style={styles.vocabSummaryNumber}>
+                    {selectedVocabCat?.cards?.length || 0}
+                  </Text>
+                  <Text style={styles.vocabSummaryLabel}>Từ Trong Mục</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* 3.2. CHỌN CHỦ ĐỀ & THÊM CHỦ ĐỀ MỚI */}
+            <View style={styles.card}>
+              <View style={styles.cardHeaderRow}>
+                <Text style={styles.cardTitle}>🏷️ Danh Sách Chủ Đề</Text>
+                <TouchableOpacity
+                  style={styles.addCategoryBtn}
+                  onPress={() => setShowCategoryModal(true)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.addCategoryBtnText}>+ Thêm Chủ Đề</Text>
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.categoryScrollRow}
+              >
+                {vocabCategories.map((cat) => {
+                  const isSelected = cat.id === selectedVocabCatId;
+                  return (
+                    <TouchableOpacity
+                      key={cat.id}
+                      style={[
+                        styles.categoryChip,
+                        { borderColor: cat.color },
+                        isSelected && { backgroundColor: cat.color },
+                      ]}
+                      onPress={() => setSelectedVocabCatId(cat.id)}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={styles.categoryChipIcon}>{cat.icon}</Text>
+                      <Text
+                        style={[
+                          styles.categoryChipText,
+                          isSelected && styles.categoryChipTextActive,
+                        ]}
+                      >
+                        {cat.titleVi} ({cat.cards?.length || 0})
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+
+            {/* 3.3. DANH SÁCH TỪ VỰNG TRONG CHỦ ĐỀ ĐANG CHỌN */}
+            <View style={styles.card}>
+              <View style={styles.cardHeaderRow}>
+                <View>
+                  <Text style={styles.cardTitle}>
+                    {selectedVocabCat?.icon} {selectedVocabCat?.titleVi}
+                  </Text>
+                  <Text style={styles.cardSubTitle}>
+                    {selectedVocabCat?.titleEn} • {selectedVocabCat?.cards?.length || 0} thẻ từ
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.addWordPrimaryBtn}
+                  onPress={handleOpenAddWord}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.addWordPrimaryBtnText}>+ Thêm Từ Mới</Text>
+                </TouchableOpacity>
+              </View>
+
+              {(!selectedVocabCat?.cards || selectedVocabCat.cards.length === 0) ? (
+                <View style={styles.emptyWordBox}>
+                  <Text style={styles.emptyWordEmoji}>📭</Text>
+                  <Text style={styles.emptyWordText}>Chưa có từ vựng nào trong chủ đề này.</Text>
+                  <TouchableOpacity
+                    style={styles.addWordInlineBtn}
+                    onPress={handleOpenAddWord}
+                  >
+                    <Text style={styles.addWordInlineText}>+ Thêm từ vựng đầu tiên</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={styles.wordListContainer}>
+                  {selectedVocabCat.cards.map((card, idx) => (
+                    <View key={card.id || `word_${idx}`} style={styles.wordItemRow}>
+                      <View
+                        style={[
+                          styles.wordEmojiBox,
+                          { backgroundColor: (card.color || '#3B82F6') + '20' },
+                        ]}
+                      >
+                        <Text style={styles.wordEmojiText}>{card.emoji}</Text>
+                      </View>
+
+                      <View style={styles.wordInfoBox}>
+                        <View style={styles.wordTitleRow}>
+                          <Text style={styles.wordEnglish}>{card.english}</Text>
+                          <Text style={styles.wordIpa}>{card.ipa}</Text>
+                        </View>
+                        <Text style={styles.wordVietnamese}>{card.vietnamese}</Text>
+                        {card.exampleEn !== '' && (
+                          <Text style={styles.wordExample} numberOfLines={1}>
+                            💬 {card.exampleEn}
+                          </Text>
+                        )}
+                      </View>
+
+                      <View style={styles.wordActionsBox}>
+                        <TouchableOpacity
+                          style={styles.wordEditBtn}
+                          onPress={() => handleOpenEditWord(card)}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={styles.wordEditBtnText}>✏️</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={styles.wordDeleteBtn}
+                          onPress={() => handleDeleteWord(card)}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={styles.wordDeleteBtnText}>🗑️</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {/* Nút xóa chủ đề nếu có nhiều hơn 1 chủ đề */}
+              {vocabCategories.length > 1 && (
+                <TouchableOpacity
+                  style={styles.deleteCategoryBtn}
+                  onPress={() => handleDeleteCategory(selectedVocabCat)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.deleteCategoryBtnText}>
+                    🗑️ Xóa Toàn Bộ Chủ Đề "{selectedVocabCat?.titleVi}"
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </>
+        )}
+
+        {/* ========================================================================= */}
+        {/* TAB 4: TÀI KHOẢN & BẢN QUYỀN (ACCOUNT) */}
         {/* ========================================================================= */}
         {activeTab === 'account' && (
           <>
-            {/* 3.1. THÔNG TIN BẢN QUYỀN THIẾT BỊ */}
+            {/* 4.1. THÔNG TIN BẢN QUYỀN THIẾT BỊ */}
             <View style={styles.card}>
               <Text style={styles.cardTitle}>📜 Thông Tin Bản Quyền Thiết Bị</Text>
               <View style={styles.infoRow}>
@@ -709,7 +1110,7 @@ export const ParentSettingsScreen: React.FC<ParentSettingsScreenProps> = ({
               </View>
             </View>
 
-            {/* 3.2. ĐỒNG BỘ ĐÁM MÂY SUPABASE */}
+            {/* 4.2. ĐỒNG BỘ ĐÁM MÂY SUPABASE */}
             <View style={styles.card}>
               <Text style={styles.cardTitle}>☁️ Đồng Bộ Đám Mây (Supabase)</Text>
               <Text style={styles.cardDesc}>
@@ -729,7 +1130,7 @@ export const ParentSettingsScreen: React.FC<ParentSettingsScreenProps> = ({
               </TouchableOpacity>
             </View>
 
-            {/* 3.3. BẢO MẬT & ĐỔI MÃ PIN */}
+            {/* 4.3. BẢO MẬT & ĐỔI MÃ PIN */}
             <View style={styles.card}>
               <Text style={styles.cardTitle}>🔒 Mã PIN Phụ Huynh</Text>
               <Text style={styles.cardDesc}>
@@ -745,17 +1146,21 @@ export const ParentSettingsScreen: React.FC<ParentSettingsScreenProps> = ({
                   secureTextEntry
                   placeholder="1234"
                 />
-                <TouchableOpacity style={styles.savePinBtn} onPress={handleSavePin}>
-                  <Text style={styles.savePinText}>Lưu Mã PIN</Text>
+                <TouchableOpacity
+                  style={styles.savePinBtn}
+                  onPress={handleSavePin}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.savePinText}>Lưu PIN</Text>
                 </TouchableOpacity>
               </View>
             </View>
 
-            {/* 3.4. ĐĂNG XUẤT THIẾT BỊ */}
+            {/* 4.4. ĐĂNG XUẤT / HỦY KÍCH HOẠT */}
             <View style={styles.card}>
-              <Text style={styles.cardTitle}>🚪 Đăng Xuất Thiết Bị</Text>
+              <Text style={styles.cardTitle}>🚪 Hủy Kích Hoạt Thiết Bị</Text>
               <Text style={styles.cardDesc}>
-                Hủy kích hoạt bản quyền trên thiết bị này và chuyển về màn hình đăng nhập khóa bản quyền ban đầu.
+                Thao tác này sẽ xóa key bản quyền trên máy và đưa thiết bị về màn hình nhập mã kích hoạt.
               </Text>
               <TouchableOpacity
                 style={styles.resetLicenseBtn}
@@ -817,6 +1222,186 @@ export const ParentSettingsScreen: React.FC<ParentSettingsScreenProps> = ({
           />
         )}
       </Modal>
+
+      {/* MODAL THÊM / SỬA TỪ VỰNG DÀNH CHO ADMIN */}
+      <Modal
+        visible={showWordModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowWordModal(false)}
+      >
+        <View style={styles.addModalBackdrop}>
+          <View style={[styles.addModalCard, { maxWidth: 400 }]}>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <View style={styles.addModalHeader}>
+                <View style={[styles.addModalIconBox, { backgroundColor: '#EEF2FF' }]}>
+                  <Text style={{ fontSize: 28 }}>{wordForm.emoji || '🔤'}</Text>
+                </View>
+                <Text style={styles.addModalTitle}>
+                  {editingWord ? '✏️ Chỉnh Sửa Từ Vựng' : '➕ Thêm Từ Vựng Mới'}
+                </Text>
+                <Text style={styles.addModalSub}>
+                  Chủ đề: {selectedVocabCat?.icon} {selectedVocabCat?.titleVi}
+                </Text>
+              </View>
+
+              <Text style={styles.inputFieldLabel}>Từ Tiếng Anh (*):</Text>
+              <TextInput
+                style={styles.adminVocabInput}
+                placeholder="VD: Lion, Butterfly, Apple..."
+                value={wordForm.english}
+                onChangeText={(val) => setWordForm((p) => ({ ...p, english: val }))}
+              />
+
+              <Text style={styles.inputFieldLabel}>Nghĩa Tiếng Việt (*):</Text>
+              <TextInput
+                style={styles.adminVocabInput}
+                placeholder="VD: Con Sư Tử, Quả Táo..."
+                value={wordForm.vietnamese}
+                onChangeText={(val) => setWordForm((p) => ({ ...p, vietnamese: val }))}
+              />
+
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.inputFieldLabel}>Phiên Âm IPA:</Text>
+                  <TextInput
+                    style={styles.adminVocabInput}
+                    placeholder="/ˈlaɪ.ən/"
+                    value={wordForm.ipa}
+                    onChangeText={(val) => setWordForm((p) => ({ ...p, ipa: val }))}
+                  />
+                </View>
+                <View style={{ width: 90 }}>
+                  <Text style={styles.inputFieldLabel}>Biểu Tượng:</Text>
+                  <TextInput
+                    style={styles.adminVocabInput}
+                    placeholder="🦁"
+                    value={wordForm.emoji}
+                    onChangeText={(val) => setWordForm((p) => ({ ...p, emoji: val }))}
+                  />
+                </View>
+              </View>
+
+              <Text style={styles.inputFieldLabel}>Câu Ví Dụ Tiếng Anh:</Text>
+              <TextInput
+                style={styles.adminVocabInput}
+                placeholder="The lion is the king of the jungle."
+                value={wordForm.exampleEn}
+                onChangeText={(val) => setWordForm((p) => ({ ...p, exampleEn: val }))}
+              />
+
+              <Text style={styles.inputFieldLabel}>Câu Ví Dụ Tiếng Việt:</Text>
+              <TextInput
+                style={styles.adminVocabInput}
+                placeholder="Sư tử là chúa tể muôn loài."
+                value={wordForm.exampleVi}
+                onChangeText={(val) => setWordForm((p) => ({ ...p, exampleVi: val }))}
+              />
+
+              <Text style={styles.inputFieldLabel}>Kiến Thức Thú Vị (Fun Fact):</Text>
+              <TextInput
+                style={styles.adminVocabInput}
+                placeholder="Tiếng gầm sư tử vang xa 8km!"
+                value={wordForm.funFact}
+                onChangeText={(val) => setWordForm((p) => ({ ...p, funFact: val }))}
+              />
+
+              <View style={[styles.addModalActions, { marginTop: 12 }]}>
+                <TouchableOpacity
+                  style={styles.addModalCancelBtn}
+                  onPress={() => setShowWordModal(false)}
+                >
+                  <Text style={styles.addModalCancelText}>Hủy</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.addModalConfirmBtn, { backgroundColor: '#4F46E5' }]}
+                  onPress={handleSaveWord}
+                >
+                  <Text style={styles.addModalConfirmText}>
+                    {editingWord ? 'Cập Nhật' : 'Lưu Thẻ Từ'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* MODAL THÊM CHỦ ĐỀ MỚI DÀNH CHO ADMIN */}
+      <Modal
+        visible={showCategoryModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowCategoryModal(false)}
+      >
+        <View style={styles.addModalBackdrop}>
+          <View style={styles.addModalCard}>
+            <View style={styles.addModalHeader}>
+              <View style={[styles.addModalIconBox, { backgroundColor: '#FDF4FF' }]}>
+                <Text style={{ fontSize: 28 }}>{categoryForm.icon || '🏷️'}</Text>
+              </View>
+              <Text style={styles.addModalTitle}>➕ Thêm Chủ Đề Mới</Text>
+              <Text style={styles.addModalSub}>
+                Tạo nhóm từ vựng riêng cho bài học của bé
+              </Text>
+            </View>
+
+            <Text style={styles.inputFieldLabel}>Tên Chủ Đề Tiếng Việt (*):</Text>
+            <TextInput
+              style={styles.adminVocabInput}
+              placeholder="VD: Đồ Chơi Của Bé, Thức Ăn..."
+              value={categoryForm.titleVi}
+              onChangeText={(val) => setCategoryForm((p) => ({ ...p, titleVi: val }))}
+            />
+
+            <Text style={styles.inputFieldLabel}>Tên Tiếng Anh:</Text>
+            <TextInput
+              style={styles.adminVocabInput}
+              placeholder="VD: Kids Toys, Foods..."
+              value={categoryForm.titleEn}
+              onChangeText={(val) => setCategoryForm((p) => ({ ...p, titleEn: val }))}
+            />
+
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.inputFieldLabel}>Biểu Tượng Emoji:</Text>
+                <TextInput
+                  style={styles.adminVocabInput}
+                  placeholder="🧸, 🍕, 🎒..."
+                  value={categoryForm.icon}
+                  onChangeText={(val) => setCategoryForm((p) => ({ ...p, icon: val }))}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.inputFieldLabel}>Mã Màu Chủ Đề:</Text>
+                <TextInput
+                  style={styles.adminVocabInput}
+                  placeholder="#EC4899"
+                  value={categoryForm.color}
+                  onChangeText={(val) => setCategoryForm((p) => ({ ...p, color: val }))}
+                />
+              </View>
+            </View>
+
+            <View style={[styles.addModalActions, { marginTop: 12 }]}>
+              <TouchableOpacity
+                style={styles.addModalCancelBtn}
+                onPress={() => setShowCategoryModal(false)}
+              >
+                <Text style={styles.addModalCancelText}>Hủy</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.addModalConfirmBtn, { backgroundColor: '#7C3AED' }]}
+                onPress={handleSaveCategory}
+              >
+                <Text style={styles.addModalConfirmText}>Tạo Chủ Đề</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -831,7 +1416,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 18,
-    paddingVertical: 14,
+    paddingTop:
+      Platform.OS === 'android'
+        ? (StatusBar.currentHeight ? StatusBar.currentHeight + 8 : 32)
+        : 14,
+    paddingBottom: 14,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#E2E8F0',
@@ -863,22 +1452,25 @@ const styles = StyleSheet.create({
   /* TAB BAR */
   tabBar: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#E2E8F0',
     gap: 8,
   },
   tabItem: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 10,
+    paddingHorizontal: 12,
     borderRadius: 12,
     backgroundColor: '#F8FAFC',
     gap: 6,
+    flexBasis: '47%',
+    flexGrow: 1,
   },
   tabItemActive: {
     backgroundColor: '#EEF2FF',
@@ -1537,5 +2129,240 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+
+  /* VOCABULARY CMS STYLES */
+  resetVocabBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    backgroundColor: '#FEF2F2',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  resetVocabBtnText: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: '#DC2626',
+  },
+  vocabSummaryRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 12,
+  },
+  vocabSummaryBox: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    padding: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  vocabSummaryNumber: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#4F46E5',
+  },
+  vocabSummaryLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#64748B',
+    marginTop: 2,
+  },
+  addCategoryBtn: {
+    backgroundColor: '#7C3AED',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
+  },
+  addCategoryBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  categoryScrollRow: {
+    flexDirection: 'row',
+    marginTop: 10,
+  },
+  categoryChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1.5,
+    marginRight: 8,
+    gap: 6,
+  },
+  categoryChipIcon: {
+    fontSize: 16,
+  },
+  categoryChipText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  categoryChipTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+  },
+  cardSubTitle: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  addWordPrimaryBtn: {
+    backgroundColor: '#4F46E5',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  addWordPrimaryBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  emptyWordBox: {
+    padding: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyWordEmoji: {
+    fontSize: 40,
+    marginBottom: 8,
+  },
+  emptyWordText: {
+    fontSize: 13,
+    color: '#64748B',
+    marginBottom: 10,
+  },
+  addWordInlineBtn: {
+    backgroundColor: '#EEF2FF',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#C7D2FE',
+  },
+  addWordInlineText: {
+    color: '#4F46E5',
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  wordListContainer: {
+    marginTop: 12,
+    gap: 10,
+  },
+  wordItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    gap: 12,
+  },
+  wordEmojiBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  wordEmojiText: {
+    fontSize: 24,
+  },
+  wordInfoBox: {
+    flex: 1,
+  },
+  wordTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  wordEnglish: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  wordIpa: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#3B82F6',
+  },
+  wordVietnamese: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#059669',
+    marginTop: 1,
+  },
+  wordExample: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  wordActionsBox: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  wordEditBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    backgroundColor: '#EEF2FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#C7D2FE',
+  },
+  wordEditBtnText: {
+    fontSize: 14,
+  },
+  wordDeleteBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    backgroundColor: '#FEF2F2',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  wordDeleteBtnText: {
+    fontSize: 14,
+  },
+  deleteCategoryBtn: {
+    marginTop: 14,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: '#FEF2F2',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  deleteCategoryBtnText: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: '#DC2626',
+  },
+  inputFieldLabel: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: '#334155',
+    marginBottom: 4,
+    marginTop: 8,
+  },
+  adminVocabInput: {
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: '#0F172A',
   },
 });
