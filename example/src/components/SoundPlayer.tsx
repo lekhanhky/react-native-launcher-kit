@@ -16,9 +16,17 @@ export const soundManager = {
     // 1. ƯU TIÊN 1: NATIVE ANDROID HARDWARE MEDIA PLAYER (0ms, Native Audio, Không bị chặn autoplay)
     if (Platform.OS === 'android' && SoundPlayerModule) {
       if (url) {
-        SoundPlayerModule.play(url).catch(() => {});
+        SoundPlayerModule.play(url)
+          .then((success: boolean) => {
+            if (!success) {
+              soundListeners.forEach((listener) => listener(url, textToSpeak));
+            }
+          })
+          .catch(() => {
+            soundListeners.forEach((listener) => listener(url, textToSpeak));
+          });
       } else if (textToSpeak) {
-        SoundPlayerModule.speak(textToSpeak, 'vi').catch(() => {});
+        this.speak(textToSpeak, 'vi');
       }
       return;
     }
@@ -27,9 +35,53 @@ export const soundManager = {
     soundListeners.forEach((listener) => listener(url || '', textToSpeak));
   },
   speak(text: string, lang: 'vi' | 'en' = 'vi') {
+    if (!text || !text.trim()) return;
+    const cleanText = text.trim();
+
     if (Platform.OS === 'android' && SoundPlayerModule) {
-      SoundPlayerModule.speak(text, lang).catch(() => {});
+      SoundPlayerModule.speak(cleanText, lang)
+        .then((success: boolean) => {
+          if (!success) {
+            // Thiết bị không có TTS Engine (ví dụ: giả lập LDPlayer, Android TV Box thiếu Google TTS)
+            this.playWordAudio(cleanText, lang);
+          }
+        })
+        .catch(() => {
+          this.playWordAudio(cleanText, lang);
+        });
+      return;
     }
+
+    this.playWordAudio(cleanText, lang);
+  },
+  playWordAudio(text: string, lang: 'vi' | 'en' = 'vi') {
+    const cleanText = text.trim();
+    if (!cleanText) return;
+    const encoded = encodeURIComponent(cleanText);
+
+    let audioUrl = '';
+    // Nếu là từ tiếng Anh ngắn (< 35 ký tự và không có dấu cách): dùng audio phát âm bản xứ Oxford từ Youdao (100% human voice chuẩn xác)
+    if (lang === 'en' && !cleanText.includes(' ') && cleanText.length < 35) {
+      audioUrl = `https://dict.youdao.com/dictvoice?audio=${encoded}&type=2`;
+    } else {
+      // Tiếng Việt hoặc cụm câu dài: dùng Google TTS
+      audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=${lang}&q=${encoded}`;
+    }
+
+    if (Platform.OS === 'android' && SoundPlayerModule) {
+      SoundPlayerModule.play(audioUrl)
+        .then((success: boolean) => {
+          if (!success) {
+            soundListeners.forEach((listener) => listener(audioUrl));
+          }
+        })
+        .catch(() => {
+          soundListeners.forEach((listener) => listener(audioUrl));
+        });
+      return;
+    }
+
+    soundListeners.forEach((listener) => listener(audioUrl));
   },
   playSuccess() {
     this.speak('Chính xác! Hoan hô bé', 'vi');

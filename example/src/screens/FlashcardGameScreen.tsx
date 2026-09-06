@@ -17,7 +17,7 @@ import {
   VocabCategory,
 } from '../data/oxfordKidsVocabulary';
 import { vocabularyService } from '../services/vocabularyService';
-import { soundManager } from '../components/SoundPlayer';
+import { soundManager, SoundPlayer } from '../components/SoundPlayer';
 import { ThemeToggle, ThemeMode } from '../components/ThemeToggle';
 import { storage, STORAGE_KEYS } from '../services/storage';
 
@@ -26,6 +26,8 @@ export type ViewActivity = 'explore' | 'quiz';
 
 export const FlashcardGameScreen: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const { width, height } = useWindowDimensions();
+  // Chiều cao thẻ linh hoạt theo kích thước màn hình thiết bị
+  const cardHeight = Math.min(380, Math.max(300, height - 260));
 
   // Chế độ giao diện: Sáng (Light) / Tối (Dark)
   const [theme, setTheme] = useState<ThemeMode>(() => {
@@ -83,9 +85,10 @@ export const FlashcardGameScreen: React.FC<{ onClose: () => void }> = ({ onClose
       funFact: 'Chưa có từ vựng nào trong danh mục này.',
     };
 
-  // Trạng thái lật thẻ 3D (Front = English, Back = Vietnamese)
+  // Trạng thái lật thẻ tại chỗ (Front = English/Bilingual, Back = Vietnamese nghĩa chi tiết)
   const [isFlipped, setIsFlipped] = useState<boolean>(false);
   const flipAnim = useRef(new Animated.Value(0)).current;
+  const isFlippingRef = useRef<boolean>(false);
 
   // Modal Chọn Chủ Đề (Topic Grid Modal)
   const [isTopicModalVisible, setIsTopicModalVisible] = useState<boolean>(false);
@@ -106,39 +109,55 @@ export const FlashcardGameScreen: React.FC<{ onClose: () => void }> = ({ onClose
     setTimeout(() => setToastMsg(''), 1800);
   };
 
-  // Hiệu ứng lật thẻ 3D
+  // Hiệu ứng lật thẻ 3D tại chỗ (2-phase flip không bao giờ bị lún/chìm trên Android)
   const handleFlipCard = () => {
-    const toValue = isFlipped ? 0 : 180;
-    Animated.spring(flipAnim, {
-      toValue,
-      friction: 8,
-      tension: 10,
+    if (isFlippingRef.current) return;
+    isFlippingRef.current = true;
+
+    // Phase 1: Thu thẻ lại theo trục Y từ 0deg -> 90deg
+    Animated.timing(flipAnim, {
+      toValue: 1,
+      duration: 130,
       useNativeDriver: true,
-    }).start();
-    setIsFlipped(!isFlipped);
+    }).start(() => {
+      // Đổi mặt thẻ (thay đổi thông tin) ngay tại góc 90 độ
+      setIsFlipped((prev) => !prev);
+      flipAnim.setValue(-1);
+
+      // Phase 2: Bung mở mặt thẻ mới từ -90deg -> 0deg ngay tại vị trí cũ
+      Animated.timing(flipAnim, {
+        toValue: 0,
+        duration: 130,
+        useNativeDriver: true,
+      }).start(() => {
+        isFlippingRef.current = false;
+      });
+    });
   };
 
   // Reset góc lật khi chuyển thẻ
   const resetFlip = () => {
+    isFlippingRef.current = false;
     setIsFlipped(false);
     flipAnim.setValue(0);
   };
 
-  // Góc xoay mặt trước và mặt sau
-  const frontInterpolate = flipAnim.interpolate({
-    inputRange: [0, 180],
-    outputRange: ['0deg', '180deg'],
+  // Nội suy góc xoay và tỉ lệ 3D cho thẻ bài
+  const rotateY = flipAnim.interpolate({
+    inputRange: [-1, 0, 1],
+    outputRange: ['-90deg', '0deg', '90deg'],
   });
-  const backInterpolate = flipAnim.interpolate({
-    inputRange: [0, 180],
-    outputRange: ['180deg', '360deg'],
+  const cardScale = flipAnim.interpolate({
+    inputRange: [-1, 0, 1],
+    outputRange: [0.95, 1, 0.95],
   });
 
-  const frontAnimatedStyle = {
-    transform: [{ rotateY: frontInterpolate }],
-  };
-  const backAnimatedStyle = {
-    transform: [{ rotateY: backInterpolate }],
+  const cardAnimatedStyle = {
+    transform: [
+      { perspective: 1000 },
+      { rotateY },
+      { scale: cardScale },
+    ],
   };
 
   // Phát âm tiếng Anh chuẩn bản xứ Oxford (US)
@@ -297,6 +316,7 @@ export const FlashcardGameScreen: React.FC<{ onClose: () => void }> = ({ onClose
         barStyle={isLight ? 'dark-content' : 'light-content'}
         backgroundColor={isLight ? '#FFFFFF' : '#0F172A'}
       />
+      <SoundPlayer />
 
       {/* HEADER: Tiêu đề, Chế độ, Nút Sáng/Tối, Đóng */}
       <View style={[styles.header, isLight && styles.headerLight]}>
@@ -446,22 +466,23 @@ export const FlashcardGameScreen: React.FC<{ onClose: () => void }> = ({ onClose
       {/* ========================================================================= */}
       {currentActivity === 'explore' && (
         <View style={styles.exploreWrapper}>
-          {/* KHUNG THẺ BÀI 3D LẬT */}
+          {/* KHUNG THẺ BÀI LẬT TẠI CHỖ (GIỮ NGUYÊN VỊ TRÍ, KHÔNG BỊ CHÌM) */}
           <TouchableOpacity
-            style={styles.cardContainer}
+            style={[styles.cardContainer, { height: cardHeight }]}
             onPress={handleFlipCard}
             activeOpacity={0.95}
           >
-            {/* MẶT TRƯỚC: TIẾNG ANH HOẶC CHẾ ĐỘ CHÍNH */}
             <Animated.View
               style={[
                 styles.flashCard,
-                isLight && styles.flashCardLight,
-                styles.cardFront,
+                isFlipped
+                  ? [styles.cardBack, isLight && styles.cardBackLight]
+                  : (isLight && styles.flashCardLight),
                 { borderColor: currentCard.color },
-                frontAnimatedStyle,
+                cardAnimatedStyle,
               ]}
             >
+              {/* TAG TIÊU ĐỀ THẺ */}
               <View
                 style={[
                   styles.cardHeaderTag,
@@ -469,11 +490,14 @@ export const FlashcardGameScreen: React.FC<{ onClose: () => void }> = ({ onClose
                 ]}
               >
                 <Text style={styles.cardHeaderTagText}>
-                  {langMode === 'vi' ? '🇻🇳 TIẾNG VIỆT' : '🇬🇧 OXFORD 3000'}
+                  {isFlipped
+                    ? (langMode === 'vi' ? '🇬🇧 TIẾNG ANH' : '🇻🇳 NGHĨA TIẾNG VIỆT')
+                    : (langMode === 'vi' ? '🇻🇳 TIẾNG VIỆT' : '🇬🇧 OXFORD 3000')}
                 </Text>
                 <Text style={styles.flipHintText}>🔄 Chạm để lật</Text>
               </View>
 
+              {/* HÌNH EMOJI MINH HOẠ */}
               <View
                 style={[
                   styles.cardVisualBox,
@@ -483,13 +507,96 @@ export const FlashcardGameScreen: React.FC<{ onClose: () => void }> = ({ onClose
                 <Text style={styles.cardEmoji}>{currentCard.emoji}</Text>
               </View>
 
+              {/* NỘI DUNG TỪ VỰNG: MẶT TRƯỚC HOẶC MẶT SAU THAY ĐỔI THÔNG TIN */}
               <View style={styles.cardContent}>
-                {langMode === 'vi' ? (
+                {!isFlipped ? (
+                  /* MẶT TRƯỚC: TỪ VỰNG & PHIÊN ÂM IPA */
+                  <>
+                    {langMode === 'vi' ? (
+                      <>
+                        <Text
+                          style={[
+                            styles.mainWord,
+                            isLight && styles.mainWordLight,
+                          ]}
+                        >
+                          {currentCard.vietnamese}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.subWord,
+                            isLight && styles.subWordLight,
+                          ]}
+                        >
+                          {currentCard.english}
+                        </Text>
+                      </>
+                    ) : (
+                      <>
+                        <Text
+                          style={[
+                            styles.mainWord,
+                            isLight && styles.mainWordLight,
+                          ]}
+                        >
+                          {currentCard.english}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.ipaText,
+                            isLight && styles.ipaTextLight,
+                          ]}
+                        >
+                          {currentCard.ipa}
+                        </Text>
+                        {langMode === 'bilingual' && (
+                          <Text
+                            style={[
+                              styles.bilingualTrans,
+                              isLight && styles.bilingualTransLight,
+                            ]}
+                          >
+                            {currentCard.vietnamese}
+                          </Text>
+                        )}
+                      </>
+                    )}
+
+                    <TouchableOpacity
+                      style={[
+                        styles.exampleBubble,
+                        isLight && styles.exampleBubbleLight,
+                      ]}
+                      onPress={() => speakExample(currentCard)}
+                      activeOpacity={0.8}
+                    >
+                      <Text
+                        style={[
+                          styles.exampleText,
+                          isLight && styles.exampleTextLight,
+                        ]}
+                      >
+                        💬 {langMode === 'vi' ? currentCard.exampleVi : currentCard.exampleEn}
+                      </Text>
+                      {langMode === 'bilingual' && (
+                        <Text
+                          style={[
+                            styles.exampleText,
+                            { color: isLight ? '#0284C7' : '#38BDF8', marginTop: 4 },
+                          ]}
+                        >
+                          ✨ {currentCard.exampleVi}
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  </>
+                ) : (
+                  /* MẶT SAU: NGHĨA TIẾNG VIỆT NỔI BẬT & VÍ DỤ SONG NGỮ */
                   <>
                     <Text
                       style={[
                         styles.mainWord,
-                        isLight && styles.mainWordLight,
+                        isLight ? styles.mainWordBackLight : styles.mainWordBack,
                       ]}
                     >
                       {currentCard.vietnamese}
@@ -497,163 +604,42 @@ export const FlashcardGameScreen: React.FC<{ onClose: () => void }> = ({ onClose
                     <Text
                       style={[
                         styles.subWord,
-                        isLight && styles.subWordLight,
+                        isLight && styles.subWordBackLight,
                       ]}
                     >
-                      {currentCard.english}
+                      {currentCard.english} ({currentCard.ipa})
                     </Text>
-                  </>
-                ) : (
-                  <>
-                    <Text
+
+                    <TouchableOpacity
                       style={[
-                        styles.mainWord,
-                        isLight && styles.mainWordLight,
+                        styles.exampleBubble,
+                        isLight && styles.exampleBubbleBackLight,
                       ]}
+                      onPress={() => speakExample(currentCard)}
+                      activeOpacity={0.8}
                     >
-                      {currentCard.english}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.ipaText,
-                        isLight && styles.ipaTextLight,
-                      ]}
-                    >
-                      {currentCard.ipa}
-                    </Text>
-                    {langMode === 'bilingual' && (
                       <Text
                         style={[
-                          styles.bilingualTrans,
-                          isLight && styles.bilingualTransLight,
+                          styles.exampleText,
+                          isLight ? styles.exampleTextBackLight : styles.exampleTextBack,
                         ]}
                       >
-                        {currentCard.vietnamese}
+                        💬 {currentCard.exampleVi}
                       </Text>
-                    )}
+                      <Text
+                        style={[
+                          styles.exampleText,
+                          { color: isLight ? '#0369A1' : '#CBD5E1', marginTop: 4 },
+                        ]}
+                      >
+                        ✨ {currentCard.exampleEn}
+                      </Text>
+                    </TouchableOpacity>
                   </>
                 )}
-
-                <TouchableOpacity
-                  style={[
-                    styles.exampleBubble,
-                    isLight && styles.exampleBubbleLight,
-                  ]}
-                  onPress={() => speakExample(currentCard)}
-                  activeOpacity={0.8}
-                >
-                  <Text
-                    style={[
-                      styles.exampleText,
-                      isLight && styles.exampleTextLight,
-                    ]}
-                  >
-                    💬 {langMode === 'vi' ? currentCard.exampleVi : currentCard.exampleEn}
-                  </Text>
-                  {langMode === 'bilingual' && (
-                    <Text
-                      style={[
-                        styles.exampleText,
-                        { color: isLight ? '#0284C7' : '#38BDF8', marginTop: 4 },
-                      ]}
-                    >
-                      ✨ {currentCard.exampleVi}
-                    </Text>
-                  )}
-                </TouchableOpacity>
               </View>
 
-              <View
-                style={[
-                  styles.cardFooter,
-                  isLight && styles.cardFooterLight,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.funFactText,
-                    isLight && styles.funFactTextLight,
-                  ]}
-                >
-                  💡 {currentCard.funFact}
-                </Text>
-              </View>
-            </Animated.View>
-
-            {/* MẶT SAU: NGHĨA TIẾNG VIỆT & VÍ DỤ NGỮ CẢNH */}
-            <Animated.View
-              style={[
-                styles.flashCard,
-                styles.cardBack,
-                isLight && styles.cardBackLight,
-                { borderColor: currentCard.color },
-                backAnimatedStyle,
-              ]}
-            >
-              <View
-                style={[
-                  styles.cardHeaderTag,
-                  { backgroundColor: currentCard.color },
-                ]}
-              >
-                <Text style={styles.cardHeaderTagText}>
-                  {langMode === 'vi' ? '🇬🇧 TIẾNG ANH' : '🇻🇳 NGHĨA TIẾNG VIỆT'}
-                </Text>
-                <Text style={styles.flipHintText}>🔄 Chạm để lật</Text>
-              </View>
-
-              <View
-                style={[
-                  styles.cardVisualBox,
-                  isLight && styles.cardVisualBoxLight,
-                ]}
-              >
-                <Text style={styles.cardEmoji}>{currentCard.emoji}</Text>
-              </View>
-
-              <View style={styles.cardContent}>
-                <Text
-                  style={[
-                    styles.mainWord,
-                    isLight ? styles.mainWordBackLight : styles.mainWordBack,
-                  ]}
-                >
-                  {currentCard.vietnamese}
-                </Text>
-                <Text
-                  style={[
-                    styles.subWord,
-                    isLight && styles.subWordBackLight,
-                  ]}
-                >
-                  {currentCard.english} ({currentCard.ipa})
-                </Text>
-
-                <View
-                  style={[
-                    styles.exampleBubble,
-                    isLight && styles.exampleBubbleBackLight,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.exampleText,
-                      isLight ? styles.exampleTextBackLight : styles.exampleTextBack,
-                    ]}
-                  >
-                    💬 {currentCard.exampleVi}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.exampleText,
-                      { color: isLight ? '#0369A1' : '#CBD5E1', marginTop: 4 },
-                    ]}
-                  >
-                    ✨ {currentCard.exampleEn}
-                  </Text>
-                </View>
-              </View>
-
+              {/* FOOTER: KIẾN THỨC THÚ VỊ (FUN FACT) */}
               <View
                 style={[
                   styles.cardFooter,
@@ -1129,30 +1115,27 @@ const styles = StyleSheet.create({
   cardContainer: {
     width: '100%',
     maxWidth: 380,
-    height: 380,
-    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   flashCard: {
-    ...StyleSheet.absoluteFillObject,
+    width: '100%',
+    height: '100%',
     borderRadius: 24,
     backgroundColor: '#1E293B',
     borderWidth: 3,
     padding: 16,
     alignItems: 'center',
     justifyContent: 'space-between',
-    elevation: 10,
+    elevation: 8,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
-    backfaceVisibility: 'hidden',
   },
   flashCardLight: {
     backgroundColor: '#FFFFFF',
     shadowOpacity: 0.12,
-  },
-  cardFront: {
-    zIndex: 1,
   },
   cardBack: {
     backgroundColor: '#1E1B4B',

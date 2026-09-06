@@ -19,10 +19,12 @@ import type { AppDetail } from 'react-native-launcher-kit/src/interfaces/Install
 import { storage, STORAGE_KEYS } from '../services/storage';
 import { launcherHelper } from '../services/launcherHelper';
 import { checkIsOutsideAllowedHours, ScheduleConfig } from '../services/timeScheduler';
+import { parentalRealtimeService } from '../services/parentalRealtimeService';
 import { ThemeConfig, themeService } from '../services/themes';
 import { youtubeService } from '../services/youtubeService';
 import { ThemeSelectorModal } from '../components/ThemeSelectorModal';
 import { KidsYouTubeScreen } from './KidsYouTubeScreen';
+import { GreenKidsTubeScreen } from './GreenKidsTubeScreen';
 import { MemoryGameScreen } from './MemoryGameScreen';
 import { BubblePopGameScreen } from './BubblePopGameScreen';
 import { AnimalSoundGameScreen } from './AnimalSoundGameScreen';
@@ -76,6 +78,9 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
 
   // Safe YouTube Screen state
   const [showYouTubeScreen, setShowYouTubeScreen] = useState<boolean>(false);
+
+  // Green Kids Tube Screen state
+  const [showGreenKidsTubeScreen, setShowGreenKidsTubeScreen] = useState<boolean>(false);
 
   // Memory Game Screen state
   const [showMemoryGame, setShowMemoryGame] = useState<boolean>(false);
@@ -337,16 +342,22 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
         dentalHabitsApp,
       ];
 
-      // Thêm ứng dụng YouTube an toàn nếu phụ huynh cho phép
+      // Thêm ứng dụng YouTube an toàn và Green Tube xanh lá cây
+      const greenTubeApp: AppDetail = {
+        label: 'Green Tube',
+        packageName: 'internal.safe.greentube',
+        icon: '',
+      };
+
       if (youtubeService.isYouTubeEnabled()) {
         const ytApp: AppDetail = {
           label: 'YouTube Kids',
           packageName: 'internal.safe.youtube',
           icon: '',
         };
-        filtered = [...allKidsGames, ytApp, ...filtered];
+        filtered = [...allKidsGames, ytApp, greenTubeApp, ...filtered];
       } else {
-        filtered = [...allKidsGames, ...filtered];
+        filtered = [...allKidsGames, greenTubeApp, ...filtered];
       }
 
       setVisibleApps(filtered);
@@ -359,6 +370,12 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
   const evaluateSchedule = useCallback(() => {
     if (isTempUnlocked) {
       setIsLocked(false);
+      return;
+    }
+
+    // Nếu đang có lệnh Khóa Khẩn Cấp từ Phụ huynh -> Luôn giữ khóa
+    if (parentalRealtimeService.isEmergencyLocked()) {
+      setIsLocked(true);
       return;
     }
 
@@ -411,7 +428,20 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
     InstalledApps.startListeningForAppInstallations(() => loadApps());
     InstalledApps.startListeningForAppRemovals(() => loadApps());
 
+    // Lắng nghe lệnh Khóa Khẩn Cấp Realtime từ xa qua Supabase WebSocket (< 1s)
+    const unsubscribeRealtime = parentalRealtimeService.subscribeToRemoteLock(
+      (emergencyLocked, message) => {
+        if (emergencyLocked) {
+          setIsLocked(true);
+          setLockReason(message || 'Ba mẹ đã tạm khóa thiết bị từ xa. Bé hãy nghỉ ngơi nhé!');
+        } else {
+          evaluateSchedule();
+        }
+      }
+    );
+
     return () => {
+      unsubscribeRealtime();
       appStateSub.remove();
       clearInterval(interval);
       InstalledApps.stopListeningForAppInstallations();
@@ -530,6 +560,10 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
         setShowDentalHabitsGame(false);
         return true;
       }
+      if (showGreenKidsTubeScreen) {
+        setShowGreenKidsTubeScreen(false);
+        return true;
+      }
       if (showYouTubeScreen) {
         setShowYouTubeScreen(false);
         return true;
@@ -573,6 +607,7 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
     showSolarSystemGame,
     showDentalHabitsGame,
     showYouTubeScreen,
+    showGreenKidsTubeScreen,
     showSettingsScreen,
   ]);
 
@@ -712,6 +747,12 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
     // Mở YouTube an toàn nội bộ
     if (packageName === 'internal.safe.youtube') {
       setShowYouTubeScreen(true);
+      return;
+    }
+
+    // Mở Green Kids Tube nội bộ
+    if (packageName === 'internal.safe.greentube') {
+      setShowGreenKidsTubeScreen(true);
       return;
     }
 
@@ -886,6 +927,16 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
     return <DentalHabitsGameScreen onClose={() => setShowDentalHabitsGame(false)} />;
   }
 
+  // Mở màn hình Green Kids Tube an toàn
+  if (showGreenKidsTubeScreen) {
+    return (
+      <GreenKidsTubeScreen
+        theme={currentTheme}
+        onClose={() => setShowGreenKidsTubeScreen(false)}
+      />
+    );
+  }
+
   // Mở màn hình YouTube an toàn
   if (showYouTubeScreen) {
     return (
@@ -1002,6 +1053,7 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
           showsVerticalScrollIndicator={false}
           renderItem={({ item }) => {
             const isYouTube = item.packageName === 'internal.safe.youtube';
+            const isGreenTube = item.packageName === 'internal.safe.greentube';
             const isMemoryGame = item.packageName === 'internal.game.memory';
             const isBubblePop = item.packageName === 'internal.game.bubblepop';
             const isAnimalSound = item.packageName === 'internal.game.animalsound';
@@ -1175,6 +1227,12 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
                   <View style={[styles.appIcon, styles.dentalHabitsIconContainer]}>
                     <View style={styles.dentalHabitsInnerBadge}>
                       <Text style={styles.dentalHabitsEmojiIcon}>🦷</Text>
+                    </View>
+                  </View>
+                ) : isGreenTube ? (
+                  <View style={[styles.appIcon, styles.greenTubeIconContainer]}>
+                    <View style={styles.greenTubeBox}>
+                      <Text style={styles.greenTubePlayTriangle}>▶</Text>
                     </View>
                   </View>
                 ) : isYouTube ? (
@@ -1427,6 +1485,35 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   youtubePlayTriangle: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: 'bold',
+    marginLeft: 2,
+  },
+
+  // GREEN KIDS TUBE ICON
+  greenTubeIconContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#059669',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.22,
+    shadowRadius: 5,
+    elevation: 4,
+    borderWidth: 1.5,
+    borderColor: '#A7F3D0',
+  },
+  greenTubeBox: {
+    width: 44,
+    height: 30,
+    backgroundColor: '#10B981',
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  greenTubePlayTriangle: {
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: 'bold',

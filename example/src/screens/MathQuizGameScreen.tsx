@@ -12,7 +12,7 @@ import {
   ActivityIndicator,
   Platform,
 } from 'react-native';
-import { soundManager } from '../components/SoundPlayer';
+import { soundManager, SoundPlayer } from '../components/SoundPlayer';
 import {
   dynamicGameService,
   MathGrade,
@@ -48,6 +48,7 @@ export const MathQuizGameScreen: React.FC<{ onClose: () => void }> = ({ onClose 
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const bounceAnim = useRef(new Animated.Value(0)).current;
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const autoNextTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Bắt đầu game mới & Tải câu hỏi từ dynamicGameService
   const startGame = async (grade: MathGrade) => {
@@ -79,6 +80,11 @@ export const MathQuizGameScreen: React.FC<{ onClose: () => void }> = ({ onClose 
 
   // Khởi động câu hỏi tiếp theo
   const nextQuestion = () => {
+    if (autoNextTimeoutRef.current) {
+      clearTimeout(autoNextTimeoutRef.current);
+      autoNextTimeoutRef.current = null;
+    }
+
     if (questionIndex >= questionsList.length || questionIndex >= 10) {
       setShowSummary(true);
       soundManager.speak('Chúc mừng bé đã hoàn thành bài tập toán!');
@@ -146,20 +152,32 @@ export const MathQuizGameScreen: React.FC<{ onClose: () => void }> = ({ onClose 
       const points = 10 + Math.min(newStreak * 2, 10);
       setScore((prev) => prev + points);
       setStars((prev) => prev + 1);
-      soundManager.play('https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3', 'Đúng rồi! Bé giỏi quá!');
+
+      // Phát âm lời khen: 'Tuyệt vời - bé chọn đúng rồi'
+      soundManager.speak('Tuyệt vời - bé chọn đúng rồi', 'vi');
 
       Animated.sequence([
         Animated.timing(bounceAnim, { toValue: -15, duration: 150, useNativeDriver: true }),
         Animated.timing(bounceAnim, { toValue: 0, duration: 150, useNativeDriver: true }),
       ]).start();
+
+      // Tự động chuyển qua câu tiếp theo sau khi phát âm xong hoàn toàn (2.6s)
+      if (autoNextTimeoutRef.current) clearTimeout(autoNextTimeoutRef.current);
+      autoNextTimeoutRef.current = setTimeout(() => {
+        nextQuestion();
+      }, 2600);
     } else {
       setStreak(0);
-      soundManager.speak('Chưa đúng rồi, bé xem đáp án nhé!');
+      soundManager.speak('Chưa đúng rồi, bé xem đáp án nhé!', 'vi');
     }
   };
 
   useEffect(() => {
     startGame(selectedGrade);
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+      if (autoNextTimeoutRef.current) clearTimeout(autoNextTimeoutRef.current);
+    };
   }, []);
 
   // Render lưới 4 đáp án
@@ -232,6 +250,7 @@ export const MathQuizGameScreen: React.FC<{ onClose: () => void }> = ({ onClose 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#1E1B4B" />
+      <SoundPlayer />
 
       {/* Header */}
       <View style={styles.header}>
@@ -335,7 +354,7 @@ export const MathQuizGameScreen: React.FC<{ onClose: () => void }> = ({ onClose 
               <View style={styles.feedbackContainer}>
                 <Text style={[styles.feedbackText, { color: isCorrect ? '#34D399' : '#F87171' }]}>
                   {isCorrect
-                    ? '🎉 Đúng rồi! Bé giỏi quá!'
+                    ? '🎉 Tuyệt vời - bé chọn đúng rồi!'
                     : `💡 Đáp án đúng: ${currentQuestion.correct_answer ?? (currentQuestion as any).correctAnswer}`}
                 </Text>
                 <TouchableOpacity style={styles.nextBtn} onPress={nextQuestion}>

@@ -13,6 +13,7 @@ import {
   ShieldAlert,
   ArrowLeft,
   KeyRound,
+  HardDriveDownload,
 } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
 
@@ -23,6 +24,7 @@ const ADMIN_NAV = [
   { href: '/admin/math-generator', label: 'Sinh Đề Toán Tự Động', icon: Calculator, badge: 'Hot' },
   { href: '/admin/app-catalog', label: 'Kho App An Toàn', icon: Layers },
   { href: '/admin/youtube-curator', label: 'Duyệt YouTube Kids', icon: Youtube },
+  { href: '/admin/backup', label: 'Sao Lưu & Phục Hồi', icon: HardDriveDownload, badge: 'Mới' },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

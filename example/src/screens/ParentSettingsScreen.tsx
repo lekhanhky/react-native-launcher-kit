@@ -21,6 +21,7 @@ import type { AppDetail } from 'react-native-launcher-kit/src/interfaces/Install
 import { storage, STORAGE_KEYS } from '../services/storage';
 import { ScheduleConfig } from '../services/timeScheduler';
 import { launcherHelper } from '../services/launcherHelper';
+import { parentalRealtimeService } from '../services/parentalRealtimeService';
 import {
   youtubeService,
   YouTubeChannel,
@@ -59,6 +60,14 @@ export const ParentSettingsScreen: React.FC<ParentSettingsScreenProps> = ({
   });
   const [appSearchQuery, setAppSearchQuery] = useState<string>('');
   const [isAdminActive, setIsAdminActive] = useState<boolean>(false);
+  const [remoteLocked, setRemoteLocked] = useState<boolean>(() => parentalRealtimeService.isEmergencyLocked());
+  const [currentDeviceId, setCurrentDeviceId] = useState<string>(() => parentalRealtimeService.getDeviceId() || 'Đang nạp...');
+
+  useEffect(() => {
+    const id = parentalRealtimeService.getDeviceId();
+    if (id) setCurrentDeviceId(id);
+    setRemoteLocked(parentalRealtimeService.isEmergencyLocked());
+  }, []);
 
   // 2. Quản lý Lịch biểu Giờ học / Ngủ
   const [schedule, setSchedule] = useState<ScheduleConfig>(() => {
@@ -525,6 +534,37 @@ export const ParentSettingsScreen: React.FC<ParentSettingsScreenProps> = ({
         {/* ========================================================================= */}
         {activeTab === 'apps' && (
           <>
+            {/* 1.0. KHÓA KHẨN CẤP TỨC THÌ TỪ XA (REALTIME REMOTE LOCK) */}
+            <View style={[styles.card, { borderColor: '#DC2626', borderWidth: 1.5 }]}>
+              <View style={styles.cardHeaderRow}>
+                <Text style={[styles.cardTitle, { color: '#DC2626' }]}>🚨 Khóa Khẩn Cấp Từ Xa (Realtime)</Text>
+                <Switch
+                  value={remoteLocked}
+                  onValueChange={async (val) => {
+                    setRemoteLocked(val);
+                    const devId = parentalRealtimeService.getDeviceId();
+                    if (devId) {
+                      await parentalRealtimeService.setRemoteLock(devId, val);
+                      Alert.alert(
+                        val ? 'Đã kích hoạt Khóa Khẩn Cấp' : 'Đã Hủy Khóa Khẩn Cấp',
+                        val
+                          ? 'Thiết bị của bé sẽ hiển thị màn hình khóa ngay lập tức qua Supabase Realtime!'
+                          : 'Thiết bị của bé đã được mở khóa bình thường.'
+                      );
+                    }
+                  }}
+                  trackColor={{ false: '#CBD5E1', true: '#FCA5A5' }}
+                  thumbColor={remoteLocked ? '#DC2626' : '#F1F5F9'}
+                />
+              </View>
+              <Text style={styles.cardDesc}>
+                Mã thiết bị (Device ID): <Text style={{ fontWeight: 'bold', color: '#1E293B' }}>{currentDeviceId}</Text>
+              </Text>
+              <Text style={{ fontSize: 11, color: '#64748B', marginTop: 4 }}>
+                Khi gạt công tắc này từ App/Web Phụ huynh, máy tính bảng của bé sẽ nhận tín hiệu WebSocket và khóa màn hình ngay tức thì (&lt; 1 giây).
+              </Text>
+            </View>
+
             {/* 1.1. BẢO VỆ CHỐNG GỠ ỨNG DỤNG (DEVICE ADMIN) */}
             <View style={styles.card}>
               <View style={styles.cardHeaderRow}>

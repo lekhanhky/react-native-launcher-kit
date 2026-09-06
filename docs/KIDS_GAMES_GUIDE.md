@@ -241,3 +241,11 @@ gantt
 2. **Cơ chế Thưởng Sao (Gamification)**:
    - Mỗi ván thắng nhận từ 1 - 3 Sao ⭐.
    - Tích lũy đủ số sao để mở khóa Avatar / Xe đồ chơi mới trong Kids Launcher, giúp bé hào hứng học tập mỗi ngày mà không bị nhàm chán.
+
+---
+
+## 5. CÁC TÀI LIỆU ĐẶC TẢ MỞ RỘNG LIÊN QUAN
+
+- 📗 [Tài liệu 10 Trò Chơi Giáo Dục Mới (STEM & Montessori)](file:///c:/react-native-launcher-kit/docs/NEW_EDUCATIONAL_GAMES_SPEC.md)
+- 🍄 [Đặc Tả Game Bé Mario Học Tập (2D Platformer Native)](file:///c:/react-native-launcher-kit/docs/MARIO_EDU_PLATFORMER_GAME_SPEC.md)
+- 🕹️ [Đặc Tả Top 10 Game Kinh Điển Tích Hợp Giáo Dục (Retro Classics EdTech)](file:///c:/react-native-launcher-kit/docs/TOP_10_CLASSIC_RETRO_EDUCATIONAL_GAMES_SPEC.md)
