@@ -501,7 +501,7 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   successModal: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(15, 23, 42, 0.95)',
     justifyContent: 'center',
     alignItems: 'center',

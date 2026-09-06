@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,8 @@ import {
   AppState,
   BackHandler,
   Platform,
+  ToastAndroid,
+  ImageBackground,
 } from 'react-native';
 import { InstalledApps, RNLauncherKitHelper } from 'react-native-launcher-kit';
 import type { AppDetail } from 'react-native-launcher-kit/src/interfaces/InstalledApps';
@@ -21,6 +23,7 @@ import { launcherHelper } from '../services/launcherHelper';
 import { checkIsOutsideAllowedHours, ScheduleConfig } from '../services/timeScheduler';
 import { parentalRealtimeService } from '../services/parentalRealtimeService';
 import { ThemeConfig, themeService } from '../services/themes';
+import { KidsWallpaper, wallpaperService } from '../services/wallpapers';
 import { youtubeService } from '../services/youtubeService';
 import { ThemeSelectorModal } from '../components/ThemeSelectorModal';
 import { KidsYouTubeScreen } from './KidsYouTubeScreen';
@@ -49,6 +52,7 @@ import { WeatherDressUpGameScreen } from './WeatherDressUpGameScreen';
 import { BalanceScaleGameScreen } from './BalanceScaleGameScreen';
 import { SolarSystemGameScreen } from './SolarSystemGameScreen';
 import { DentalHabitsGameScreen } from './DentalHabitsGameScreen';
+import { ExplorerGameScreen } from './ExplorerGameScreen';
 import { LockOverlay } from '../components/LockOverlay';
 import { ParentPinModal } from '../components/ParentPinModal';
 import { DeviceAdminGuideModal } from '../components/DeviceAdminGuideModal';
@@ -75,6 +79,11 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
     themeService.getSavedTheme()
   );
   const [showThemeModal, setShowThemeModal] = useState<boolean>(false);
+
+  // Wallpaper state
+  const [currentWallpaper, setCurrentWallpaper] = useState<KidsWallpaper>(() =>
+    wallpaperService.getSavedWallpaper()
+  );
 
   // Safe YouTube Screen state
   const [showYouTubeScreen, setShowYouTubeScreen] = useState<boolean>(false);
@@ -136,6 +145,9 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
   const [showSolarSystemGame, setShowSolarSystemGame] = useState<boolean>(false);
   const [showDentalHabitsGame, setShowDentalHabitsGame] = useState<boolean>(false);
 
+  // Explorer World Adventure Game Screen state
+  const [showExplorerGame, setShowExplorerGame] = useState<boolean>(false);
+
   // Device Admin Guide Modal state
   const [showAdminGuideModal, setShowAdminGuideModal] = useState<boolean>(false);
 
@@ -143,6 +155,35 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
   const [showPinModal, setShowPinModal] = useState(false);
   const [pinAction, setPinAction] = useState<'unlock_temp' | 'open_settings'>('open_settings');
   const [showSettingsScreen, setShowSettingsScreen] = useState(false);
+
+  // Secret multi-tap trigger on title to open Parent Settings (Option 1)
+  const parentSecretTapCountRef = useRef<number>(0);
+  const parentSecretTapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleSecretParentTap = useCallback(() => {
+    parentSecretTapCountRef.current += 1;
+    const currentTaps = parentSecretTapCountRef.current;
+
+    if (parentSecretTapTimerRef.current) {
+      clearTimeout(parentSecretTapTimerRef.current);
+    }
+
+    if (currentTaps >= 5) {
+      parentSecretTapCountRef.current = 0;
+      setPinAction('open_settings');
+      setShowPinModal(true);
+    } else {
+      if (Platform.OS === 'android' && currentTaps >= 3) {
+        ToastAndroid.show(
+          `Chạm thêm ${5 - currentTaps} lần để mở Cài đặt Phụ huynh`,
+          ToastAndroid.SHORT
+        );
+      }
+      parentSecretTapTimerRef.current = setTimeout(() => {
+        parentSecretTapCountRef.current = 0;
+      }, 2500);
+    }
+  }, []);
 
   // 1. Tải danh sách app
   const loadApps = useCallback(async () => {
@@ -315,6 +356,13 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
         icon: '',
       };
 
+      // Game Adventure: Bé Khám Phá Thế Giới (Explorer World)
+      const explorerGameApp: AppDetail = {
+        label: 'Khám Phá Thế Giới',
+        packageName: 'internal.game.explorer',
+        icon: '',
+      };
+
       const allKidsGames = [
         memoryGameApp,
         bubblePopApp,
@@ -340,6 +388,7 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
         balanceScaleApp,
         solarSystemApp,
         dentalHabitsApp,
+        explorerGameApp,
       ];
 
       // Thêm ứng dụng YouTube an toàn và Green Tube xanh lá cây
@@ -560,6 +609,10 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
         setShowDentalHabitsGame(false);
         return true;
       }
+      if (showExplorerGame) {
+        setShowExplorerGame(false);
+        return true;
+      }
       if (showGreenKidsTubeScreen) {
         setShowGreenKidsTubeScreen(false);
         return true;
@@ -606,6 +659,7 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
     showBalanceScaleGame,
     showSolarSystemGame,
     showDentalHabitsGame,
+    showExplorerGame,
     showYouTubeScreen,
     showGreenKidsTubeScreen,
     showSettingsScreen,
@@ -741,6 +795,12 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
     }
     if (packageName === 'internal.game.dentalhabits') {
       setShowDentalHabitsGame(true);
+      return;
+    }
+
+    // Mở Game Adventure: Bé Khám Phá Thế Giới (Explorer World)
+    if (packageName === 'internal.game.explorer') {
+      setShowExplorerGame(true);
       return;
     }
 
@@ -927,6 +987,11 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
     return <DentalHabitsGameScreen onClose={() => setShowDentalHabitsGame(false)} />;
   }
 
+  // Mở màn hình Game Adventure: Bé Khám Phá Thế Giới (Explorer World)
+  if (showExplorerGame) {
+    return <ExplorerGameScreen onClose={() => setShowExplorerGame(false)} />;
+  }
+
   // Mở màn hình Green Kids Tube an toàn
   if (showGreenKidsTubeScreen) {
     return (
@@ -964,17 +1029,47 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
           { backgroundColor: currentTheme.backgroundColor },
         ]}
       >
+        {/* NỀN HÌNH ẢNH NẾU ĐƯỢC CHỌN */}
+        {!!currentWallpaper.imageUri && (
+          <View style={StyleSheet.absoluteFill} pointerEvents="none">
+            <Image
+              source={{ uri: currentWallpaper.imageUri }}
+              style={StyleSheet.absoluteFill}
+              resizeMode="cover"
+              onError={(e) =>
+                console.log('WALLPAPER_ERROR:', JSON.stringify(e.nativeEvent))
+              }
+              onLoad={() => console.log('WALLPAPER_SUCCESS')}
+            />
+            <View
+              style={[
+                StyleSheet.absoluteFill,
+                {
+                  backgroundColor:
+                    currentWallpaper.overlayColor || 'rgba(255, 255, 255, 0.15)',
+                },
+              ]}
+            />
+          </View>
+        )}
+
         {/* HEADER */}
         <View
           style={[
             styles.header,
             {
-              backgroundColor: currentTheme.headerBg,
+              backgroundColor: currentWallpaper.imageUri
+                ? 'rgba(255, 255, 255, 0.88)'
+                : currentTheme.headerBg,
               borderBottomColor: currentTheme.headerBorderColor,
             },
           ]}
         >
-          <View>
+          {/* Secret 5-tap trigger on greeting to enter Parent Mode */}
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={handleSecretParentTap}
+          >
             <Text
               style={[
                 styles.greetingText,
@@ -991,7 +1086,7 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
             >
               {currentTheme.name}
             </Text>
-          </View>
+          </TouchableOpacity>
 
           <View style={styles.headerActions}>
             {/* Nút Đổi Theme */}
@@ -1013,31 +1108,6 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
                 ]}
               >
                 🎨 Giao diện
-              </Text>
-            </TouchableOpacity>
-
-            {/* Nút Phụ huynh */}
-            <TouchableOpacity
-              style={[
-                styles.parentBtn,
-                {
-                  backgroundColor: currentTheme.parentBtnBg,
-                  borderColor: currentTheme.parentBtnBorder,
-                },
-              ]}
-              activeOpacity={0.8}
-              onPress={() => {
-                setPinAction('open_settings');
-                setShowPinModal(true);
-              }}
-            >
-              <Text
-                style={[
-                  styles.parentBtnText,
-                  { color: currentTheme.parentBtnText },
-                ]}
-              >
-                ⚙️ Phụ huynh
               </Text>
             </TouchableOpacity>
           </View>
@@ -1078,6 +1148,7 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
             const isBalanceScale = item.packageName === 'internal.game.balancescale';
             const isSolarSystem = item.packageName === 'internal.game.solarsystem';
             const isDentalHabits = item.packageName === 'internal.game.dentalhabits';
+            const isExplorerGame = item.packageName === 'internal.game.explorer';
             return (
               <TouchableOpacity
                 style={styles.appCard}
@@ -1229,6 +1300,12 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
                       <Text style={styles.dentalHabitsEmojiIcon}>🦷</Text>
                     </View>
                   </View>
+                ) : isExplorerGame ? (
+                  <View style={[styles.appIcon, styles.explorerIconContainer]}>
+                    <View style={styles.explorerInnerBadge}>
+                      <Text style={styles.explorerEmojiIcon}>🌍</Text>
+                    </View>
+                  </View>
                 ) : isGreenTube ? (
                   <View style={[styles.appIcon, styles.greenTubeIconContainer]}>
                     <View style={styles.greenTubeBox}>
@@ -1319,11 +1396,13 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
           }
         />
 
-        {/* MODAL CHỌN THEME */}
+        {/* MODAL CHỌN THEME VÀ HÌNH NỀN */}
         <ThemeSelectorModal
           visible={showThemeModal}
           currentThemeId={currentTheme.id}
+          currentWallpaperId={currentWallpaper.id}
           onSelectTheme={(theme) => setCurrentTheme(theme)}
+          onSelectWallpaper={(wp) => setCurrentWallpaper(wp)}
           onClose={() => setShowThemeModal(false)}
         />
 
@@ -1390,6 +1469,11 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
+  },
+  wallpaperFullImage: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
   },
   header: {
     flexDirection: 'row',
@@ -2046,6 +2130,24 @@ const styles = StyleSheet.create({
     fontSize: 24,
   },
 
+  // GAME ADVENTURE: EXPLORER WORLD ICON
+  explorerIconContainer: {
+    backgroundColor: '#1A3A1A',
+    borderWidth: 2,
+    borderColor: '#4CAF50',
+  },
+  explorerInnerBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#2E7D32',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  explorerEmojiIcon: {
+    fontSize: 24,
+  },
+
   appIconPlaceholder: {
     justifyContent: 'center',
     alignItems: 'center',
@@ -2058,6 +2160,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textAlign: 'center',
     paddingHorizontal: 4,
+    textShadowColor: 'rgba(255, 255, 255, 0.95)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
     lineHeight: 16,
     maxWidth: 90,
   },

@@ -327,7 +327,7 @@ const styles = StyleSheet.create({
     opacity: 0.15,
   },
   shadowOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(15, 23, 42, 0.65)',
     borderRadius: 10,
   },
@@ -405,7 +405,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   celebrationOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(15, 23, 42, 0.88)',
     justifyContent: 'center',
     alignItems: 'center',

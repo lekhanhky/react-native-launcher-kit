@@ -998,7 +998,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
   },
   gridOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   gridRow: {
     flexDirection: 'row',

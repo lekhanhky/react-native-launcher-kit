@@ -397,7 +397,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   balancedPopup: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(15, 23, 42, 0.92)',
     justifyContent: 'center',
     alignItems: 'center',

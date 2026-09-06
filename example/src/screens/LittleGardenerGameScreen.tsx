@@ -422,7 +422,7 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   harvestPopup: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(20, 83, 45, 0.95)',
     justifyContent: 'center',
     alignItems: 'center',

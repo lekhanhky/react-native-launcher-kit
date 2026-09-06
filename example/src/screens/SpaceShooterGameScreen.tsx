@@ -929,7 +929,7 @@ const styles = StyleSheet.create({
   progressBar: { height: 6, backgroundColor: '#6366F1', borderRadius: 3 },
 
   // FLASH
-  flashOverlay: { ...StyleSheet.absoluteFillObject, zIndex: 50 },
+  flashOverlay: { ...StyleSheet.absoluteFill, zIndex: 50 },
 
   // GAME OVER
   gameOverContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 30, zIndex: 10 },
