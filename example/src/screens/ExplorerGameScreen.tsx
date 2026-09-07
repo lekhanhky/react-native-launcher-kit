@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Animated,
   Modal,
+  PanResponder,
   useWindowDimensions,
   Platform,
 } from 'react-native';
@@ -125,13 +126,15 @@ const PHYSICS = {
   GRAVITY: 0.55,
   MAX_FALL: 11,
   MOVE_SPEED: 3.8,
-  RUN_SPEED: 5.5,
-  ACCEL: 0.32,
-  FRICTION: 0.8,
+  RUN_SPEED: 6.0,          // Sprint speed nhanh hơn
+  ACCEL: 0.85,             // Phản xạ tức thì — tăng từ 0.32
+  FRICTION: 0.75,
   JUMP_FORCE: -11.5,
   BOUNCE_FORCE: -8,
   TILE: 36,
   INVINCIBLE_TIME: 90,
+  COYOTE_FRAMES: 10,       // Số frames ân hạn nhảy khi vừa rời mép
+  JUMP_BUFFER_FRAMES: 9,   // Số frames nhớ lệnh nhảy khi chưa chạm đất
 };
 
 // ============================================================
@@ -701,7 +704,7 @@ export const ExplorerGameScreen: React.FC<{ onClose: () => void }> = ({ onClose 
   const { width: SCREEN_W, height: SCREEN_H } = useWindowDimensions();
   const TILE = PHYSICS.TILE;
   const VIEWPORT_W = SCREEN_W;
-  const VIEWPORT_H = SCREEN_H * 0.65;
+  const VIEWPORT_H = SCREEN_H; // Toàn màn hình — không còn thanh controls phía dưới
 
   // ─────────── Game State ───────────
   const [phase, setPhase] = useState<GamePhase>('world_map');
@@ -731,7 +734,36 @@ export const ExplorerGameScreen: React.FC<{ onClose: () => void }> = ({ onClose 
     animFrame: 0, animTimer: 0, isJumping: false, isDead: false,
   });
   const cameraRef = useRef({ x: 0, y: 0 });
-  const inputRef = useRef({ left: false, right: false, jump: false, jumpPressed: false, run: false });
+  // inputRef — nguồn sự thật duy nhất cho input engine
+  const inputRef = useRef({
+    left: false, right: false,
+    jump: false, jumpPressed: false,
+    run: false,
+    coyoteTimer: 0,
+    jumpBufferTimer: 0,
+    // Điểm chạm khởi đầu (tính từ khi ngón tay đặt xuống)
+    touchStartX: 0,
+    touchStartY: 0,
+    lastDx: 0,
+    isTouching: false,
+    // Dùng cho nhận biết swipe up nhanh
+    touchStartTime: 0,
+    // Bỏ các trường cũ của 2-zone (giữ để không lỗi ref)
+    leftTouchX: 0, leftDragDx: 0, isLeftTouching: false,
+    rightTouchStartY: 0, isRightTouching: false,
+  });
+  // Floating joystick trên màn hình (xuất hiện ngay dưới ngón tay)
+  const joystickPos = useRef({ x: 0, y: 0 }).current;
+  const joystickDrag = useRef({ dx: 0 }).current;
+  const [showJoystick, setShowJoystick] = useState(false);
+  const [joystickCenter, setJoystickCenter] = useState({ x: 0, y: 0 });
+  const [joystickOffset, setJoystickOffset] = useState(0);
+  // Ripple hiệu ứng khi nhảy
+  const rippleAnim = useRef(new Animated.Value(0)).current;
+  const rippleOpacity = useRef(new Animated.Value(0)).current;
+  const [ripplePos, setRipplePos] = useState({ x: 0, y: 0 });
+  // Glow xung quanh nhân vật khi đang được điều khiển
+  const charGlowAnim = useRef(new Animated.Value(0)).current;
   const frameRef = useRef<number | null>(null);
   const levelDataRef = useRef<LevelData | null>(null);
   const particlesRef = useRef<Particle[]>([]);
@@ -795,24 +827,42 @@ export const ExplorerGameScreen: React.FC<{ onClose: () => void }> = ({ onClose 
     const ld = levelDataRef.current;
     if (!ld || p.isDead) return;
 
-    // Horizontal movement
+    // Horizontal movement — swipe-based auto-sprint
+    const targetSpeed = inp.run ? PHYSICS.RUN_SPEED : PHYSICS.MOVE_SPEED;
     if (inp.left) {
-      p.vx = Math.max(p.vx - PHYSICS.ACCEL, inp.run ? -PHYSICS.RUN_SPEED : -PHYSICS.MOVE_SPEED);
+      p.vx = Math.max(p.vx - PHYSICS.ACCEL, -targetSpeed);
       p.facing = 'left';
     } else if (inp.right) {
-      p.vx = Math.min(p.vx + PHYSICS.ACCEL, inp.run ? PHYSICS.RUN_SPEED : PHYSICS.MOVE_SPEED);
+      p.vx = Math.min(p.vx + PHYSICS.ACCEL, targetSpeed);
       p.facing = 'right';
     } else {
       p.vx *= PHYSICS.FRICTION;
-      if (Math.abs(p.vx) < 0.15) p.vx = 0;
+      if (Math.abs(p.vx) < 0.1) p.vx = 0;
     }
 
-    // Jump (only on first press)
-    if (inp.jump && p.isGrounded && !inp.jumpPressed) {
+    // ── Coyote Time: duy trì khả năng nhảy ngay sau khi rời mép ──
+    if (p.isGrounded) {
+      inp.coyoteTimer = PHYSICS.COYOTE_FRAMES;
+    } else if (inp.coyoteTimer > 0) {
+      inp.coyoteTimer--;
+    }
+
+    // ── Jump Buffer: ghi nhớ lệnh nhảy trước khi chạm đất ──
+    if (inp.jump && !inp.jumpPressed) {
+      inp.jumpBufferTimer = PHYSICS.JUMP_BUFFER_FRAMES;
+    }
+    if (inp.jumpBufferTimer > 0) inp.jumpBufferTimer--;
+
+    // ── Thực thi nhảy: coyote time + jump buffer kết hợp ──
+    const canJump = inp.coyoteTimer > 0 || p.isGrounded;
+    const wantsJump = inp.jumpBufferTimer > 0;
+    if (wantsJump && canJump && !inp.jumpPressed) {
       p.vy = PHYSICS.JUMP_FORCE;
       p.isGrounded = false;
       p.isJumping = true;
       inp.jumpPressed = true;
+      inp.coyoteTimer = 0;
+      inp.jumpBufferTimer = 0;
       soundManager.play(undefined, 'Nhảy!');
     }
 
@@ -1641,8 +1691,121 @@ export const ExplorerGameScreen: React.FC<{ onClose: () => void }> = ({ onClose 
           </View>
         )}
 
-        {/* ─── GAME VIEWPORT ─── */}
-        <View style={[styles.viewport, { height: VIEWPORT_H }]}>
+        {/* ─── GAME VIEWPORT + FULL-SCREEN SWIPE CONTROL ─── */}
+        <View
+          style={[styles.viewport, { height: VIEWPORT_H }]}
+          {...PanResponder.create({
+            onStartShouldSetPanResponder: () => true,
+            onMoveShouldSetPanResponder: () => true,
+
+            onPanResponderGrant: (evt) => {
+              const { locationX, locationY } = evt.nativeEvent;
+              const inp = inputRef.current;
+              inp.isTouching = true;
+              inp.touchStartX = locationX;
+              inp.touchStartY = locationY;
+              inp.touchStartTime = Date.now();
+              inp.lastDx = 0;
+              inp.left = false;
+              inp.right = false;
+              inp.run = false;
+              // Floating joystick hiện tại vị trí ngón tay
+              setJoystickCenter({ x: locationX, y: locationY });
+              setJoystickOffset(0);
+              setShowJoystick(true);
+            },
+
+            onPanResponderMove: (evt) => {
+              const inp = inputRef.current;
+              if (!inp.isTouching) return;
+              const dx = evt.nativeEvent.locationX - inp.touchStartX;
+              const dy = evt.nativeEvent.locationY - inp.touchStartY;
+              const absDx = Math.abs(dx);
+              const absDy = Math.abs(dy);
+              inp.lastDx = dx;
+
+              // ── Phát hiện Swipe Up nhanh để nhảy ──
+              // Nếu vuốt lên > 25px và lệch dọc rõ hơn ngang → NHẢY
+              if (dy < -25 && absDy > absDx * 0.8) {
+                inp.jump = true;
+                inp.jumpPressed = false;
+                // Ripple tại điểm chạm
+                setRipplePos({ x: inp.touchStartX, y: inp.touchStartY });
+                rippleAnim.setValue(0);
+                rippleOpacity.setValue(1);
+                Animated.parallel([
+                  Animated.timing(rippleAnim, { toValue: 1, duration: 350, useNativeDriver: true }),
+                  Animated.timing(rippleOpacity, { toValue: 0, duration: 350, useNativeDriver: true }),
+                ]).start();
+              }
+
+              // ── Phát hiện trượt ngang để di chuyển ──
+              // Dead zone 10px để tránh rung tay
+              if (absDx < 10) {
+                inp.left = false;
+                inp.right = false;
+                inp.run = false;
+              } else if (dx < 0) {
+                inp.left = true;
+                inp.right = false;
+                inp.run = absDx > 50; // Sprint khi kéo xa
+              } else {
+                inp.right = true;
+                inp.left = false;
+                inp.run = absDx > 50;
+              }
+
+              // Cập nhật vị trí joystick thumb (clamp ±48px)
+              const clamped = Math.max(-48, Math.min(48, dx));
+              setJoystickOffset(clamped);
+            },
+
+            onPanResponderRelease: (evt) => {
+              const inp = inputRef.current;
+              // Phát hiện TAP nhanh (< 200ms, ít di chuyển) = nhảy
+              const elapsed = Date.now() - inp.touchStartTime;
+              const totalDx = Math.abs(inp.lastDx);
+              if (elapsed < 200 && totalDx < 15) {
+                // Quick tap → nhảy
+                inp.jump = true;
+                inp.jumpPressed = false;
+                const { locationX, locationY } = evt.nativeEvent;
+                setRipplePos({ x: locationX, y: locationY });
+                rippleAnim.setValue(0);
+                rippleOpacity.setValue(1);
+                Animated.parallel([
+                  Animated.timing(rippleAnim, { toValue: 1, duration: 350, useNativeDriver: true }),
+                  Animated.timing(rippleOpacity, { toValue: 0, duration: 350, useNativeDriver: true }),
+                ]).start();
+                // Tự tắt jump sau 1 frame
+                setTimeout(() => {
+                  inp.jump = false;
+                  inp.jumpPressed = false;
+                }, 50);
+              }
+              inp.left = false;
+              inp.right = false;
+              inp.run = false;
+              inp.jump = false;
+              inp.jumpPressed = false;
+              inp.isTouching = false;
+              setShowJoystick(false);
+              setJoystickOffset(0);
+            },
+
+            onPanResponderTerminate: () => {
+              const inp = inputRef.current;
+              inp.left = false;
+              inp.right = false;
+              inp.run = false;
+              inp.jump = false;
+              inp.jumpPressed = false;
+              inp.isTouching = false;
+              setShowJoystick(false);
+              setJoystickOffset(0);
+            },
+          }).panHandlers}
+        >
           {/* Parallax Background Layer 1 — Sky gradient */}
           <View style={[styles.bgLayer, styles.bgSky]} />
 
@@ -1837,7 +2000,7 @@ export const ExplorerGameScreen: React.FC<{ onClose: () => void }> = ({ onClose 
             </View>
           )}
 
-          {/* ─── PARTICLES ─── */}
+        {/* ─── PARTICLES ─── */}
           {particlesRef.current.slice(0, 30).map((pt, i) => (
             <View key={`pt_${i}`} style={[styles.particle, {
               left: pt.x - cam.x, top: pt.y,
@@ -1849,49 +2012,41 @@ export const ExplorerGameScreen: React.FC<{ onClose: () => void }> = ({ onClose 
               {pt.emoji && <Text style={styles.particleEmoji}>{pt.emoji}</Text>}
             </View>
           ))}
-        </View>
 
-        {/* ─── TOUCH CONTROLS ─── */}
-        <View style={styles.controls}>
-          <View style={styles.controlsLeft}>
-            <TouchableOpacity
-              style={styles.dpadBtn}
-              onPressIn={() => { inputRef.current.left = true; }}
-              onPressOut={() => { inputRef.current.left = false; }}
-              activeOpacity={0.6}
-            >
-              <Text style={styles.dpadText}>◀</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.dpadBtn}
-              onPressIn={() => { inputRef.current.right = true; }}
-              onPressOut={() => { inputRef.current.right = false; }}
-              activeOpacity={0.6}
-            >
-              <Text style={styles.dpadText}>▶</Text>
-            </TouchableOpacity>
-          </View>
+          {/* ─── RIPPLE KHI NHẢY ─── */}
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              styles.ripple,
+              {
+                left: ripplePos.x - 40,
+                top: ripplePos.y - 40,
+                opacity: rippleOpacity,
+                transform: [{ scale: rippleAnim.interpolate({ inputRange: [0, 1], outputRange: [0.3, 2.5] }) }],
+              },
+            ]}
+          />
 
-          <View style={styles.controlsRight}>
-            <TouchableOpacity
-              style={[styles.actionBtn, styles.jumpBtn]}
-              onPressIn={() => { inputRef.current.jump = true; inputRef.current.jumpPressed = false; }}
-              onPressOut={() => { inputRef.current.jump = false; inputRef.current.jumpPressed = false; }}
-              activeOpacity={0.6}
-            >
-              <Text style={styles.actionBtnText}>⬆</Text>
-              <Text style={styles.actionBtnLabel}>NHẢY</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.actionBtn, styles.runBtn]}
-              onPressIn={() => { inputRef.current.run = true; }}
-              onPressOut={() => { inputRef.current.run = false; }}
-              activeOpacity={0.6}
-            >
-              <Text style={styles.actionBtnText}>⚡</Text>
-              <Text style={styles.actionBtnLabel}>CHẠY</Text>
-            </TouchableOpacity>
-          </View>
+          {/* ─── FLOATING JOYSTICK trên màn chơi ─── */}
+          {showJoystick && (
+            <View style={[
+              styles.joystickBase,
+              { left: joystickCenter.x - 40, top: joystickCenter.y - 40 },
+            ]}>
+              <View style={[
+                styles.joystickThumb,
+                { transform: [{ translateX: joystickOffset }] },
+              ]} />
+            </View>
+          )}
+
+          {/* ─── HINT: Hướng dẫn nhẹ khi mới vào game (fade sau 3s) ─── */}
+          <Animated.View
+            pointerEvents="none"
+            style={styles.fullscreenSwipeHint}
+          >
+            <Text style={styles.fullscreenSwipeHintText}>◀ trượt để chạy · vuốt lên để nhảy ▶</Text>
+          </Animated.View>
         </View>
       </Animated.View>
     </SafeAreaView>
@@ -2212,23 +2367,90 @@ const styles = StyleSheet.create({
   // ─── CONTROLS ───
   controls: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    backgroundColor: 'rgba(0,0,0,0.75)',
-    borderTopWidth: 2,
-    borderTopColor: '#333',
     flex: 1,
+    maxHeight: 130,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderTopWidth: 1.5,
+    borderTopColor: 'rgba(255,255,255,0.08)',
   },
-  controlsLeft: {
-    flexDirection: 'row',
-    gap: 12,
+  // ── Vùng trượt di chuyển (nửa trái) ──
+  swipeZoneLeft: {
+    flex: 1,
+    height: '100%',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    paddingBottom: 12,
+    borderRightWidth: 1,
+    borderRightColor: 'rgba(255,255,255,0.06)',
+    overflow: 'hidden',
   },
-  controlsRight: {
-    flexDirection: 'row',
-    gap: 12,
+  // ── Vùng vuốt nhảy (nửa phải) ──
+  swipeZoneRight: {
+    flex: 1,
+    height: '100%',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    paddingBottom: 12,
+    overflow: 'hidden',
   },
+  swipeHint: {
+    opacity: 0.35,
+  },
+  swipeHintText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+  },
+  // ── Floating Joystick ──
+  joystickBase: {
+    position: 'absolute',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  joystickThumb: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    shadowColor: '#FFF',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 6,
+    elevation: 6,
+  },
+  // ── Jump Ripple ──
+  ripple: {
+    position: 'absolute',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(100,220,255,0.55)',
+    borderWidth: 2,
+    borderColor: 'rgba(100,220,255,0.8)',
+  },
+  // ── Gợi ý điều khiển toàn màn hình ──
+  fullscreenSwipeHint: {
+    position: 'absolute',
+    bottom: 20,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
+  fullscreenSwipeHintText: {
+    color: 'rgba(255,255,255,0.35)',
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+    textAlign: 'center',
+  },
+  // ── Old D-Pad (kept for style ref) ──
   dpadBtn: {
     width: 64,
     height: 64,
