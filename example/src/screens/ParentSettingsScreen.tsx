@@ -30,6 +30,15 @@ import { vocabularyService } from '../services/vocabularyService';
 import { VocabCategory, VocabCard } from '../data/oxfordKidsVocabulary';
 import { YouTubeChannelSearchScreen } from './YouTubeChannelSearchScreen';
 import { YouTubeVideoDetailScreen } from './YouTubeVideoDetailScreen';
+import {
+  natureExplorerService,
+  NatureVideoConfigItem,
+} from '../services/natureExplorerService';
+import {
+  NatureCinemaModal,
+  extractYoutubeId,
+  CinemaEntity,
+} from '../components/explorer/NatureCinemaModal';
 
 interface ParentSettingsScreenProps {
   allApps: AppDetail[];
@@ -52,12 +61,36 @@ export const ParentSettingsScreen: React.FC<ParentSettingsScreenProps> = ({
   // 1. Quản lý danh sách ứng dụng & Tìm kiếm
   const [blockedPackages, setBlockedPackages] = useState<string[]>(() => {
     try {
+      const hasInitialized = storage.getBoolean(
+        STORAGE_KEYS.HAS_INITIALIZED_APP_BLOCK_ALL
+      );
       const raw = storage.getString(STORAGE_KEYS.PACKAGE_LIST);
-      return raw ? JSON.parse(raw) : ['com.android.settings'];
+      if (hasInitialized && raw) {
+        return JSON.parse(raw);
+      }
+      // Lần đầu mở app: Mặc định tắt (khóa) tất cả các ứng dụng cài đặt
+      const allBlocked = allApps.map((a) => a.packageName);
+      if (allApps.length > 0) {
+        storage.set(STORAGE_KEYS.PACKAGE_LIST, JSON.stringify(allBlocked));
+        storage.set(STORAGE_KEYS.HAS_INITIALIZED_APP_BLOCK_ALL, true);
+      }
+      return allBlocked;
     } catch {
-      return ['com.android.settings'];
+      return allApps.map((a) => a.packageName);
     }
   });
+
+  useEffect(() => {
+    if (
+      !storage.getBoolean(STORAGE_KEYS.HAS_INITIALIZED_APP_BLOCK_ALL) &&
+      allApps.length > 0
+    ) {
+      const allBlocked = allApps.map((a) => a.packageName);
+      setBlockedPackages(allBlocked);
+      storage.set(STORAGE_KEYS.PACKAGE_LIST, JSON.stringify(allBlocked));
+      storage.set(STORAGE_KEYS.HAS_INITIALIZED_APP_BLOCK_ALL, true);
+    }
+  }, [allApps]);
   const [appSearchQuery, setAppSearchQuery] = useState<string>('');
   const [isAdminActive, setIsAdminActive] = useState<boolean>(false);
   const [remoteLocked, setRemoteLocked] = useState<boolean>(() => parentalRealtimeService.isEmergencyLocked());
@@ -119,6 +152,14 @@ export const ParentSettingsScreen: React.FC<ParentSettingsScreenProps> = ({
 
   // Kênh đang chọn xem Chi Tiết Video
   const [selectedDetailChannel, setSelectedDetailChannel] = useState<YouTubeChannel | null>(null);
+
+  // 4.1. Phân mục YouTube: 'channels' (Kênh trẻ em) | 'nature' (Video Khám Phá Rừng Xanh)
+  const [ytSubTab, setYtSubTab] = useState<'channels' | 'nature'>('channels');
+  const [natureVideos, setNatureVideos] = useState<NatureVideoConfigItem[]>(() =>
+    natureExplorerService.getNatureVideoConfigs()
+  );
+  const [previewCinemaEntity, setPreviewCinemaEntity] = useState<CinemaEntity | null>(null);
+  const [showPreviewCinema, setShowPreviewCinema] = useState<boolean>(false);
 
   // 5. Quản lý Từ Vựng (Vocabulary CMS)
   const [vocabCategories, setVocabCategories] = useState<VocabCategory[]>(() =>
@@ -442,6 +483,87 @@ export const ParentSettingsScreen: React.FC<ParentSettingsScreenProps> = ({
     }
   };
 
+  // 4.2. Xử lý quản trị video YouTube Khám Phá Rừng Xanh
+  const handleUpdateNatureVideo = (
+    id: string,
+    field: 'youtubeVideoId' | 'youtubeVideoTitleVi',
+    value: string
+  ) => {
+    setNatureVideos((prev) =>
+      prev.map((item) => {
+        if (item.id === id) {
+          return { ...item, [field]: value };
+        }
+        return item;
+      })
+    );
+  };
+
+  const handleResetSingleNatureVideo = (id: string) => {
+    setNatureVideos((prev) =>
+      prev.map((item) => {
+        if (item.id === id) {
+          return {
+            ...item,
+            youtubeVideoId: item.defaultYoutubeId,
+            youtubeVideoTitleVi: item.defaultYoutubeTitle,
+          };
+        }
+        return item;
+      })
+    );
+  };
+
+  const handleSaveAllNatureVideos = () => {
+    const cleaned = natureVideos.map((item) => {
+      const extracted = extractYoutubeId(item.youtubeVideoId);
+      return {
+        ...item,
+        youtubeVideoId: extracted || item.defaultYoutubeId,
+        youtubeVideoTitleVi: item.youtubeVideoTitleVi.trim() || item.defaultYoutubeTitle,
+      };
+    });
+    setNatureVideos(cleaned);
+    natureExplorerService.saveNatureVideoConfigs(cleaned);
+    Alert.alert(
+      '✅ Đã Lưu Thành Công',
+      'Cấu hình 5 video YouTube cho game Khám Phá Rừng Xanh đã được lưu. Bé có thể xem video mới ngay trong game!'
+    );
+  };
+
+  const handleResetAllNatureVideos = () => {
+    Alert.alert(
+      'Khôi Phục Mặc Định',
+      'Bạn có chắc chắn muốn đặt lại tất cả 5 video sinh vật về video tài liệu giáo dục mặc định không?',
+      [
+        { text: 'Hủy', style: 'cancel' },
+        {
+          text: 'Khôi Phục',
+          style: 'destructive',
+          onPress: () => {
+            const defaults = natureExplorerService.resetToDefault();
+            setNatureVideos(defaults);
+            Alert.alert('Hoàn tất', 'Đã khôi phục 5 video về mặc định gốc!');
+          },
+        },
+      ]
+    );
+  };
+
+  const handlePreviewNatureVideo = (item: NatureVideoConfigItem) => {
+    const videoId = extractYoutubeId(item.youtubeVideoId) || item.defaultYoutubeId;
+    setPreviewCinemaEntity({
+      id: item.id,
+      nameVi: item.nameVi,
+      badgeIcon: item.badgeIcon,
+      youtubeVideoId: videoId,
+      youtubeVideoTitleVi: item.youtubeVideoTitleVi || item.defaultYoutubeTitle,
+      funFactVi: item.funFactVi,
+      imageSource: item.imageSource,
+    });
+    setShowPreviewCinema(true);
+  };
+
   // Lọc app theo tìm kiếm
   const filteredApps = allApps.filter(
     (app) =>
@@ -757,13 +879,56 @@ export const ParentSettingsScreen: React.FC<ParentSettingsScreenProps> = ({
         {/* ========================================================================= */}
         {activeTab === 'youtube' && (
           <View style={styles.youtubeTabContainer}>
-            {/* TIÊU ĐỀ SECTION CHÍNH */}
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionHeading}>Kênh của bé</Text>
-              <Text style={styles.sectionSubheading}>
-                Quản lý và xem thống kê các kênh YouTube.
-              </Text>
+            {/* SUB-TABS: KÊNH WHITELIST & VIDEO KHÁM PHÁ RỪNG */}
+            <View style={styles.ytSubTabRow}>
+              <TouchableOpacity
+                style={[
+                  styles.ytSubTabBtn,
+                  ytSubTab === 'channels' && styles.ytSubTabBtnActive,
+                ]}
+                onPress={() => setYtSubTab('channels')}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.ytSubTabIcon}>📺</Text>
+                <Text
+                  style={[
+                    styles.ytSubTabText,
+                    ytSubTab === 'channels' && styles.ytSubTabTextActive,
+                  ]}
+                >
+                  Kênh Cho Bé ({allowedChannels.length})
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.ytSubTabBtn,
+                  ytSubTab === 'nature' && styles.ytSubTabBtnActive,
+                ]}
+                onPress={() => setYtSubTab('nature')}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.ytSubTabIcon}>🌿</Text>
+                <Text
+                  style={[
+                    styles.ytSubTabText,
+                    ytSubTab === 'nature' && styles.ytSubTabTextActive,
+                  ]}
+                >
+                  Video Rừng Xanh (5)
+                </Text>
+              </TouchableOpacity>
             </View>
+
+            {ytSubTab === 'channels' && (
+              <>
+                {/* TIÊU ĐỀ SECTION CHÍNH */}
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionHeading}>Kênh của bé</Text>
+                  <Text style={styles.sectionSubheading}>
+                    Quản lý và xem thống kê các kênh YouTube.
+                  </Text>
+                </View>
 
             {/* CÔNG TẮC BẬT TẮT YOUTUBE */}
             <View style={styles.ytToggleCard}>
@@ -939,8 +1104,202 @@ export const ParentSettingsScreen: React.FC<ParentSettingsScreenProps> = ({
                 </View>
               </>
             )}
+          </>
+        )}
+
+        {/* PHÂN MỤC 2: QUẢN LÝ VIDEO KHÁM PHÁ RỪNG XANH */}
+        {ytSubTab === 'nature' && (
+          <View style={styles.natureYtContainer}>
+            {/* BANNER GIỚI THIỆU & CÔNG CỤ NHANH */}
+            <View style={styles.natureBannerCard}>
+              <View style={styles.natureBannerHeader}>
+                <View style={styles.natureBannerIconBox}>
+                  <Text style={{ fontSize: 24 }}>🌿</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.natureBannerTitle}>
+                    Video Khám Phá Rừng Xanh
+                  </Text>
+                  <Text style={styles.natureBannerSub}>
+                    Tùy chỉnh link video tài liệu thực tế cho 5 sinh vật trong game. Bé xem trực tiếp khi bấm nút 🎬.
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.natureQuickActionBar}>
+                <TouchableOpacity
+                  style={styles.natureSaveAllBtn}
+                  onPress={handleSaveAllNatureVideos}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.natureSaveAllBtnText}>💾 Lưu Thay Đổi</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.natureResetAllBtn}
+                  onPress={handleResetAllNatureVideos}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.natureResetAllBtnText}>🔄 Khôi Phục Gốc</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* DANH SÁCH 5 THẺ SINH VẬT */}
+            <View style={styles.natureCardsList}>
+              {natureVideos.map((item) => {
+                const extractedId = extractYoutubeId(item.youtubeVideoId);
+                const isCustomized =
+                  item.youtubeVideoId !== item.defaultYoutubeId ||
+                  item.youtubeVideoTitleVi !== item.defaultYoutubeTitle;
+                const isValidId = /^[a-zA-Z0-9_-]{11}$/.test(extractedId);
+
+                return (
+                  <View key={item.id} style={styles.natureEntityCard}>
+                    {/* HEADER THẺ: HÌNH 3D + TÊN + BADGE */}
+                    <View style={styles.natureCardTop}>
+                      <Image
+                        source={item.imageSource}
+                        style={styles.natureEntityThumb}
+                      />
+                      <View style={{ flex: 1, marginLeft: 12 }}>
+                        <View style={styles.natureNameRow}>
+                          <Text style={styles.natureEntityName} numberOfLines={1}>
+                            {item.badgeIcon} {item.nameVi}
+                          </Text>
+                          <View
+                            style={[
+                              styles.natureStatusBadge,
+                              isCustomized
+                                ? styles.natureStatusBadgeCustom
+                                : styles.natureStatusBadgeDefault,
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.natureStatusBadgeText,
+                                isCustomized
+                                  ? styles.natureStatusBadgeTextCustom
+                                  : styles.natureStatusBadgeTextDefault,
+                              ]}
+                            >
+                              {isCustomized ? '✨ Đã Sửa' : '🌱 Gốc'}
+                            </Text>
+                          </View>
+                        </View>
+
+                        <Text style={styles.natureScientificText}>
+                          {item.scientificName} • {item.sceneNameVi}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* Ô NHẬP LINK YOUTUBE */}
+                    <View style={styles.natureFieldGroup}>
+                      <Text style={styles.natureFieldLabel}>
+                        🔗 Link YouTube hoặc Video ID:
+                      </Text>
+                      <View style={styles.natureInputWrapper}>
+                        <TextInput
+                          style={styles.natureTextInput}
+                          placeholder="Dán link youtube.com/... hoặc mã ID"
+                          placeholderTextColor="#94A3B8"
+                          value={item.youtubeVideoId}
+                          onChangeText={(val) =>
+                            handleUpdateNatureVideo(item.id, 'youtubeVideoId', val)
+                          }
+                          autoCapitalize="none"
+                          autoCorrect={false}
+                        />
+                        {item.youtubeVideoId.length > 0 && (
+                          <TouchableOpacity
+                            style={styles.natureInputClearBtn}
+                            onPress={() =>
+                              handleUpdateNatureVideo(item.id, 'youtubeVideoId', '')
+                            }
+                          >
+                            <Text style={styles.natureInputClearText}>✕</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+
+                      {/* DÒNG KIỂM TRA MÃ VIDEO */}
+                      <View style={styles.natureIdFeedbackRow}>
+                        {isValidId ? (
+                          <Text style={styles.natureIdFeedbackValid}>
+                            ✓ Mã ID nhận diện: <Text style={{ fontWeight: '800' }}>{extractedId}</Text>
+                          </Text>
+                        ) : item.youtubeVideoId.trim().length > 0 ? (
+                          <Text style={styles.natureIdFeedbackWarn}>
+                            ⚠️ Mã video chưa đúng định dạng 11 ký tự
+                          </Text>
+                        ) : (
+                          <Text style={styles.natureIdFeedbackEmpty}>
+                            ⚠️ Chưa có mã video
+                          </Text>
+                        )}
+                      </View>
+                    </View>
+
+                    {/* Ô NHẬP TIÊU ĐỀ VIDEO HIỂN THỊ */}
+                    <View style={styles.natureFieldGroup}>
+                      <Text style={styles.natureFieldLabel}>
+                        🏷️ Tiêu đề video hiển thị cho bé:
+                      </Text>
+                      <TextInput
+                        style={styles.natureTextInput}
+                        placeholder="Nhập tiêu đề video..."
+                        placeholderTextColor="#94A3B8"
+                        value={item.youtubeVideoTitleVi}
+                        onChangeText={(val) =>
+                          handleUpdateNatureVideo(item.id, 'youtubeVideoTitleVi', val)
+                        }
+                      />
+                    </View>
+
+                    {/* CỤM NÚT THAO TÁC CỦA THẺ */}
+                    <View style={styles.natureCardActionsRow}>
+                      <TouchableOpacity
+                        style={styles.naturePreviewBtn}
+                        onPress={() => handlePreviewNatureVideo(item)}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={styles.naturePreviewBtnText}>🎬 Xem Thử</Text>
+                      </TouchableOpacity>
+
+                      {isCustomized && (
+                        <TouchableOpacity
+                          style={styles.natureCardResetBtn}
+                          onPress={() => handleResetSingleNatureVideo(item.id)}
+                          activeOpacity={0.8}
+                        >
+                          <Text style={styles.natureCardResetBtnText}>🔄 Về Mặc Định</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+
+            {/* NÚT LƯU LỚN DƯỚI CÙNG */}
+            <TouchableOpacity
+              style={styles.natureBigSaveBtn}
+              onPress={handleSaveAllNatureVideos}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.natureBigSaveBtnText}>
+                💾 LƯU CẤU HÌNH VIDEO (ÁP DỤNG VÀO GAME)
+              </Text>
+            </TouchableOpacity>
+
+            <Text style={styles.natureHelpNote}>
+              💡 Mẹo: Phụ huynh có thể sao chép link video thực tế từ ứng dụng YouTube (bấm Chia sẻ ➔ Sao chép liên kết) rồi dán vào đây. Hệ thống tự động lọc mã ID chuẩn.
+            </Text>
           </View>
         )}
+      </View>
+    )}
 
         {/* ========================================================================= */}
         {/* TAB 3: QUẢN LÝ TỪ VỰNG (VOCABULARY CMS) */}
@@ -1223,7 +1582,7 @@ export const ParentSettingsScreen: React.FC<ParentSettingsScreenProps> = ({
       </ScrollView>
 
       {/* FLOATING ACTION BUTTON (+) Ở GÓC DƯỚI BÊN PHẢI (BOTTOM RIGHT) */}
-      {activeTab === 'youtube' && (
+      {activeTab === 'youtube' && ytSubTab === 'channels' && (
         <TouchableOpacity
           style={styles.floatingAddBtn}
           onPress={() => setShowAddChannelModal(true)}
@@ -1442,6 +1801,13 @@ export const ParentSettingsScreen: React.FC<ParentSettingsScreenProps> = ({
           </View>
         </View>
       </Modal>
+
+      {/* MODAL XEM THỬ VIDEO KHÁM PHÁ THIÊN NHIÊN (NATURE CINEMA PREVIEW) */}
+      <NatureCinemaModal
+        visible={showPreviewCinema}
+        entity={previewCinemaEntity}
+        onClose={() => setShowPreviewCinema(false)}
+      />
     </SafeAreaView>
   );
 };
@@ -2404,5 +2770,303 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     fontSize: 14,
     color: '#0F172A',
+  },
+
+  /* YOUTUBE SUB-TABS SEGMENTED CONTROL */
+  ytSubTabRow: {
+    flexDirection: 'row',
+    backgroundColor: '#F1F5F9',
+    borderRadius: 14,
+    padding: 4,
+    marginBottom: 16,
+  },
+  ytSubTabBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderRadius: 10,
+    gap: 6,
+  },
+  ytSubTabBtnActive: {
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  ytSubTabIcon: {
+    fontSize: 15,
+  },
+  ytSubTabText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#64748B',
+  },
+  ytSubTabTextActive: {
+    color: '#0F172A',
+    fontWeight: '800',
+  },
+
+  /* NATURE EXPLORER YOUTUBE STYLES */
+  natureYtContainer: {
+    gap: 14,
+  },
+  natureBannerCard: {
+    backgroundColor: '#F0FDF4',
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#BBF7D0',
+    padding: 14,
+    gap: 12,
+  },
+  natureBannerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  natureBannerIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#DCFCE7',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  natureBannerTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#14532D',
+  },
+  natureBannerSub: {
+    fontSize: 12,
+    color: '#166534',
+    marginTop: 2,
+    lineHeight: 16,
+  },
+  natureQuickActionBar: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  natureSaveAllBtn: {
+    flex: 1,
+    backgroundColor: '#16A34A',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#16A34A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  natureSaveAllBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: 13,
+  },
+  natureResetAllBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  natureResetAllBtnText: {
+    color: '#475569',
+    fontWeight: '700',
+    fontSize: 13,
+  },
+
+  /* NATURE CARDS LIST */
+  natureCardsList: {
+    gap: 12,
+  },
+  natureEntityCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    padding: 14,
+    gap: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  natureCardTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  natureEntityThumb: {
+    width: 54,
+    height: 54,
+    borderRadius: 12,
+    backgroundColor: '#F1F5F9',
+  },
+  natureNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  natureEntityName: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#0F172A',
+    flex: 1,
+    marginRight: 6,
+  },
+  natureStatusBadge: {
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  natureStatusBadgeDefault: {
+    backgroundColor: '#DCFCE7',
+  },
+  natureStatusBadgeCustom: {
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#93C5FD',
+  },
+  natureStatusBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  natureStatusBadgeTextDefault: {
+    color: '#15803D',
+  },
+  natureStatusBadgeTextCustom: {
+    color: '#1D4ED8',
+  },
+  natureScientificText: {
+    fontSize: 11.5,
+    color: '#64748B',
+    marginTop: 3,
+  },
+  natureFieldGroup: {
+    gap: 4,
+  },
+  natureFieldLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  natureInputWrapper: {
+    position: 'relative',
+    justifyContent: 'center',
+  },
+  natureTextInput: {
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 13,
+    color: '#0F172A',
+  },
+  natureInputClearBtn: {
+    position: 'absolute',
+    right: 10,
+    padding: 6,
+  },
+  natureInputClearText: {
+    fontSize: 13,
+    color: '#94A3B8',
+    fontWeight: '700',
+  },
+  natureIdFeedbackRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 2,
+    paddingHorizontal: 2,
+  },
+  natureIdFeedbackValid: {
+    fontSize: 11,
+    color: '#16A34A',
+    fontWeight: '600',
+  },
+  natureIdFeedbackWarn: {
+    fontSize: 11,
+    color: '#EA580C',
+    fontWeight: '600',
+  },
+  natureIdFeedbackEmpty: {
+    fontSize: 11,
+    color: '#94A3B8',
+    fontStyle: 'italic',
+  },
+  natureCardActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  naturePreviewBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    gap: 4,
+  },
+  naturePreviewBtnText: {
+    color: '#DC2626',
+    fontWeight: '700',
+    fontSize: 12,
+  },
+  natureCardResetBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: '#F1F5F9',
+  },
+  natureCardResetBtnText: {
+    color: '#64748B',
+    fontWeight: '600',
+    fontSize: 11.5,
+  },
+  natureBigSaveBtn: {
+    backgroundColor: '#16A34A',
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+    shadowColor: '#16A34A',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 3,
+  },
+  natureBigSaveBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: 14,
+    letterSpacing: 0.3,
+  },
+  natureHelpNote: {
+    fontSize: 11.5,
+    color: '#64748B',
+    textAlign: 'center',
+    lineHeight: 16,
+    marginTop: 4,
+    marginBottom: 20,
+    paddingHorizontal: 10,
   },
 });

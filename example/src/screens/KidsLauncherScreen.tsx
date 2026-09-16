@@ -52,7 +52,10 @@ import { WeatherDressUpGameScreen } from './WeatherDressUpGameScreen';
 import { BalanceScaleGameScreen } from './BalanceScaleGameScreen';
 import { SolarSystemGameScreen } from './SolarSystemGameScreen';
 import { DentalHabitsGameScreen } from './DentalHabitsGameScreen';
-import { ExplorerGameScreen } from './ExplorerGameScreen';
+import { PetCareGameScreen } from './PetCareGameScreen';
+import { FourSeasonsGameScreen } from './FourSeasonsGameScreen';
+import { ContinentExplorerGameScreen } from './ContinentExplorerGameScreen';
+import { NatureExplorerGameScreen } from './NatureExplorerGameScreen';
 import { LockOverlay } from '../components/LockOverlay';
 import { ParentPinModal } from '../components/ParentPinModal';
 import { DeviceAdminGuideModal } from '../components/DeviceAdminGuideModal';
@@ -144,9 +147,10 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
   const [showBalanceScaleGame, setShowBalanceScaleGame] = useState<boolean>(false);
   const [showSolarSystemGame, setShowSolarSystemGame] = useState<boolean>(false);
   const [showDentalHabitsGame, setShowDentalHabitsGame] = useState<boolean>(false);
-
-  // Explorer World Adventure Game Screen state
-  const [showExplorerGame, setShowExplorerGame] = useState<boolean>(false);
+  const [showPetCareGame, setShowPetCareGame] = useState<boolean>(false);
+  const [showFourSeasonsGame, setShowFourSeasonsGame] = useState<boolean>(false);
+  const [showContinentExplorerGame, setShowContinentExplorerGame] = useState<boolean>(false);
+  const [showNatureExplorerGame, setShowNatureExplorerGame] = useState<boolean>(false);
 
   // Device Admin Guide Modal state
   const [showAdminGuideModal, setShowAdminGuideModal] = useState<boolean>(false);
@@ -196,12 +200,29 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
         console.warn('InstalledApps.getSortedApps error:', nativeErr);
       }
 
-      let blockedList: string[] = ['com.android.settings'];
-      try {
-        const raw = storage.getString(STORAGE_KEYS.PACKAGE_LIST);
-        if (raw) blockedList = JSON.parse(raw);
-      } catch (e) {
-        console.warn(e);
+      const hasInitialized = storage.getBoolean(
+        STORAGE_KEYS.HAS_INITIALIZED_APP_BLOCK_ALL
+      );
+      let blockedList: string[] = [];
+
+      if (!hasInitialized && apps.length > 0) {
+        // Mặc định lần đầu mở app: Tắt (khóa) TẤT CẢ các ứng dụng cài đặt trên máy cho bé
+        blockedList = apps.map((a) => a.packageName);
+        storage.set(STORAGE_KEYS.PACKAGE_LIST, JSON.stringify(blockedList));
+        storage.set(STORAGE_KEYS.HAS_INITIALIZED_APP_BLOCK_ALL, true);
+      } else {
+        try {
+          const raw = storage.getString(STORAGE_KEYS.PACKAGE_LIST);
+          if (raw) {
+            blockedList = JSON.parse(raw);
+          } else if (apps.length > 0) {
+            blockedList = apps.map((a) => a.packageName);
+            storage.set(STORAGE_KEYS.PACKAGE_LIST, JSON.stringify(blockedList));
+          }
+        } catch (e) {
+          console.warn(e);
+          blockedList = apps.map((a) => a.packageName);
+        }
       }
 
       let filtered = apps.filter((app) => !blockedList.includes(app.packageName));
@@ -355,15 +376,29 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
         packageName: 'internal.game.dentalhabits',
         icon: '',
       };
-
-      // Game Adventure: Bé Khám Phá Thế Giới (Explorer World)
-      const explorerGameApp: AppDetail = {
-        label: 'Khám Phá Thế Giới',
-        packageName: 'internal.game.explorer',
+      const petCareApp: AppDetail = {
+        label: 'Thú Cưng Của Bé',
+        packageName: 'internal.game.petcare',
+        icon: '',
+      };
+      const fourSeasonsApp: AppDetail = {
+        label: 'Vườn Bốn Mùa',
+        packageName: 'internal.game.fourseasons',
+        icon: '',
+      };
+      const continentExplorerApp: AppDetail = {
+        label: 'Bay Qua Lục Địa',
+        packageName: 'internal.game.continentexplorer',
+        icon: '',
+      };
+      const natureExplorerApp: AppDetail = {
+        label: 'Khám Phá Nhí',
+        packageName: 'internal.game.natureexplorer',
         icon: '',
       };
 
       const allKidsGames = [
+        natureExplorerApp, // Đặt lên đầu để bé dễ nhìn thấy và chơi thử ngay
         memoryGameApp,
         bubblePopApp,
         animalSoundApp,
@@ -388,7 +423,9 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
         balanceScaleApp,
         solarSystemApp,
         dentalHabitsApp,
-        explorerGameApp,
+        petCareApp,
+        fourSeasonsApp,
+        continentExplorerApp,
       ];
 
       // Thêm ứng dụng YouTube an toàn và Green Tube xanh lá cây
@@ -609,8 +646,20 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
         setShowDentalHabitsGame(false);
         return true;
       }
-      if (showExplorerGame) {
-        setShowExplorerGame(false);
+      if (showPetCareGame) {
+        setShowPetCareGame(false);
+        return true;
+      }
+      if (showFourSeasonsGame) {
+        setShowFourSeasonsGame(false);
+        return true;
+      }
+      if (showContinentExplorerGame) {
+        setShowContinentExplorerGame(false);
+        return true;
+      }
+      if (showNatureExplorerGame) {
+        setShowNatureExplorerGame(false);
         return true;
       }
       if (showGreenKidsTubeScreen) {
@@ -632,6 +681,7 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
     const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
     return () => sub.remove();
   }, [
+    isLocked,
     showPinModal,
     showThemeModal,
     showAdminGuideModal,
@@ -659,7 +709,10 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
     showBalanceScaleGame,
     showSolarSystemGame,
     showDentalHabitsGame,
-    showExplorerGame,
+    showPetCareGame,
+    showFourSeasonsGame,
+    showContinentExplorerGame,
+    showNatureExplorerGame,
     showYouTubeScreen,
     showGreenKidsTubeScreen,
     showSettingsScreen,
@@ -797,10 +850,20 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
       setShowDentalHabitsGame(true);
       return;
     }
-
-    // Mở Game Adventure: Bé Khám Phá Thế Giới (Explorer World)
-    if (packageName === 'internal.game.explorer') {
-      setShowExplorerGame(true);
+    if (packageName === 'internal.game.petcare') {
+      setShowPetCareGame(true);
+      return;
+    }
+    if (packageName === 'internal.game.fourseasons') {
+      setShowFourSeasonsGame(true);
+      return;
+    }
+    if (packageName === 'internal.game.continentexplorer') {
+      setShowContinentExplorerGame(true);
+      return;
+    }
+    if (packageName === 'internal.game.natureexplorer') {
+      setShowNatureExplorerGame(true);
       return;
     }
 
@@ -986,10 +1049,17 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
   if (showDentalHabitsGame) {
     return <DentalHabitsGameScreen onClose={() => setShowDentalHabitsGame(false)} />;
   }
-
-  // Mở màn hình Game Adventure: Bé Khám Phá Thế Giới (Explorer World)
-  if (showExplorerGame) {
-    return <ExplorerGameScreen onClose={() => setShowExplorerGame(false)} />;
+  if (showPetCareGame) {
+    return <PetCareGameScreen onClose={() => setShowPetCareGame(false)} />;
+  }
+  if (showFourSeasonsGame) {
+    return <FourSeasonsGameScreen onClose={() => setShowFourSeasonsGame(false)} />;
+  }
+  if (showContinentExplorerGame) {
+    return <ContinentExplorerGameScreen onClose={() => setShowContinentExplorerGame(false)} />;
+  }
+  if (showNatureExplorerGame) {
+    return <NatureExplorerGameScreen onClose={() => setShowNatureExplorerGame(false)} />;
   }
 
   // Mở màn hình Green Kids Tube an toàn
@@ -1148,7 +1218,10 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
             const isBalanceScale = item.packageName === 'internal.game.balancescale';
             const isSolarSystem = item.packageName === 'internal.game.solarsystem';
             const isDentalHabits = item.packageName === 'internal.game.dentalhabits';
-            const isExplorerGame = item.packageName === 'internal.game.explorer';
+            const isPetCare = item.packageName === 'internal.game.petcare';
+            const isFourSeasons = item.packageName === 'internal.game.fourseasons';
+            const isContinentExplorer = item.packageName === 'internal.game.continentexplorer';
+            const isNatureExplorer = item.packageName === 'internal.game.natureexplorer';
             return (
               <TouchableOpacity
                 style={styles.appCard}
@@ -1300,10 +1373,28 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
                       <Text style={styles.dentalHabitsEmojiIcon}>🦷</Text>
                     </View>
                   </View>
-                ) : isExplorerGame ? (
-                  <View style={[styles.appIcon, styles.explorerIconContainer]}>
-                    <View style={styles.explorerInnerBadge}>
-                      <Text style={styles.explorerEmojiIcon}>🌍</Text>
+                ) : isPetCare ? (
+                  <View style={[styles.appIcon, styles.petCareIconContainer]}>
+                    <View style={styles.petCareInnerBadge}>
+                      <Text style={styles.petCareEmojiIcon}>🐾</Text>
+                    </View>
+                  </View>
+                ) : isFourSeasons ? (
+                  <View style={[styles.appIcon, styles.fourSeasonsIconContainer]}>
+                    <View style={styles.fourSeasonsInnerBadge}>
+                      <Text style={styles.fourSeasonsEmojiIcon}>🦋</Text>
+                    </View>
+                  </View>
+                ) : isContinentExplorer ? (
+                  <View style={[styles.appIcon, styles.continentExplorerIconContainer]}>
+                    <View style={styles.continentExplorerInnerBadge}>
+                      <Text style={styles.continentExplorerEmojiIcon}>🦅</Text>
+                    </View>
+                  </View>
+                ) : isNatureExplorer ? (
+                  <View style={[styles.appIcon, styles.natureExplorerIconContainer]}>
+                    <View style={styles.natureExplorerInnerBadge}>
+                      <Text style={styles.natureExplorerEmojiIcon}>🌿</Text>
                     </View>
                   </View>
                 ) : isGreenTube ? (
@@ -2129,22 +2220,76 @@ const styles = StyleSheet.create({
   dentalHabitsEmojiIcon: {
     fontSize: 24,
   },
-
-  // GAME ADVENTURE: EXPLORER WORLD ICON
-  explorerIconContainer: {
-    backgroundColor: '#1A3A1A',
-    borderWidth: 2,
-    borderColor: '#4CAF50',
+  petCareIconContainer: {
+    backgroundColor: '#92400E',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 4,
   },
-  explorerInnerBadge: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#2E7D32',
+  petCareInnerBadge: {
+    width: 44,
+    height: 44,
+    backgroundColor: '#FDE68A',
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  explorerEmojiIcon: {
+  petCareEmojiIcon: {
+    fontSize: 24,
+  },
+  fourSeasonsIconContainer: {
+    backgroundColor: '#2E7D32',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 4,
+  },
+  fourSeasonsInnerBadge: {
+    width: 44,
+    height: 44,
+    backgroundColor: '#C8E6C9',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fourSeasonsEmojiIcon: {
+    fontSize: 24,
+  },
+  continentExplorerIconContainer: {
+    backgroundColor: '#1B4F72',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 4,
+  },
+  continentExplorerInnerBadge: {
+    width: 44,
+    height: 44,
+    backgroundColor: '#AED6F1',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  continentExplorerEmojiIcon: {
+    fontSize: 24,
+  },
+  natureExplorerIconContainer: {
+    backgroundColor: '#145A32',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 4,
+  },
+  natureExplorerInnerBadge: {
+    width: 44,
+    height: 44,
+    backgroundColor: '#A9DFBF',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  natureExplorerEmojiIcon: {
     fontSize: 24,
   },
 

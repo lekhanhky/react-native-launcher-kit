@@ -174,15 +174,17 @@ Hệ thống trò chơi được thiết kế nhằm mục tiêu:
 
 ---
 
-### Game 12: 🎴 Thẻ Bài Từ Vựng Song Ngữ Oxford (Kids Bilingual Flashcards)
+### Game 12: 🎴✨ Thẻ Bài Ma Thuật 3D Oxford (Kids 3D Bilingual Flashcards & Magic Pokédex)
 * **Độ tuổi:** 2 – 10 tuổi
-* **Lĩnh vực:** Phát triển ngôn ngữ / 3000 từ vựng cốt lõi Oxford (Động vật, Cây cối, Côn trùng, Xe cộ, Nghề nghiệp...).
-* **Mục tiêu:** Xây dựng vốn từ vựng phong phú, rèn luyện phát âm chuẩn bản xứ Anh - Việt, phát triển tư duy song ngữ sớm.
-* **Gameplay:**
-  - **3 Chế độ ngôn ngữ:** 🇻🇳 Tiếng Việt, 🇬🇧 Tiếng Anh (kèm IPA & Phonics), 🌐 Song Ngữ Anh - Việt (lật mặt trước/sau).
-  - **Lật thẻ 3D tương tác:** Chạm để lật thẻ 180 độ, nút phát âm chuẩn US 🔊, nút đọc chậm 0.75x 🐌, hình ảnh sắc nét.
-  - **Mini-game Thám Tử Đoán Tranh:** Nghe từ phát âm -> chọn thẻ tranh đúng trong 4 đáp án.
-  - **10+ Bộ chủ đề:** Động vật 🦁, Côn trùng 🐛, Cây cối 🌳, Trái cây 🍎, Xe cộ 🚗, Đồ dùng 🏠, Cơ thể 👤, Màu sắc 🎨, Vũ trụ 🪐, Nghề nghiệp 👨‍👩‍👧.
+* **Lĩnh vực:** Phát triển ngôn ngữ / 3000 từ vựng cốt lõi Oxford (30 Chủ đề / 500+ Thẻ từ vựng phong phú).
+* **Mục tiêu:** Xây dựng vốn từ vựng phong phú, rèn luyện phát âm chuẩn bản xứ Anh - Việt, phát triển tư duy song ngữ sớm kết hợp kích thích giác quan thông qua đồ họa 3D và âm thanh đời thực.
+* **Tài liệu đặc tả chi tiết 3D:** [15-09-2026-KIDS_3D_FLASHCARD_GAME_SPEC.md](file:///c:/react-native-launcher-kit/docs/15-09-2026-KIDS_3D_FLASHCARD_GAME_SPEC.md)
+* **Các nâng cấp đột phá (Bản 3D):**
+  - **Thẻ bài 3D Parallax Tilt & Tráng Gương Holographic:** Thẻ nghiêng theo cử chỉ ngón tay (`rotateX`, `rotateY`), độ sâu thị sai 3 tầng và dải sáng phản quang cầu vồng như thẻ bài Prizm/Pokémon thật.
+  - **Âm thanh Đa Giác Quan (Multi-sensory SFX):** Kết hợp âm thanh đời thực (tiếng kêu động vật, tiếng còi xe, sóng biển) + Phát âm US Oxford + Dịch nghĩa tiếng Việt truyền cảm + Nút đọc chậm Phonics 0.75x 🐌.
+  - **Album Sưu Tập Thẻ Ma Thuật & Mở Gói Thẻ Bí Ẩn:** Phân 3 cấp độ thẻ (🥉 Thường, 🥈 Hiếm dạ quang, 🥇 Huyền Thoại 3D Gold). Hoạt ảnh xé gói thẻ (Booster Pack Opening) lộn nhào 3D kích thích hứng thú học tập mỗi ngày.
+  - **4 Chế Độ Tương Tác:** (1) Khám Phá Lướt Thẻ 3D, (2) Thám Tử Đoán Thẻ, (3) Ghép Cặp Trí Nhớ 3D, (4) Thử Thách Nhanh Tay 60 Giây Combo x5.
+  - **Mascot Đồng Hành & Thuật toán SRS:** Bé Tom & Bé MiMi tương tác biểu cảm; thuật toán lặp lại ngắt quãng tự động tạo danh mục "Từ Cần Ôn Luyện 💡".
 * **Tệp triển khai:** `src/screens/FlashcardGameScreen.tsx` & `src/data/oxfordKidsVocabulary.ts`
 * **Định danh Launcher:** `'internal.game.flashcards'`
 

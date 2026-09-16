@@ -74,3 +74,8 @@ dist/
 
 # Claude Code local settings
 .claude/
+
+# Temporary test screenshots
+/*.png
+example/*.png
+

@@ -1,4 +1,6 @@
 // Bộ từ điển 3000 từ vựng Oxford cơ bản chọn lọc cho trẻ em (30 Chủ Đề Toàn Diện / 500+ Thẻ Từ Vựng)
+export type CardRarityTier = 'common' | 'rare' | 'legendary';
+
 export interface VocabCard {
   id: string;
   english: string;
@@ -10,7 +12,17 @@ export interface VocabCard {
   exampleEn: string;
   exampleVi: string;
   funFact: string;
+
+  // --- CÁC TRƯỜNG MỞ RỘNG 3D, SFX & GAMIFICATION ---
+  image3dUrl?: string;
+  model3dUrl?: string;
+  realSfxUrl?: string;
+  pronunciationSlowUrl?: string;
+  rarityTier?: CardRarityTier;
+  holographicPattern?: 'prism' | 'gold_dust' | 'neon_stars';
 }
+
+export type VocabCard3D = VocabCard;
 
 export interface VocabCategory {
   id: string;
@@ -20,6 +32,70 @@ export interface VocabCategory {
   color: string;
   cards: VocabCard[];
 }
+
+export type VocabCategory3D = VocabCategory;
+
+// Danh sách các ID thẻ bài Huyền Thoại (Legendary 3D Gold)
+export const LEGENDARY_CARD_IDS = new Set([
+  'lion', 'tiger', 'elephant', 'whale', 'dolphin', 'panda',
+  'sun', 'earth', 'saturn', 'rocket', 'airplane', 'helicopter',
+  'fire_truck', 'police_car', 'gold', 'diamond', 'rainbow', 'dragon',
+  'dinosaur', 'robot', 'telescope', 'crown', 'treasure', 'volcano'
+]);
+
+// Danh sách các ID thẻ bài Hiếm (Rare Dạ Quang)
+export const RARE_CARD_IDS = new Set([
+  'zebra', 'giraffe', 'kangaroo', 'bear', 'hippo', 'wolf', 'fox', 'deer', 'shark', 'penguin',
+  'strawberry', 'pineapple', 'mango', 'watermelon', 'peach', 'corn', 'mushroom',
+  'motorcycle', 'ship', 'train', 'submarine', 'ambulance', 'yacht',
+  'moon', 'mars', 'jupiter', 'star', 'galaxy', 'astronaut', 'comet'
+]);
+
+// Helper xác định độ hiếm của thẻ bài
+export const getCardRarity = (card: VocabCard): CardRarityTier => {
+  if (card.rarityTier) return card.rarityTier;
+  if (LEGENDARY_CARD_IDS.has(card.id)) return 'legendary';
+  if (RARE_CARD_IDS.has(card.id)) return 'rare';
+  return 'common';
+};
+
+// Kho âm thanh thực tế đời sống (Real World SFX) cho động vật, xe cộ, tự nhiên
+export const REAL_WORLD_SFX_MAP: Record<string, string> = {
+  // Động vật
+  dog: 'https://cdn.freesound.org/previews/415/415209_5121236-lq.mp3', // Tiếng chó sủa
+  cat: 'https://cdn.freesound.org/previews/412/412017_5121236-lq.mp3', // Tiếng mèo kêu
+  lion: 'https://cdn.freesound.org/previews/566/566384_9349880-lq.mp3', // Tiếng sư tử gầm
+  tiger: 'https://cdn.freesound.org/previews/566/566384_9349880-lq.mp3', // Tiếng hổ gầm
+  elephant: 'https://cdn.freesound.org/previews/416/416710_5121236-lq.mp3', // Tiếng voi kêu
+  monkey: 'https://cdn.freesound.org/previews/415/415444_5121236-lq.mp3', // Tiếng khỉ
+  wolf: 'https://cdn.freesound.org/previews/415/415433_5121236-lq.mp3', // Tiếng chó sói hú
+  cow: 'https://cdn.freesound.org/previews/416/416713_5121236-lq.mp3', // Tiếng bò kêu
+  horse: 'https://cdn.freesound.org/previews/416/416712_5121236-lq.mp3', // Tiếng ngựa hí
+  duck: 'https://cdn.freesound.org/previews/416/416715_5121236-lq.mp3', // Tiếng vịt
+  pig: 'https://cdn.freesound.org/previews/416/416714_5121236-lq.mp3', // Tiếng heo
+  bird: 'https://cdn.freesound.org/previews/416/416529_5121236-lq.mp3', // Tiếng chim hót
+  frog: 'https://cdn.freesound.org/previews/416/416531_5121236-lq.mp3', // Tiếng ếch
+  rooster: 'https://cdn.freesound.org/previews/416/416711_5121236-lq.mp3', // Tiếng gà gáy
+
+  // Xe cộ & Phương tiện
+  car: 'https://cdn.freesound.org/previews/415/415208_5121236-lq.mp3', // Tiếng còi xe
+  fire_truck: 'https://cdn.freesound.org/previews/415/415206_5121236-lq.mp3', // Tiếng còi cứu hỏa
+  police_car: 'https://cdn.freesound.org/previews/415/415206_5121236-lq.mp3', // Tiếng còi cảnh sát
+  train: 'https://cdn.freesound.org/previews/415/415207_5121236-lq.mp3', // Tiếng còi tàu hỏa
+  airplane: 'https://cdn.freesound.org/previews/415/415440_5121236-lq.mp3', // Tiếng máy bay phản lực
+  helicopter: 'https://cdn.freesound.org/previews/415/415442_5121236-lq.mp3', // Tiếng cánh quạt trực thăng
+  boat: 'https://cdn.freesound.org/previews/415/415441_5121236-lq.mp3', // Tiếng còi tàu thủy
+
+  // Tự nhiên & Thời tiết
+  rain: 'https://cdn.freesound.org/previews/415/415446_5121236-lq.mp3', // Tiếng mưa rơi
+  thunder: 'https://cdn.freesound.org/previews/415/415447_5121236-lq.mp3', // Tiếng sấm sét
+  wind: 'https://cdn.freesound.org/previews/415/415448_5121236-lq.mp3', // Tiếng gió thổi
+  ocean: 'https://cdn.freesound.org/previews/415/415449_5121236-lq.mp3', // Tiếng sóng biển
+};
+
+export const getCardRealSfx = (card: VocabCard): string | undefined => {
+  return card.realSfxUrl || REAL_WORLD_SFX_MAP[card.id];
+};
 
 export const OXFORD_KIDS_VOCABULARY: VocabCategory[] = [
   // =========================================================================

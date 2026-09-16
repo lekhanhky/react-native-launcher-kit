@@ -16,6 +16,12 @@ export const STORAGE_KEYS = {
   CURRENT_THEME: 'CURRENT_THEME',
   CURRENT_WALLPAPER: 'CURRENT_WALLPAPER',
   CUSTOM_VOCABULARY: 'CUSTOM_VOCABULARY',
+  NATURE_YOUTUBE_CONFIG: 'NATURE_YOUTUBE_CONFIG',
+  HAS_INITIALIZED_APP_BLOCK_ALL: 'HAS_INITIALIZED_APP_BLOCK_ALL',
+  FLASHCARD_ALBUM: 'FLASHCARD_ALBUM',
+  FLASHCARD_UNOPENED_PACKS: 'FLASHCARD_UNOPENED_PACKS',
+  FLASHCARD_SRS_DATA: 'FLASHCARD_SRS_DATA',
+  FLASHCARD_HIGH_SCORES: 'FLASHCARD_HIGH_SCORES',
 };
 
 // Cấu hình Supabase (Tự động đọc từ .env hoặc fallback cấu hình mặc định)
@@ -83,13 +89,6 @@ if (!storage.getString(STORAGE_KEYS.PARENT_PIN)) {
 
 if (!storage.getString(STORAGE_KEYS.POLICY_MODE)) {
   storage.set(STORAGE_KEYS.POLICY_MODE, 'blacklist');
-}
-
-if (!storage.getString(STORAGE_KEYS.PACKAGE_LIST)) {
-  storage.set(
-    STORAGE_KEYS.PACKAGE_LIST,
-    JSON.stringify(['com.android.settings', 'com.google.android.youtube'])
-  );
 }
 
 if (!storage.getString(STORAGE_KEYS.SCHEDULE)) {

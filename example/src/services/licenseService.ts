@@ -131,5 +131,7 @@ export const licenseService = {
     storage.delete(STORAGE_KEYS.IS_LICENSED);
     storage.delete(STORAGE_KEYS.LICENSE_KEY);
     storage.delete(STORAGE_KEYS.EXPIRED_AT);
+    storage.delete(STORAGE_KEYS.PACKAGE_LIST);
+    storage.delete(STORAGE_KEYS.HAS_INITIALIZED_APP_BLOCK_ALL);
   },
 };
