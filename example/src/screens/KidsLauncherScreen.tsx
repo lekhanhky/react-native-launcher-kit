@@ -1,10 +1,9 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import {
   View,
   Text,
   FlatList,
   Image,
-  TouchableOpacity,
   StyleSheet,
   SafeAreaView,
   Alert,
@@ -14,7 +13,6 @@ import {
   BackHandler,
   Platform,
   ToastAndroid,
-  ImageBackground,
 } from 'react-native';
 import { InstalledApps, RNLauncherKitHelper } from 'react-native-launcher-kit';
 import type { AppDetail } from 'react-native-launcher-kit/src/interfaces/InstalledApps';
@@ -26,6 +24,26 @@ import { ThemeConfig, themeService } from '../services/themes';
 import { KidsWallpaper, wallpaperService } from '../services/wallpapers';
 import { youtubeService } from '../services/youtubeService';
 import { ThemeSelectorModal } from '../components/ThemeSelectorModal';
+import { LockOverlay } from '../components/LockOverlay';
+import { ParentPinModal } from '../components/ParentPinModal';
+import { DeviceAdminGuideModal } from '../components/DeviceAdminGuideModal';
+import { ParentSettingsScreen } from './ParentSettingsScreen';
+
+// Sub-components giao diện mới Kids Wonder Park
+import { LauncherHeader } from '../components/launcher/LauncherHeader';
+import { LauncherHeroBanner } from '../components/launcher/LauncherHeroBanner';
+import { LauncherCategoryTabs } from '../components/launcher/LauncherCategoryTabs';
+import { LauncherGameCard } from '../components/launcher/LauncherGameCard';
+import { LauncherBottomDock } from '../components/launcher/LauncherBottomDock';
+
+// Registry các trò chơi nội bộ
+import {
+  INTERNAL_GAMES_REGISTRY,
+  LauncherCategoryType,
+  LauncherGameItem,
+} from '../data/launcherGamesRegistry';
+
+// Màn hình các trò chơi giáo dục & Video an toàn
 import { KidsYouTubeScreen } from './KidsYouTubeScreen';
 import { GreenKidsTubeScreen } from './GreenKidsTubeScreen';
 import { MemoryGameScreen } from './MemoryGameScreen';
@@ -56,111 +74,51 @@ import { PetCareGameScreen } from './PetCareGameScreen';
 import { FourSeasonsGameScreen } from './FourSeasonsGameScreen';
 import { ContinentExplorerGameScreen } from './ContinentExplorerGameScreen';
 import { NatureExplorerGameScreen } from './NatureExplorerGameScreen';
-import { LockOverlay } from '../components/LockOverlay';
-import { ParentPinModal } from '../components/ParentPinModal';
-import { DeviceAdminGuideModal } from '../components/DeviceAdminGuideModal';
-import { ParentSettingsScreen } from './ParentSettingsScreen';
+import { RiddlesGameScreen } from './RiddlesGameScreen';
 
 interface KidsLauncherScreenProps {
   onResetLicense: () => void;
 }
 
+type LauncherGridItem =
+  | { type: 'game'; game: LauncherGameItem }
+  | { type: 'external'; app: AppDetail };
+
 export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
   onResetLicense,
 }) => {
   const { width, height } = useWindowDimensions();
-  const numColumns = width > height ? 6 : 4;
+  const numColumns = width > 900 ? 6 : width > 600 ? 4 : 3;
+  const cardWidth = (width - 32) / numColumns;
 
+  // State quản lý ứng dụng & bảo mật
   const [allApps, setAllApps] = useState<AppDetail[]>([]);
-  const [visibleApps, setVisibleApps] = useState<AppDetail[]>([]);
+  const [allowedExternalApps, setAllowedExternalApps] = useState<AppDetail[]>([]);
   const [isLocked, setIsLocked] = useState(false);
   const [lockReason, setLockReason] = useState('');
   const [isTempUnlocked, setIsTempUnlocked] = useState(false);
+  const [remainingMinutes, setRemainingMinutes] = useState<number | null>(null);
 
-  // Theme state
+  // Theme & Wallpaper
   const [currentTheme, setCurrentTheme] = useState<ThemeConfig>(() =>
     themeService.getSavedTheme()
   );
   const [showThemeModal, setShowThemeModal] = useState<boolean>(false);
-
-  // Wallpaper state
   const [currentWallpaper, setCurrentWallpaper] = useState<KidsWallpaper>(() =>
     wallpaperService.getSavedWallpaper()
   );
 
-  // Safe YouTube Screen state
-  const [showYouTubeScreen, setShowYouTubeScreen] = useState<boolean>(false);
+  // Tab phân loại danh mục
+  const [selectedCategory, setSelectedCategory] = useState<LauncherCategoryType>('all');
 
-  // Green Kids Tube Screen state
-  const [showGreenKidsTubeScreen, setShowGreenKidsTubeScreen] = useState<boolean>(false);
-
-  // Memory Game Screen state
-  const [showMemoryGame, setShowMemoryGame] = useState<boolean>(false);
-
-  // Bubble Pop Game Screen state
-  const [showBubblePopGame, setShowBubblePopGame] = useState<boolean>(false);
-
-  // Animal Sound Game Screen state
-  const [showAnimalSoundGame, setShowAnimalSoundGame] = useState<boolean>(false);
-
-  // Coloring Game Screen state
-  const [showColoringGame, setShowColoringGame] = useState<boolean>(false);
-
-  // Sorting Game Screen state
-  const [showSortingGame, setShowSortingGame] = useState<boolean>(false);
-
-  // Maze Game Screen state
-  const [showMazeGame, setShowMazeGame] = useState<boolean>(false);
-
-  // Tangram Puzzle Game Screen state
-  const [showTangramGame, setShowTangramGame] = useState<boolean>(false);
-
-  // Jigsaw Puzzle Game Screen state
-  const [showJigsawGame, setShowJigsawGame] = useState<boolean>(false);
-
-  // Math Quiz Game Screen state
-  const [showMathGame, setShowMathGame] = useState<boolean>(false);
-
-  // Word Spelling Game Screen state
-  const [showWordSpellingGame, setShowWordSpellingGame] = useState<boolean>(false);
-
-  // Connect Dots Game Screen state
-  const [showConnectDotsGame, setShowConnectDotsGame] = useState<boolean>(false);
-
-  // Snake Edu Game Screen state
-  const [showSnakeGame, setShowSnakeGame] = useState<boolean>(false);
-
-  // Flashcards Game Screen state
-  const [showFlashcardsGame, setShowFlashcardsGame] = useState<boolean>(false);
-
-  // Space Shooter Game Screen state
-  const [showSpaceShooterGame, setShowSpaceShooterGame] = useState<boolean>(false);
-
-  // 10 New Educational Games States
-  const [showRobotCoderGame, setShowRobotCoderGame] = useState<boolean>(false);
-  const [showEmotionGardenGame, setShowEmotionGardenGame] = useState<boolean>(false);
-  const [showShadowMatchingGame, setShowShadowMatchingGame] = useState<boolean>(false);
-  const [showSpotDifferenceGame, setShowSpotDifferenceGame] = useState<boolean>(false);
-  const [showXylophoneGame, setShowXylophoneGame] = useState<boolean>(false);
-  const [showLittleGardenerGame, setShowLittleGardenerGame] = useState<boolean>(false);
-  const [showWeatherDressUpGame, setShowWeatherDressUpGame] = useState<boolean>(false);
-  const [showBalanceScaleGame, setShowBalanceScaleGame] = useState<boolean>(false);
-  const [showSolarSystemGame, setShowSolarSystemGame] = useState<boolean>(false);
-  const [showDentalHabitsGame, setShowDentalHabitsGame] = useState<boolean>(false);
-  const [showPetCareGame, setShowPetCareGame] = useState<boolean>(false);
-  const [showFourSeasonsGame, setShowFourSeasonsGame] = useState<boolean>(false);
-  const [showContinentExplorerGame, setShowContinentExplorerGame] = useState<boolean>(false);
-  const [showNatureExplorerGame, setShowNatureExplorerGame] = useState<boolean>(false);
-
-  // Device Admin Guide Modal state
+  // Router điều hướng mở game/màn hình tập trung (Active ID Router)
+  const [activeAppId, setActiveAppId] = useState<string | null>(null);
   const [showAdminGuideModal, setShowAdminGuideModal] = useState<boolean>(false);
-
-  // Modals & Navigation
   const [showPinModal, setShowPinModal] = useState(false);
   const [pinAction, setPinAction] = useState<'unlock_temp' | 'open_settings'>('open_settings');
   const [showSettingsScreen, setShowSettingsScreen] = useState(false);
 
-  // Secret multi-tap trigger on title to open Parent Settings (Option 1)
+  // Chạm 5 lần mở cài đặt phụ huynh
   const parentSecretTapCountRef = useRef<number>(0);
   const parentSecretTapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -189,7 +147,7 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
     }
   }, []);
 
-  // 1. Tải danh sách app
+  // 1. Tải danh sách ứng dụng Android đã cài
   const loadApps = useCallback(async () => {
     try {
       let apps: AppDetail[] = [];
@@ -200,13 +158,10 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
         console.warn('InstalledApps.getSortedApps error:', nativeErr);
       }
 
-      const hasInitialized = storage.getBoolean(
-        STORAGE_KEYS.HAS_INITIALIZED_APP_BLOCK_ALL
-      );
+      const hasInitialized = storage.getBoolean(STORAGE_KEYS.HAS_INITIALIZED_APP_BLOCK_ALL);
       let blockedList: string[] = [];
 
       if (!hasInitialized && apps.length > 0) {
-        // Mặc định lần đầu mở app: Tắt (khóa) TẤT CẢ các ứng dụng cài đặt trên máy cho bé
         blockedList = apps.map((a) => a.packageName);
         storage.set(STORAGE_KEYS.PACKAGE_LIST, JSON.stringify(blockedList));
         storage.set(STORAGE_KEYS.HAS_INITIALIZED_APP_BLOCK_ALL, true);
@@ -225,241 +180,20 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
         }
       }
 
-      let filtered = apps.filter((app) => !blockedList.includes(app.packageName));
-
-      // Game 1: Lật thẻ trí nhớ cho bé
-      const memoryGameApp: AppDetail = {
-        label: 'Lật Thẻ Trí Nhớ',
-        packageName: 'internal.game.memory',
-        icon: '',
-      };
-
-      // Game 2: Nổ bong bóng kỳ diệu
-      const bubblePopApp: AppDetail = {
-        label: 'Nổ Bong Bóng',
-        packageName: 'internal.game.bubblepop',
-        icon: '',
-      };
-
-      // Game 3: Nghe tiếng đoán con vật
-      const animalSoundApp: AppDetail = {
-        label: 'Đoán Con Vật',
-        packageName: 'internal.game.animalsound',
-        icon: '',
-      };
-
-      // Game 4: Bé vui tô màu & Sáng tạo
-      const coloringGameApp: AppDetail = {
-        label: 'Bé Tập Tô Màu',
-        packageName: 'internal.game.coloring',
-        icon: '',
-      };
-
-      // Game 5: Phân loại rác & Đồ vật
-      const sortingGameApp: AppDetail = {
-        label: 'Bé Phân Loại',
-        packageName: 'internal.game.sorting',
-        icon: '',
-      };
-
-      // Game 6: Bé vui học toán & Đua tốc độ
-      const mathGameApp: AppDetail = {
-        label: 'Bé Học Toán',
-        packageName: 'internal.game.math',
-        icon: '',
-      };
-
-      // Game 7: Ghép vần & Nối từ tiếng Việt
-      const wordSpellingApp: AppDetail = {
-        label: 'Ghép Vần',
-        packageName: 'internal.game.wordspelling',
-        icon: '',
-      };
-
-      // Game 8: Mê cung tìm đường về tổ
-      const mazeGameApp: AppDetail = {
-        label: 'Mê Cung Kỳ Thú',
-        packageName: 'internal.game.maze',
-        icon: '',
-      };
-
-      // Game 9: Nối điểm theo thứ tự số
-      const connectDotsApp: AppDetail = {
-        label: 'Nối Điểm Số',
-        packageName: 'internal.game.connectdots',
-        icon: '',
-      };
-
-      // Game 10: Xếp hình trí tuệ Tangram / Jigsaw
-      const tangramGameApp: AppDetail = {
-        label: 'Bé Xếp Hình',
-        packageName: 'internal.game.tangram',
-        icon: '',
-      };
-
-      // Game 11: Ghép tranh Jigsaw Puzzle
-      const jigsawGameApp: AppDetail = {
-        label: 'Bé Ghép Tranh',
-        packageName: 'internal.game.jigsaw',
-        icon: '',
-      };
-
-      // Game 12: Rắn săn mồi thông minh (Edu-Snake)
-      const snakeGameApp: AppDetail = {
-        label: 'Rắn Săn Mồi',
-        packageName: 'internal.game.snakeedu',
-        icon: '',
-      };
-
-      // Game 13: Thẻ bài từ vựng song ngữ Oxford (Flashcards)
-      const flashcardsApp: AppDetail = {
-        label: 'Bé Học Từ Vựng',
-        packageName: 'internal.game.flashcards',
-        icon: '',
-      };
-
-      // Game 14: Phi Hành Gia Nhí (Space Shooter)
-      const spaceShooterApp: AppDetail = {
-        label: 'Phi Hành Gia Nhí',
-        packageName: 'internal.game.spaceshooter',
-        icon: '',
-      };
-
-      // 10 Trò chơi giáo dục mới mở rộng
-      const robotCoderApp: AppDetail = {
-        label: 'Lập Trình Robot',
-        packageName: 'internal.game.robotcoder',
-        icon: '',
-      };
-      const emotionGardenApp: AppDetail = {
-        label: 'Khu Vườn Cảm Xúc',
-        packageName: 'internal.game.emotions',
-        icon: '',
-      };
-      const shadowMatchingApp: AppDetail = {
-        label: 'Chiếc Bóng Kỳ Diệu',
-        packageName: 'internal.game.shadowmatch',
-        icon: '',
-      };
-      const spotDifferenceApp: AppDetail = {
-        label: 'Tìm Điểm Khác',
-        packageName: 'internal.game.spotdiff',
-        icon: '',
-      };
-      const xylophoneApp: AppDetail = {
-        label: 'Đàn Xylophone',
-        packageName: 'internal.game.xylophone',
-        icon: '',
-      };
-      const littleGardenerApp: AppDetail = {
-        label: 'Bé Làm Vườn',
-        packageName: 'internal.game.gardener',
-        icon: '',
-      };
-      const weatherDressUpApp: AppDetail = {
-        label: 'Thời Tiết & Áo Quần',
-        packageName: 'internal.game.weatherdress',
-        icon: '',
-      };
-      const balanceScaleApp: AppDetail = {
-        label: 'Cân Thăng Bằng',
-        packageName: 'internal.game.balancescale',
-        icon: '',
-      };
-      const solarSystemApp: AppDetail = {
-        label: 'Hệ Mặt Trời',
-        packageName: 'internal.game.solarsystem',
-        icon: '',
-      };
-      const dentalHabitsApp: AppDetail = {
-        label: 'Bé Vui Đánh Răng',
-        packageName: 'internal.game.dentalhabits',
-        icon: '',
-      };
-      const petCareApp: AppDetail = {
-        label: 'Thú Cưng Của Bé',
-        packageName: 'internal.game.petcare',
-        icon: '',
-      };
-      const fourSeasonsApp: AppDetail = {
-        label: 'Vườn Bốn Mùa',
-        packageName: 'internal.game.fourseasons',
-        icon: '',
-      };
-      const continentExplorerApp: AppDetail = {
-        label: 'Bay Qua Lục Địa',
-        packageName: 'internal.game.continentexplorer',
-        icon: '',
-      };
-      const natureExplorerApp: AppDetail = {
-        label: 'Khám Phá Nhí',
-        packageName: 'internal.game.natureexplorer',
-        icon: '',
-      };
-
-      const allKidsGames = [
-        natureExplorerApp, // Đặt lên đầu để bé dễ nhìn thấy và chơi thử ngay
-        memoryGameApp,
-        bubblePopApp,
-        animalSoundApp,
-        coloringGameApp,
-        sortingGameApp,
-        mathGameApp,
-        wordSpellingApp,
-        mazeGameApp,
-        connectDotsApp,
-        tangramGameApp,
-        jigsawGameApp,
-        snakeGameApp,
-        flashcardsApp,
-        spaceShooterApp,
-        robotCoderApp,
-        emotionGardenApp,
-        shadowMatchingApp,
-        spotDifferenceApp,
-        xylophoneApp,
-        littleGardenerApp,
-        weatherDressUpApp,
-        balanceScaleApp,
-        solarSystemApp,
-        dentalHabitsApp,
-        petCareApp,
-        fourSeasonsApp,
-        continentExplorerApp,
-      ];
-
-      // Thêm ứng dụng YouTube an toàn và Green Tube xanh lá cây
-      const greenTubeApp: AppDetail = {
-        label: 'Green Tube',
-        packageName: 'internal.safe.greentube',
-        icon: '',
-      };
-
-      if (youtubeService.isYouTubeEnabled()) {
-        const ytApp: AppDetail = {
-          label: 'YouTube Kids',
-          packageName: 'internal.safe.youtube',
-          icon: '',
-        };
-        filtered = [...allKidsGames, ytApp, greenTubeApp, ...filtered];
-      } else {
-        filtered = [...allKidsGames, greenTubeApp, ...filtered];
-      }
-
-      setVisibleApps(filtered);
+      const externalAllowed = apps.filter((app) => !blockedList.includes(app.packageName));
+      setAllowedExternalApps(externalAllowed);
     } catch (err) {
       console.warn('Lỗi load apps:', err);
     }
   }, []);
 
-  // 2. Đánh giá giờ học/ngủ
+  // 2. Đánh giá giờ chơi và thời gian còn lại
   const evaluateSchedule = useCallback(() => {
     if (isTempUnlocked) {
       setIsLocked(false);
       return;
     }
 
-    // Nếu đang có lệnh Khóa Khẩn Cấp từ Phụ huynh -> Luôn giữ khóa
     if (parentalRealtimeService.isEmergencyLocked()) {
       setIsLocked(true);
       return;
@@ -480,17 +214,27 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
       const result = checkIsOutsideAllowedHours(schedule);
       setIsLocked(result.isBlocked);
       setLockReason(result.message);
+
+      if (!result.isBlocked && schedule.isEnabled) {
+        const now = new Date();
+        const [endH, endM] = schedule.allowedEndTime.split(':').map(Number);
+        const end = new Date(now);
+        end.setHours(endH, endM, 0, 0);
+        const diffMinutes = Math.max(0, Math.round((end.getTime() - now.getTime()) / 60000));
+        setRemainingMinutes(diffMinutes);
+      } else {
+        setRemainingMinutes(null);
+      }
     } catch (e) {
       console.warn(e);
     }
   }, [isTempUnlocked]);
 
-  // 3. Khởi tạo
+  // 3. Khởi tạo dịch vụ nền
   useEffect(() => {
     launcherHelper.setupDefaultLauncher();
-    
-    // Kiểm tra và hiển thị hướng dẫn kích hoạt Device Admin nếu chưa bật
-    launcherHelper.isDeviceAdminActive().then(isActive => {
+
+    launcherHelper.isDeviceAdminActive().then((isActive) => {
       if (!isActive) {
         setShowAdminGuideModal(true);
       }
@@ -499,10 +243,9 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
     loadApps();
     evaluateSchedule();
 
-    // Tự động kiểm tra lại khi người dùng quay lại app từ màn hình Cài đặt Android
-    const appStateSub = AppState.addEventListener('change', nextState => {
+    const appStateSub = AppState.addEventListener('change', (nextState) => {
       if (nextState === 'active') {
-        launcherHelper.isDeviceAdminActive().then(isActive => {
+        launcherHelper.isDeviceAdminActive().then((isActive) => {
           if (isActive) {
             setShowAdminGuideModal(false);
           }
@@ -514,12 +257,11 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
     InstalledApps.startListeningForAppInstallations(() => loadApps());
     InstalledApps.startListeningForAppRemovals(() => loadApps());
 
-    // Lắng nghe lệnh Khóa Khẩn Cấp Realtime từ xa qua Supabase WebSocket (< 1s)
     const unsubscribeRealtime = parentalRealtimeService.subscribeToRemoteLock(
       (emergencyLocked, message) => {
         if (emergencyLocked) {
           setIsLocked(true);
-          setLockReason(message || 'Ba mẹ đã tạm khóa thiết bị từ xa. Bé hãy nghỉ ngơi nhé!');
+          setLockReason(message || 'Lệnh khóa khẩn cấp từ phụ huynh.');
         } else {
           evaluateSchedule();
         }
@@ -527,17 +269,17 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
     );
 
     return () => {
-      unsubscribeRealtime();
-      appStateSub.remove();
       clearInterval(interval);
-      InstalledApps.stopListeningForAppInstallations();
-      InstalledApps.stopListeningForAppRemovals();
+      appStateSub.remove();
+      unsubscribeRealtime();
     };
   }, [loadApps, evaluateSchedule]);
 
-  // 3.1. Chặn phím Back vật lý / phím ESC trên Android để không bao giờ thoát khỏi Launcher
+  // 4. Xử lý nút Back phần cứng Android
   useEffect(() => {
     const onBackPress = () => {
+      if (isLocked) return true;
+
       if (showPinModal) {
         setShowPinModal(false);
         return true;
@@ -550,131 +292,15 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
         setShowAdminGuideModal(false);
         return true;
       }
-      if (showMemoryGame) {
-        setShowMemoryGame(false);
-        return true;
-      }
-      if (showBubblePopGame) {
-        setShowBubblePopGame(false);
-        return true;
-      }
-      if (showAnimalSoundGame) {
-        setShowAnimalSoundGame(false);
-        return true;
-      }
-      if (showColoringGame) {
-        setShowColoringGame(false);
-        return true;
-      }
-      if (showSortingGame) {
-        setShowSortingGame(false);
-        return true;
-      }
-      if (showMazeGame) {
-        setShowMazeGame(false);
-        return true;
-      }
-      if (showMathGame) {
-        setShowMathGame(false);
-        return true;
-      }
-      if (showWordSpellingGame) {
-        setShowWordSpellingGame(false);
-        return true;
-      }
-      if (showConnectDotsGame) {
-        setShowConnectDotsGame(false);
-        return true;
-      }
-      if (showTangramGame) {
-        setShowTangramGame(false);
-        return true;
-      }
-      if (showJigsawGame) {
-        setShowJigsawGame(false);
-        return true;
-      }
-      if (showSnakeGame) {
-        setShowSnakeGame(false);
-        return true;
-      }
-      if (showFlashcardsGame) {
-        setShowFlashcardsGame(false);
-        return true;
-      }
-      if (showSpaceShooterGame) {
-        setShowSpaceShooterGame(false);
-        return true;
-      }
-      if (showRobotCoderGame) {
-        setShowRobotCoderGame(false);
-        return true;
-      }
-      if (showEmotionGardenGame) {
-        setShowEmotionGardenGame(false);
-        return true;
-      }
-      if (showShadowMatchingGame) {
-        setShowShadowMatchingGame(false);
-        return true;
-      }
-      if (showSpotDifferenceGame) {
-        setShowSpotDifferenceGame(false);
-        return true;
-      }
-      if (showXylophoneGame) {
-        setShowXylophoneGame(false);
-        return true;
-      }
-      if (showLittleGardenerGame) {
-        setShowLittleGardenerGame(false);
-        return true;
-      }
-      if (showWeatherDressUpGame) {
-        setShowWeatherDressUpGame(false);
-        return true;
-      }
-      if (showBalanceScaleGame) {
-        setShowBalanceScaleGame(false);
-        return true;
-      }
-      if (showSolarSystemGame) {
-        setShowSolarSystemGame(false);
-        return true;
-      }
-      if (showDentalHabitsGame) {
-        setShowDentalHabitsGame(false);
-        return true;
-      }
-      if (showPetCareGame) {
-        setShowPetCareGame(false);
-        return true;
-      }
-      if (showFourSeasonsGame) {
-        setShowFourSeasonsGame(false);
-        return true;
-      }
-      if (showContinentExplorerGame) {
-        setShowContinentExplorerGame(false);
-        return true;
-      }
-      if (showNatureExplorerGame) {
-        setShowNatureExplorerGame(false);
-        return true;
-      }
-      if (showGreenKidsTubeScreen) {
-        setShowGreenKidsTubeScreen(false);
-        return true;
-      }
-      if (showYouTubeScreen) {
-        setShowYouTubeScreen(false);
+      if (activeAppId) {
+        setActiveAppId(null);
         return true;
       }
       if (showSettingsScreen) {
         setShowSettingsScreen(false);
         return true;
       }
-      // Đang ở màn hình chính của Launcher: CHẶN THOÁT (Return true)
+      // Chặn thoát launcher
       return true;
     };
 
@@ -685,204 +311,26 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
     showPinModal,
     showThemeModal,
     showAdminGuideModal,
-    showMemoryGame,
-    showBubblePopGame,
-    showAnimalSoundGame,
-    showColoringGame,
-    showSortingGame,
-    showMathGame,
-    showWordSpellingGame,
-    showMazeGame,
-    showConnectDotsGame,
-    showTangramGame,
-    showJigsawGame,
-    showSnakeGame,
-    showFlashcardsGame,
-    showSpaceShooterGame,
-    showRobotCoderGame,
-    showEmotionGardenGame,
-    showShadowMatchingGame,
-    showSpotDifferenceGame,
-    showXylophoneGame,
-    showLittleGardenerGame,
-    showWeatherDressUpGame,
-    showBalanceScaleGame,
-    showSolarSystemGame,
-    showDentalHabitsGame,
-    showPetCareGame,
-    showFourSeasonsGame,
-    showContinentExplorerGame,
-    showNatureExplorerGame,
-    showYouTubeScreen,
-    showGreenKidsTubeScreen,
+    activeAppId,
     showSettingsScreen,
   ]);
 
-  // 4. Xử lý mở app
+  // 5. Xử lý mở ứng dụng
   const handleLaunchApp = (packageName: string) => {
     if (isLocked) {
       Alert.alert('Thiết bị đang bị khóa', lockReason);
       return;
     }
 
-    // Mở Game 1: Lật Thẻ Trí Nhớ
-    if (packageName === 'internal.game.memory') {
-      setShowMemoryGame(true);
+    if (packageName.startsWith('internal.')) {
+      setActiveAppId(packageName);
       return;
     }
 
-    // Mở Game 2: Nổ Bong Bóng Kỳ Diệu
-    if (packageName === 'internal.game.bubblepop') {
-      setShowBubblePopGame(true);
-      return;
-    }
-
-    // Mở Game 3: Nghe Tiếng Đoán Con Vật
-    if (packageName === 'internal.game.animalsound') {
-      setShowAnimalSoundGame(true);
-      return;
-    }
-
-    // Mở Game 4: Bé Tập Tô Màu & Nét Vẽ Sáng Tạo
-    if (packageName === 'internal.game.coloring') {
-      setShowColoringGame(true);
-      return;
-    }
-
-    // Mở Game 5: Bé Phân Loại Rác & Đồ Vật
-    if (packageName === 'internal.game.sorting') {
-      setShowSortingGame(true);
-      return;
-    }
-
-    // Mở Game 6: Bé Vui Học Toán & Đua Tốc Độ
-    if (packageName === 'internal.game.math') {
-      setShowMathGame(true);
-      return;
-    }
-
-    // Mở Game 7: Ghép Vần & Nối Từ Tiếng Việt
-    if (packageName === 'internal.game.wordspelling') {
-      setShowWordSpellingGame(true);
-      return;
-    }
-
-    // Mở Game 8: Mê Cung Tìm Đường Về Tổ
-    if (packageName === 'internal.game.maze') {
-      setShowMazeGame(true);
-      return;
-    }
-
-    // Mở Game 9: Nối Điểm Theo Thứ Tự Số
-    if (packageName === 'internal.game.connectdots') {
-      setShowConnectDotsGame(true);
-      return;
-    }
-
-    // Mở Game 10: Xếp Hình Trí Tuệ Tangram / Jigsaw
-    if (packageName === 'internal.game.tangram') {
-      setShowTangramGame(true);
-      return;
-    }
-
-    // Mở Game 11: Ghép Tranh Jigsaw Puzzle
-    if (packageName === 'internal.game.jigsaw') {
-      setShowJigsawGame(true);
-      return;
-    }
-
-    // Mở Game 12: Rắn Săn Mồi Thông Minh (Edu-Snake)
-    if (packageName === 'internal.game.snakeedu') {
-      setShowSnakeGame(true);
-      return;
-    }
-
-    // Mở Game 13: Thẻ Bài Từ Vựng Song Ngữ Oxford (Flashcards)
-    if (packageName === 'internal.game.flashcards') {
-      setShowFlashcardsGame(true);
-      return;
-    }
-
-    // Mở Game 14: Phi Hành Gia Nhí (Space Shooter)
-    if (packageName === 'internal.game.spaceshooter') {
-      setShowSpaceShooterGame(true);
-      return;
-    }
-
-    // 10 Games mới
-    if (packageName === 'internal.game.robotcoder') {
-      setShowRobotCoderGame(true);
-      return;
-    }
-    if (packageName === 'internal.game.emotions') {
-      setShowEmotionGardenGame(true);
-      return;
-    }
-    if (packageName === 'internal.game.shadowmatch') {
-      setShowShadowMatchingGame(true);
-      return;
-    }
-    if (packageName === 'internal.game.spotdiff') {
-      setShowSpotDifferenceGame(true);
-      return;
-    }
-    if (packageName === 'internal.game.xylophone') {
-      setShowXylophoneGame(true);
-      return;
-    }
-    if (packageName === 'internal.game.gardener') {
-      setShowLittleGardenerGame(true);
-      return;
-    }
-    if (packageName === 'internal.game.weatherdress') {
-      setShowWeatherDressUpGame(true);
-      return;
-    }
-    if (packageName === 'internal.game.balancescale') {
-      setShowBalanceScaleGame(true);
-      return;
-    }
-    if (packageName === 'internal.game.solarsystem') {
-      setShowSolarSystemGame(true);
-      return;
-    }
-    if (packageName === 'internal.game.dentalhabits') {
-      setShowDentalHabitsGame(true);
-      return;
-    }
-    if (packageName === 'internal.game.petcare') {
-      setShowPetCareGame(true);
-      return;
-    }
-    if (packageName === 'internal.game.fourseasons') {
-      setShowFourSeasonsGame(true);
-      return;
-    }
-    if (packageName === 'internal.game.continentexplorer') {
-      setShowContinentExplorerGame(true);
-      return;
-    }
-    if (packageName === 'internal.game.natureexplorer') {
-      setShowNatureExplorerGame(true);
-      return;
-    }
-
-    // Mở YouTube an toàn nội bộ
-    if (packageName === 'internal.safe.youtube') {
-      setShowYouTubeScreen(true);
-      return;
-    }
-
-    // Mở Green Kids Tube nội bộ
-    if (packageName === 'internal.safe.greentube') {
-      setShowGreenKidsTubeScreen(true);
-      return;
-    }
-
+    // Ứng dụng bên thứ ba
     RNLauncherKitHelper.launchApplication(packageName);
   };
 
-  // 5. Xử lý sau khi nhập PIN thành công
   const handlePinSuccess = () => {
     setShowPinModal(false);
     if (pinAction === 'unlock_temp') {
@@ -894,6 +342,35 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
     }
   };
 
+  // 6. Danh sách ứng dụng lọc theo danh mục
+  const displayItems = useMemo<LauncherGridItem[]>(() => {
+    const isYouTubeAllowed = youtubeService.isYouTubeEnabled();
+
+    const filteredGames = INTERNAL_GAMES_REGISTRY.filter((game) => {
+      if (game.id === 'internal.safe.youtube' && !isYouTubeAllowed) {
+        return false;
+      }
+      if (selectedCategory === 'all') return true;
+      return game.category === selectedCategory;
+    });
+
+    const gameItems: LauncherGridItem[] = filteredGames.map((game) => ({
+      type: 'game',
+      game,
+    }));
+
+    if (selectedCategory === 'all' || selectedCategory === 'apps') {
+      const appItems: LauncherGridItem[] = allowedExternalApps.map((app) => ({
+        type: 'external',
+        app,
+      }));
+      return [...gameItems, ...appItems];
+    }
+
+    return gameItems;
+  }, [selectedCategory, allowedExternalApps]);
+
+  // 7. Render màn hình cài đặt phụ huynh nếu đang mở
   if (showSettingsScreen) {
     return (
       <ParentSettingsScreen
@@ -908,180 +385,78 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
     );
   }
 
-  // Mở màn hình Game 1: Lật Thẻ Trí Nhớ
-  if (showMemoryGame) {
-    return (
-      <MemoryGameScreen
-        theme={currentTheme}
-        onClose={() => setShowMemoryGame(false)}
-      />
-    );
+  // 8. Render Game toàn màn hình qua Router duy nhất
+  if (activeAppId) {
+    const closeActiveApp = () => setActiveAppId(null);
+    switch (activeAppId) {
+      case 'internal.game.riddles100':
+        return <RiddlesGameScreen onClose={closeActiveApp} />;
+      case 'internal.game.flashcards':
+        return <FlashcardGameScreen onClose={closeActiveApp} />;
+      case 'internal.game.natureexplorer':
+        return <NatureExplorerGameScreen onClose={closeActiveApp} />;
+      case 'internal.safe.greentube':
+        return <GreenKidsTubeScreen theme={currentTheme} onClose={closeActiveApp} />;
+      case 'internal.safe.youtube':
+        return <KidsYouTubeScreen theme={currentTheme} onClose={closeActiveApp} />;
+      case 'internal.game.memory':
+        return <MemoryGameScreen theme={currentTheme} onClose={closeActiveApp} />;
+      case 'internal.game.bubblepop':
+        return <BubblePopGameScreen theme={currentTheme} onClose={closeActiveApp} />;
+      case 'internal.game.animalsound':
+        return <AnimalSoundGameScreen theme={currentTheme} onClose={closeActiveApp} />;
+      case 'internal.game.coloring':
+        return <ColoringGameScreen theme={currentTheme} onClose={closeActiveApp} />;
+      case 'internal.game.sorting':
+        return <SortingGameScreen theme={currentTheme} onClose={closeActiveApp} />;
+      case 'internal.game.math':
+        return <MathQuizGameScreen onClose={closeActiveApp} />;
+      case 'internal.game.wordspelling':
+        return <WordSpellingGameScreen onClose={closeActiveApp} />;
+      case 'internal.game.maze':
+        return <MazeGameScreen theme={currentTheme} onClose={closeActiveApp} />;
+      case 'internal.game.connectdots':
+        return <ConnectDotsGameScreen onClose={closeActiveApp} />;
+      case 'internal.game.tangram':
+        return <TangramPuzzleGameScreen theme={currentTheme} onClose={closeActiveApp} />;
+      case 'internal.game.jigsaw':
+        return <JigsawPuzzleGameScreen theme={currentTheme} onClose={closeActiveApp} />;
+      case 'internal.game.snakeedu':
+        return <SnakeEduGameScreen onClose={closeActiveApp} />;
+      case 'internal.game.spaceshooter':
+        return <SpaceShooterGameScreen onClose={closeActiveApp} />;
+      case 'internal.game.robotcoder':
+        return <RobotCoderGameScreen onClose={closeActiveApp} />;
+      case 'internal.game.emotions':
+        return <EmotionGardenGameScreen onClose={closeActiveApp} />;
+      case 'internal.game.shadowmatch':
+        return <ShadowMatchingGameScreen onClose={closeActiveApp} />;
+      case 'internal.game.spotdiff':
+        return <SpotDifferenceGameScreen onClose={closeActiveApp} />;
+      case 'internal.game.xylophone':
+        return <XylophoneGameScreen onClose={closeActiveApp} />;
+      case 'internal.game.gardener':
+        return <LittleGardenerGameScreen onClose={closeActiveApp} />;
+      case 'internal.game.weatherdress':
+        return <WeatherDressUpGameScreen onClose={closeActiveApp} />;
+      case 'internal.game.balancescale':
+        return <BalanceScaleGameScreen onClose={closeActiveApp} />;
+      case 'internal.game.solarsystem':
+        return <SolarSystemGameScreen onClose={closeActiveApp} />;
+      case 'internal.game.dentalhabits':
+        return <DentalHabitsGameScreen onClose={closeActiveApp} />;
+      case 'internal.game.petcare':
+        return <PetCareGameScreen onClose={closeActiveApp} />;
+      case 'internal.game.fourseasons':
+        return <FourSeasonsGameScreen onClose={closeActiveApp} />;
+      case 'internal.game.continentexplorer':
+        return <ContinentExplorerGameScreen onClose={closeActiveApp} />;
+      default:
+        break;
+    }
   }
 
-  // Mở màn hình Game 2: Nổ Bong Bóng Kỳ Diệu
-  if (showBubblePopGame) {
-    return (
-      <BubblePopGameScreen
-        theme={currentTheme}
-        onClose={() => setShowBubblePopGame(false)}
-      />
-    );
-  }
-
-  // Mở màn hình Game 3: Nghe Tiếng Đoán Con Vật
-  if (showAnimalSoundGame) {
-    return (
-      <AnimalSoundGameScreen
-        theme={currentTheme}
-        onClose={() => setShowAnimalSoundGame(false)}
-      />
-    );
-  }
-
-  // Mở màn hình Game 4: Bé Tập Tô Màu
-  if (showColoringGame) {
-    return (
-      <ColoringGameScreen
-        theme={currentTheme}
-        onClose={() => setShowColoringGame(false)}
-      />
-    );
-  }
-
-  // Mở màn hình Game 5: Bé Phân Loại Rác & Đồ Vật
-  if (showSortingGame) {
-    return (
-      <SortingGameScreen
-        theme={currentTheme}
-        onClose={() => setShowSortingGame(false)}
-      />
-    );
-  }
-
-  // Mở màn hình Game 6: Bé Vui Học Toán & Đua Tốc Độ
-  if (showMathGame) {
-    return <MathQuizGameScreen onClose={() => setShowMathGame(false)} />;
-  }
-
-  // Mở màn hình Game 7: Ghép Vần & Nối Từ Tiếng Việt
-  if (showWordSpellingGame) {
-    return <WordSpellingGameScreen onClose={() => setShowWordSpellingGame(false)} />;
-  }
-
-  // Mở màn hình Game 8: Mê Cung Tìm Đường
-  if (showMazeGame) {
-    return (
-      <MazeGameScreen
-        theme={currentTheme}
-        onClose={() => setShowMazeGame(false)}
-      />
-    );
-  }
-
-  // Mở màn hình Game 9: Nối Điểm Theo Số
-  if (showConnectDotsGame) {
-    return <ConnectDotsGameScreen onClose={() => setShowConnectDotsGame(false)} />;
-  }
-
-  // Mở màn hình Game 10: Xếp Hình Trí Tuệ Tangram / Jigsaw
-  if (showTangramGame) {
-    return (
-      <TangramPuzzleGameScreen
-        theme={currentTheme}
-        onClose={() => setShowTangramGame(false)}
-      />
-    );
-  }
-
-  // Mở màn hình Game 11: Ghép Tranh Jigsaw Puzzle
-  if (showJigsawGame) {
-    return (
-      <JigsawPuzzleGameScreen
-        theme={currentTheme}
-        onClose={() => setShowJigsawGame(false)}
-      />
-    );
-  }
-
-  // Mở màn hình Game 12: Rắn Săn Mồi Giáo Dục (Edu-Snake)
-  if (showSnakeGame) {
-    return <SnakeEduGameScreen onClose={() => setShowSnakeGame(false)} />;
-  }
-
-  // Mở màn hình Game 13: Thẻ Bài Từ Vựng Song Ngữ Oxford (Flashcards)
-  if (showFlashcardsGame) {
-    return <FlashcardGameScreen onClose={() => setShowFlashcardsGame(false)} />;
-  }
-
-  // Mở màn hình Game 14: Phi Hành Gia Nhí (Space Shooter)
-  if (showSpaceShooterGame) {
-    return <SpaceShooterGameScreen onClose={() => setShowSpaceShooterGame(false)} />;
-  }
-
-  // 10 Game giáo dục mới
-  if (showRobotCoderGame) {
-    return <RobotCoderGameScreen onClose={() => setShowRobotCoderGame(false)} />;
-  }
-  if (showEmotionGardenGame) {
-    return <EmotionGardenGameScreen onClose={() => setShowEmotionGardenGame(false)} />;
-  }
-  if (showShadowMatchingGame) {
-    return <ShadowMatchingGameScreen onClose={() => setShowShadowMatchingGame(false)} />;
-  }
-  if (showSpotDifferenceGame) {
-    return <SpotDifferenceGameScreen onClose={() => setShowSpotDifferenceGame(false)} />;
-  }
-  if (showXylophoneGame) {
-    return <XylophoneGameScreen onClose={() => setShowXylophoneGame(false)} />;
-  }
-  if (showLittleGardenerGame) {
-    return <LittleGardenerGameScreen onClose={() => setShowLittleGardenerGame(false)} />;
-  }
-  if (showWeatherDressUpGame) {
-    return <WeatherDressUpGameScreen onClose={() => setShowWeatherDressUpGame(false)} />;
-  }
-  if (showBalanceScaleGame) {
-    return <BalanceScaleGameScreen onClose={() => setShowBalanceScaleGame(false)} />;
-  }
-  if (showSolarSystemGame) {
-    return <SolarSystemGameScreen onClose={() => setShowSolarSystemGame(false)} />;
-  }
-  if (showDentalHabitsGame) {
-    return <DentalHabitsGameScreen onClose={() => setShowDentalHabitsGame(false)} />;
-  }
-  if (showPetCareGame) {
-    return <PetCareGameScreen onClose={() => setShowPetCareGame(false)} />;
-  }
-  if (showFourSeasonsGame) {
-    return <FourSeasonsGameScreen onClose={() => setShowFourSeasonsGame(false)} />;
-  }
-  if (showContinentExplorerGame) {
-    return <ContinentExplorerGameScreen onClose={() => setShowContinentExplorerGame(false)} />;
-  }
-  if (showNatureExplorerGame) {
-    return <NatureExplorerGameScreen onClose={() => setShowNatureExplorerGame(false)} />;
-  }
-
-  // Mở màn hình Green Kids Tube an toàn
-  if (showGreenKidsTubeScreen) {
-    return (
-      <GreenKidsTubeScreen
-        theme={currentTheme}
-        onClose={() => setShowGreenKidsTubeScreen(false)}
-      />
-    );
-  }
-
-  // Mở màn hình YouTube an toàn
-  if (showYouTubeScreen) {
-    return (
-      <KidsYouTubeScreen
-        theme={currentTheme}
-        onClose={() => setShowYouTubeScreen(false)}
-      />
-    );
-  }
-
+  // 9. Render Màn Hình Chính Kids Wonder Park (v3.0)
   return (
     <SafeAreaView
       style={[
@@ -1106,10 +481,6 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
               source={{ uri: currentWallpaper.imageUri }}
               style={StyleSheet.absoluteFill}
               resizeMode="cover"
-              onError={(e) =>
-                console.log('WALLPAPER_ERROR:', JSON.stringify(e.nativeEvent))
-              }
-              onLoad={() => console.log('WALLPAPER_SUCCESS')}
             />
             <View
               style={[
@@ -1123,381 +494,109 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
           </View>
         )}
 
-        {/* HEADER */}
-        <View
-          style={[
-            styles.header,
-            {
-              backgroundColor: currentWallpaper.imageUri
-                ? 'rgba(255, 255, 255, 0.88)'
-                : currentTheme.headerBg,
-              borderBottomColor: currentTheme.headerBorderColor,
-            },
-          ]}
-        >
-          {/* Secret 5-tap trigger on greeting to enter Parent Mode */}
-          <TouchableOpacity
-            activeOpacity={0.85}
-            onPress={handleSecretParentTap}
-          >
-            <Text
-              style={[
-                styles.greetingText,
-                { color: currentTheme.greetingColor },
-              ]}
-            >
-              {currentTheme.emoji} Chào bé yêu!
-            </Text>
-            <Text
-              style={[
-                styles.dateText,
-                { color: currentTheme.subtitleColor },
-              ]}
-            >
-              {currentTheme.name}
-            </Text>
-          </TouchableOpacity>
+        {/* 1. SMART HEADER */}
+        <LauncherHeader
+          theme={currentTheme}
+          remainingMinutes={remainingMinutes}
+          starsCount={125}
+          onOpenThemeModal={() => setShowThemeModal(true)}
+          onOpenParentGate={() => {
+            setPinAction('open_settings');
+            setShowPinModal(true);
+          }}
+          onSecretParentTap={handleSecretParentTap}
+        />
 
-          <View style={styles.headerActions}>
-            {/* Nút Đổi Theme */}
-            <TouchableOpacity
-              style={[
-                styles.themeBtn,
-                {
-                  backgroundColor: currentTheme.themeBtnBg,
-                  borderColor: currentTheme.themeBtnBorder,
-                },
-              ]}
-              activeOpacity={0.8}
-              onPress={() => setShowThemeModal(true)}
-            >
-              <Text
-                style={[
-                  styles.themeBtnText,
-                  { color: currentTheme.themeBtnText },
-                ]}
-              >
-                🎨 Giao diện
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* LƯỚI ỨNG DỤNG (KHÔNG CÒN Ô BAO QUANH, CHỈ CÒN ICON TRỰC QUAN) */}
+        {/* 2 & 3 & 4. LƯỚI THẺ BÀI TOY CARTRIDGE KÈM HERO BANNER VÀ CATEGORY TABS */}
         <FlatList
-          key={`launcher_grid_${numColumns}`}
-          data={visibleApps}
+          key={`wonder_park_${numColumns}`}
+          data={displayItems}
           numColumns={numColumns}
-          keyExtractor={(item) => item.packageName}
+          keyExtractor={(item) =>
+            item.type === 'game' ? item.game.id : item.app.packageName
+          }
           contentContainerStyle={styles.appList}
           showsVerticalScrollIndicator={false}
-          renderItem={({ item }) => {
-            const isYouTube = item.packageName === 'internal.safe.youtube';
-            const isGreenTube = item.packageName === 'internal.safe.greentube';
-            const isMemoryGame = item.packageName === 'internal.game.memory';
-            const isBubblePop = item.packageName === 'internal.game.bubblepop';
-            const isAnimalSound = item.packageName === 'internal.game.animalsound';
-            const isColoringGame = item.packageName === 'internal.game.coloring';
-            const isSortingGame = item.packageName === 'internal.game.sorting';
-            const isMazeGame = item.packageName === 'internal.game.maze';
-            const isMathGame = item.packageName === 'internal.game.math';
-            const isWordSpelling = item.packageName === 'internal.game.wordspelling';
-            const isConnectDots = item.packageName === 'internal.game.connectdots';
-            const isTangramGame = item.packageName === 'internal.game.tangram';
-            const isJigsawGame = item.packageName === 'internal.game.jigsaw';
-            const isSnakeGame = item.packageName === 'internal.game.snakeedu';
-            const isFlashcards = item.packageName === 'internal.game.flashcards';
-            const isSpaceShooter = item.packageName === 'internal.game.spaceshooter';
-            const isRobotCoder = item.packageName === 'internal.game.robotcoder';
-            const isEmotionGarden = item.packageName === 'internal.game.emotions';
-            const isShadowMatching = item.packageName === 'internal.game.shadowmatch';
-            const isSpotDifference = item.packageName === 'internal.game.spotdiff';
-            const isXylophone = item.packageName === 'internal.game.xylophone';
-            const isLittleGardener = item.packageName === 'internal.game.gardener';
-            const isWeatherDressUp = item.packageName === 'internal.game.weatherdress';
-            const isBalanceScale = item.packageName === 'internal.game.balancescale';
-            const isSolarSystem = item.packageName === 'internal.game.solarsystem';
-            const isDentalHabits = item.packageName === 'internal.game.dentalhabits';
-            const isPetCare = item.packageName === 'internal.game.petcare';
-            const isFourSeasons = item.packageName === 'internal.game.fourseasons';
-            const isContinentExplorer = item.packageName === 'internal.game.continentexplorer';
-            const isNatureExplorer = item.packageName === 'internal.game.natureexplorer';
-            return (
-              <TouchableOpacity
-                style={styles.appCard}
-                activeOpacity={0.7}
-                onPress={() => handleLaunchApp(item.packageName)}
-              >
-                {/* ICON ỨNG DỤNG */}
-                {isMemoryGame ? (
-                  <View style={[styles.appIcon, styles.gameIconContainer]}>
-                    <View style={styles.gameInnerBadge}>
-                      <Text style={styles.gameEmojiIcon}>🃏</Text>
-                    </View>
-                  </View>
-                ) : isBubblePop ? (
-                  <View style={[styles.appIcon, styles.bubblePopIconContainer]}>
-                    <View style={styles.bubblePopInnerBadge}>
-                      <Text style={styles.bubblePopEmojiIcon}>🎈</Text>
-                    </View>
-                  </View>
-                ) : isAnimalSound ? (
-                  <View style={[styles.appIcon, styles.animalSoundIconContainer]}>
-                    <View style={styles.animalSoundInnerBadge}>
-                      <Text style={styles.animalSoundEmojiIcon}>🐶</Text>
-                    </View>
-                  </View>
-                ) : isColoringGame ? (
-                  <View style={[styles.appIcon, styles.coloringIconContainer]}>
-                    <View style={styles.coloringInnerBadge}>
-                      <Text style={styles.coloringEmojiIcon}>🎨</Text>
-                    </View>
-                  </View>
-                ) : isSortingGame ? (
-                  <View style={[styles.appIcon, styles.sortingIconContainer]}>
-                    <View style={styles.sortingInnerBadge}>
-                      <Text style={styles.sortingEmojiIcon}>♻️</Text>
-                    </View>
-                  </View>
-                ) : isMathGame ? (
-                  <View style={[styles.appIcon, styles.mathIconContainer]}>
-                    <View style={styles.mathInnerBadge}>
-                      <Text style={styles.mathEmojiIcon}>🧮</Text>
-                    </View>
-                  </View>
-                ) : isWordSpelling ? (
-                  <View style={[styles.appIcon, styles.wordSpellingIconContainer]}>
-                    <View style={styles.wordSpellingInnerBadge}>
-                      <Text style={styles.wordSpellingEmojiIcon}>📝</Text>
-                    </View>
-                  </View>
-                ) : isMazeGame ? (
-                  <View style={[styles.appIcon, styles.mazeIconContainer]}>
-                    <View style={styles.mazeInnerBadge}>
-                      <Text style={styles.mazeEmojiIcon}>🌀</Text>
-                    </View>
-                  </View>
-                ) : isConnectDots ? (
-                  <View style={[styles.appIcon, styles.connectDotsIconContainer]}>
-                    <View style={styles.connectDotsInnerBadge}>
-                      <Text style={styles.connectDotsEmojiIcon}>🔢</Text>
-                    </View>
-                  </View>
-                ) : isTangramGame ? (
-                  <View style={[styles.appIcon, styles.tangramIconContainer]}>
-                    <View style={styles.tangramInnerBadge}>
-                      <Text style={styles.tangramEmojiIcon}>🧩</Text>
-                    </View>
-                  </View>
-                ) : isJigsawGame ? (
-                  <View style={[styles.appIcon, styles.jigsawIconContainer]}>
-                    <View style={styles.jigsawInnerBadge}>
-                      <Text style={styles.jigsawEmojiIcon}>🖼️</Text>
-                    </View>
-                  </View>
-                ) : isSnakeGame ? (
-                  <View style={[styles.appIcon, styles.snakeIconContainer]}>
-                    <View style={styles.snakeInnerBadge}>
-                      <Text style={styles.snakeEmojiIcon}>🐍</Text>
-                    </View>
-                  </View>
-                ) : isFlashcards ? (
-                  <View style={[styles.appIcon, styles.flashcardIconContainer]}>
-                    <View style={styles.flashcardInnerBadge}>
-                      <Text style={styles.flashcardEmojiIcon}>🎴</Text>
-                    </View>
-                  </View>
-                ) : isSpaceShooter ? (
-                  <View style={[styles.appIcon, styles.spaceShooterIconContainer]}>
-                    <View style={styles.spaceShooterInnerBadge}>
-                      <Text style={styles.spaceShooterEmojiIcon}>🚀</Text>
-                    </View>
-                  </View>
-                ) : isRobotCoder ? (
-                  <View style={[styles.appIcon, styles.robotCoderIconContainer]}>
-                    <View style={styles.robotCoderInnerBadge}>
-                      <Text style={styles.robotCoderEmojiIcon}>🤖</Text>
-                    </View>
-                  </View>
-                ) : isEmotionGarden ? (
-                  <View style={[styles.appIcon, styles.emotionGardenIconContainer]}>
-                    <View style={styles.emotionGardenInnerBadge}>
-                      <Text style={styles.emotionGardenEmojiIcon}>😊</Text>
-                    </View>
-                  </View>
-                ) : isShadowMatching ? (
-                  <View style={[styles.appIcon, styles.shadowMatchIconContainer]}>
-                    <View style={styles.shadowMatchInnerBadge}>
-                      <Text style={styles.shadowMatchEmojiIcon}>👥</Text>
-                    </View>
-                  </View>
-                ) : isSpotDifference ? (
-                  <View style={[styles.appIcon, styles.spotDiffIconContainer]}>
-                    <View style={styles.spotDiffInnerBadge}>
-                      <Text style={styles.spotDiffEmojiIcon}>🔍</Text>
-                    </View>
-                  </View>
-                ) : isXylophone ? (
-                  <View style={[styles.appIcon, styles.xylophoneIconContainer]}>
-                    <View style={styles.xylophoneInnerBadge}>
-                      <Text style={styles.xylophoneEmojiIcon}>🎹</Text>
-                    </View>
-                  </View>
-                ) : isLittleGardener ? (
-                  <View style={[styles.appIcon, styles.gardenerIconContainer]}>
-                    <View style={styles.gardenerInnerBadge}>
-                      <Text style={styles.gardenerEmojiIcon}>🌱</Text>
-                    </View>
-                  </View>
-                ) : isWeatherDressUp ? (
-                  <View style={[styles.appIcon, styles.weatherDressIconContainer]}>
-                    <View style={styles.weatherDressInnerBadge}>
-                      <Text style={styles.weatherDressEmojiIcon}>👗</Text>
-                    </View>
-                  </View>
-                ) : isBalanceScale ? (
-                  <View style={[styles.appIcon, styles.balanceScaleIconContainer]}>
-                    <View style={styles.balanceScaleInnerBadge}>
-                      <Text style={styles.balanceScaleEmojiIcon}>⚖️</Text>
-                    </View>
-                  </View>
-                ) : isSolarSystem ? (
-                  <View style={[styles.appIcon, styles.solarSystemIconContainer]}>
-                    <View style={styles.solarSystemInnerBadge}>
-                      <Text style={styles.solarSystemEmojiIcon}>🪐</Text>
-                    </View>
-                  </View>
-                ) : isDentalHabits ? (
-                  <View style={[styles.appIcon, styles.dentalHabitsIconContainer]}>
-                    <View style={styles.dentalHabitsInnerBadge}>
-                      <Text style={styles.dentalHabitsEmojiIcon}>🦷</Text>
-                    </View>
-                  </View>
-                ) : isPetCare ? (
-                  <View style={[styles.appIcon, styles.petCareIconContainer]}>
-                    <View style={styles.petCareInnerBadge}>
-                      <Text style={styles.petCareEmojiIcon}>🐾</Text>
-                    </View>
-                  </View>
-                ) : isFourSeasons ? (
-                  <View style={[styles.appIcon, styles.fourSeasonsIconContainer]}>
-                    <View style={styles.fourSeasonsInnerBadge}>
-                      <Text style={styles.fourSeasonsEmojiIcon}>🦋</Text>
-                    </View>
-                  </View>
-                ) : isContinentExplorer ? (
-                  <View style={[styles.appIcon, styles.continentExplorerIconContainer]}>
-                    <View style={styles.continentExplorerInnerBadge}>
-                      <Text style={styles.continentExplorerEmojiIcon}>🦅</Text>
-                    </View>
-                  </View>
-                ) : isNatureExplorer ? (
-                  <View style={[styles.appIcon, styles.natureExplorerIconContainer]}>
-                    <View style={styles.natureExplorerInnerBadge}>
-                      <Text style={styles.natureExplorerEmojiIcon}>🌿</Text>
-                    </View>
-                  </View>
-                ) : isGreenTube ? (
-                  <View style={[styles.appIcon, styles.greenTubeIconContainer]}>
-                    <View style={styles.greenTubeBox}>
-                      <Text style={styles.greenTubePlayTriangle}>▶</Text>
-                    </View>
-                  </View>
-                ) : isYouTube ? (
-                  <View style={[styles.appIcon, styles.youtubeIconContainer]}>
-                    <View style={styles.youtubeRedBox}>
-                      <Text style={styles.youtubePlayTriangle}>▶</Text>
-                    </View>
-                  </View>
-                ) : item.icon ? (
-                  <Image
-                    source={{
-                      uri:
-                        item.icon.startsWith('file://') ||
-                        item.icon.startsWith('data:') ||
-                        item.icon.startsWith('http')
-                          ? item.icon
-                          : `data:image/png;base64,${item.icon}`,
-                    }}
-                    style={[
-                      styles.appIcon,
-                      {
-                        borderRadius: currentTheme.iconBorderRadius,
-                      },
-                    ]}
-                  />
-                ) : (
-                  <View
-                    style={[
-                      styles.appIcon,
-                      styles.appIconPlaceholder,
-                      {
-                        backgroundColor: currentTheme.iconPlaceholderBg,
-                        borderRadius: currentTheme.iconBorderRadius,
-                      },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.placeholderChar,
-                        { color: currentTheme.iconPlaceholderText },
-                      ]}
-                    >
-                      {item.label?.charAt(0) || '📱'}
-                    </Text>
-                  </View>
-                )}
+          ListHeaderComponent={
+            <View>
+              {/* HERO BANNER NHIỆM VỤ HÔM NAY */}
+              <LauncherHeroBanner onLaunchGame={handleLaunchApp} />
 
-                {/* TÊN ỨNG DỤNG */}
-                <Text
-                  style={[
-                    styles.appLabel,
-                    {
-                      color: currentTheme.appLabelColor,
-                      fontWeight: currentTheme.appLabelFontWeight,
-                    },
-                  ]}
-                  numberOfLines={2}
-                >
-                  {item.label}
-                </Text>
-              </TouchableOpacity>
+              {/* THANH TAB PHÂN LOẠI DANH MỤC */}
+              <LauncherCategoryTabs
+                selectedCategory={selectedCategory}
+                onSelectCategory={setSelectedCategory}
+                theme={currentTheme}
+              />
+            </View>
+          }
+          renderItem={({ item }) => {
+            if (item.type === 'game') {
+              return (
+                <LauncherGameCard
+                  game={item.game}
+                  cardWidth={cardWidth}
+                  theme={currentTheme}
+                  onPress={() => handleLaunchApp(item.game.id)}
+                />
+              );
+            }
+            return (
+              <LauncherGameCard
+                externalApp={item.app}
+                cardWidth={cardWidth}
+                theme={currentTheme}
+                onPress={() => handleLaunchApp(item.app.packageName)}
+              />
             );
           }}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyIcon}>{currentTheme.emptyIcon}</Text>
-              <Text
-                style={[
-                  styles.emptyTitle,
-                  { color: currentTheme.emptyTitleColor },
-                ]}
-              >
-                Chưa có ứng dụng nào được cấp phép
-              </Text>
-              <Text
-                style={[
-                  styles.emptySubtitle,
-                  { color: currentTheme.emptySubtitleColor },
-                ]}
-              >
-                Phụ huynh hãy nhấn vào nút "⚙️ Phụ huynh" để mở khóa thêm ứng dụng cho bé.
+              <Text style={styles.emptyIcon}>🎈</Text>
+              <Text style={[styles.emptyTitle, { color: currentTheme.emptyTitleColor }]}>
+                Không có ứng dụng nào trong mục này
               </Text>
             </View>
           }
         />
 
-        {/* MODAL CHỌN THEME VÀ HÌNH NỀN */}
+        {/* 5. QUICK BOTTOM DOCK CỐ ĐỊNH */}
+        <LauncherBottomDock
+          onLaunchGame={handleLaunchApp}
+          theme={currentTheme}
+        />
+
+        {/* MODALS BẢO MẬT & HỆ THỐNG */}
         <ThemeSelectorModal
           visible={showThemeModal}
           currentThemeId={currentTheme.id}
           currentWallpaperId={currentWallpaper.id}
-          onSelectTheme={(theme) => setCurrentTheme(theme)}
-          onSelectWallpaper={(wp) => setCurrentWallpaper(wp)}
+          onSelectTheme={(t) => {
+            setCurrentTheme(t);
+            setShowThemeModal(false);
+          }}
+          onSelectWallpaper={(w) => {
+            setCurrentWallpaper(w);
+            setShowThemeModal(false);
+          }}
           onClose={() => setShowThemeModal(false)}
         />
 
-        {/* MÀN HÌNH KHÓA NGOÀI GIỜ */}
+        <ParentPinModal
+          visible={showPinModal}
+          onSuccess={handlePinSuccess}
+          onClose={() => setShowPinModal(false)}
+        />
+
+        <DeviceAdminGuideModal
+          visible={showAdminGuideModal}
+          onClose={() => setShowAdminGuideModal(false)}
+          onConfirm={() => {
+            launcherHelper.requestDeviceAdmin();
+            setShowAdminGuideModal(false);
+          }}
+        />
+
         {isLocked && (
           <LockOverlay
             reason={lockReason}
@@ -1507,48 +606,6 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
             }}
           />
         )}
-
-        {/* MODAL MÃ PIN */}
-        <ParentPinModal
-          visible={showPinModal}
-          onClose={() => setShowPinModal(false)}
-          onSuccess={handlePinSuccess}
-          title={
-            pinAction === 'unlock_temp'
-              ? 'Nhập PIN để mở khóa tạm thời'
-              : 'Xác thực Phụ huynh'
-          }
-        />
-
-        {/* MODAL HƯỚNG DẪN KÍCH HOẠT QUẢN TRỊ VIÊN THIẾT BỊ (CHỐNG GỠ APP) */}
-        <DeviceAdminGuideModal
-          visible={showAdminGuideModal}
-          onClose={() => setShowAdminGuideModal(false)}
-          onConfirm={() => {
-            // Đóng modal trước
-            setShowAdminGuideModal(false);
-            // Gọi trực tiếp NativeModules để bypass mọi wrapper
-            const { DeviceAdminModule } = require('react-native').NativeModules;
-            if (DeviceAdminModule) {
-              DeviceAdminModule.requestDeviceAdmin()
-                .then(() => {
-                  console.log('Device Admin intent launched successfully');
-                })
-                .catch((err: any) => {
-                  console.warn('Device Admin error:', err);
-                  Alert.alert(
-                    'Không thể mở',
-                    'Vui lòng vào Cài đặt > Bảo mật > Quản trị viên thiết bị, chọn "rnlauncherkit" và kích hoạt thủ công.',
-                  );
-                });
-            } else {
-              Alert.alert(
-                'Module chưa sẵn sàng',
-                'DeviceAdminModule không tồn tại. Vui lòng vào Cài đặt > Bảo mật > Quản trị viên thiết bị để kích hoạt thủ công.',
-              );
-            }
-          }}
-        />
       </View>
     </SafeAreaView>
   );
@@ -1561,775 +618,22 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  wallpaperFullImage: {
-    flex: 1,
-    width: '100%',
-    height: '100%',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop:
-      Platform.OS === 'android'
-        ? (StatusBar.currentHeight ? StatusBar.currentHeight + 10 : 36)
-        : 16,
-    paddingBottom: 14,
-    borderBottomWidth: 1,
-  },
-  greetingText: {
-    fontSize: 17,
-    fontWeight: '800',
-  },
-  dateText: {
-    fontSize: 12,
-    marginTop: 2,
-    fontWeight: '600',
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  themeBtn: {
-    paddingVertical: 7,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  themeBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  parentBtn: {
-    paddingVertical: 7,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  parentBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-
-  // GRID & APPS (Clean Launcher Layout - No Outer Box)
   appList: {
-    paddingHorizontal: 12,
-    paddingTop: 16,
-    paddingBottom: 40,
+    paddingHorizontal: 10,
+    paddingBottom: 24,
   },
-  appCard: {
-    flex: 1,
-    alignItems: 'center',
-    marginVertical: 12,
-    marginHorizontal: 4,
-    paddingVertical: 4,
-    backgroundColor: 'transparent',
-  },
-  appIcon: {
-    width: 60,
-    height: 60,
-    marginBottom: 8,
-    borderRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.18,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-
-  // AUTHENTIC YOUTUBE ICON
-  youtubeIconContainer: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.22,
-    shadowRadius: 5,
-    elevation: 4,
-  },
-  youtubeRedBox: {
-    width: 44,
-    height: 30,
-    backgroundColor: '#FF0000',
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  youtubePlayTriangle: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: 'bold',
-    marginLeft: 2,
-  },
-
-  // GREEN KIDS TUBE ICON
-  greenTubeIconContainer: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#059669',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.22,
-    shadowRadius: 5,
-    elevation: 4,
-    borderWidth: 1.5,
-    borderColor: '#A7F3D0',
-  },
-  greenTubeBox: {
-    width: 44,
-    height: 30,
-    backgroundColor: '#10B981',
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  greenTubePlayTriangle: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: 'bold',
-    marginLeft: 2,
-  },
-
-  // GAME 1: MEMORY GAME ICON
-  gameIconContainer: {
-    backgroundColor: '#6366F1',
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#4F46E5',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 4,
-  },
-  gameInnerBadge: {
-    width: 44,
-    height: 44,
-    backgroundColor: '#EEF2FF',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  gameEmojiIcon: {
-    fontSize: 24,
-  },
-
-  // GAME 2: BUBBLE POP ICON
-  bubblePopIconContainer: {
-    backgroundColor: '#0284C7',
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#0369A1',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 4,
-  },
-  bubblePopInnerBadge: {
-    width: 44,
-    height: 44,
-    backgroundColor: '#E0F2FE',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  bubblePopEmojiIcon: {
-    fontSize: 24,
-  },
-
-  // GAME 3: ANIMAL SOUND ICON
-  animalSoundIconContainer: {
-    backgroundColor: '#D97706',
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#B45309',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 4,
-  },
-  animalSoundInnerBadge: {
-    width: 44,
-    height: 44,
-    backgroundColor: '#FEF3C7',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  animalSoundEmojiIcon: {
-    fontSize: 24,
-  },
-
-  // GAME 4: COLORING BOOK ICON
-  coloringIconContainer: {
-    backgroundColor: '#7C3AED',
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#6D28D9',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 4,
-  },
-  coloringInnerBadge: {
-    width: 44,
-    height: 44,
-    backgroundColor: '#EDE9FE',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  coloringEmojiIcon: {
-    fontSize: 24,
-  },
-
-  // GAME 5: SORTING GAME ICON
-  sortingIconContainer: {
-    backgroundColor: '#059669',
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#047857',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 4,
-  },
-  sortingInnerBadge: {
-    width: 44,
-    height: 44,
-    backgroundColor: '#D1FAE5',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  sortingEmojiIcon: {
-    fontSize: 24,
-  },
-
-  // GAME 6: MATH QUIZ ICON
-  mathIconContainer: {
-    backgroundColor: '#3B82F6',
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#1D4ED8',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 4,
-  },
-  mathInnerBadge: {
-    width: 44,
-    height: 44,
-    backgroundColor: '#DBEAFE',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  mathEmojiIcon: {
-    fontSize: 24,
-  },
-
-  // GAME 7: WORD SPELLING ICON
-  wordSpellingIconContainer: {
-    backgroundColor: '#059669',
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#047857',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 4,
-  },
-  wordSpellingInnerBadge: {
-    width: 44,
-    height: 44,
-    backgroundColor: '#ECFDF5',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  wordSpellingEmojiIcon: {
-    fontSize: 24,
-  },
-
-  // GAME 8: MAZE GAME ICON
-  mazeIconContainer: {
-    backgroundColor: '#0284C7',
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#0369A1',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 4,
-  },
-  mazeInnerBadge: {
-    width: 44,
-    height: 44,
-    backgroundColor: '#E0F2FE',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  mazeEmojiIcon: {
-    fontSize: 24,
-  },
-
-  // GAME 9: CONNECT DOTS ICON
-  connectDotsIconContainer: {
-    backgroundColor: '#0D9488',
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#0F766E',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 4,
-  },
-  connectDotsInnerBadge: {
-    width: 44,
-    height: 44,
-    backgroundColor: '#CCFBF1',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  connectDotsEmojiIcon: {
-    fontSize: 24,
-  },
-
-  // GAME 10: TANGRAM PUZZLE ICON
-  tangramIconContainer: {
-    backgroundColor: '#D946EF',
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#C026D3',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 4,
-  },
-  tangramInnerBadge: {
-    width: 44,
-    height: 44,
-    backgroundColor: '#FAE8FF',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  tangramEmojiIcon: {
-    fontSize: 24,
-  },
-
-  // GAME 11: JIGSAW PUZZLE ICON
-  jigsawIconContainer: {
-    backgroundColor: '#EA580C',
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#C2410C',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 4,
-  },
-  jigsawInnerBadge: {
-    width: 44,
-    height: 44,
-    backgroundColor: '#FFEDD5',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  jigsawEmojiIcon: {
-    fontSize: 24,
-  },
-
-  // GAME 12: SNAKE EDU ICON
-  snakeIconContainer: {
-    backgroundColor: '#10B981',
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#059669',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 4,
-  },
-  snakeInnerBadge: {
-    width: 44,
-    height: 44,
-    backgroundColor: '#D1FAE5',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  snakeEmojiIcon: {
-    fontSize: 24,
-  },
-
-  // GAME 13: FLASHCARDS VOCABULARY ICON
-  flashcardIconContainer: {
-    backgroundColor: '#3B82F6',
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#1D4ED8',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 4,
-  },
-  flashcardInnerBadge: {
-    width: 44,
-    height: 44,
-    backgroundColor: '#DBEAFE',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  flashcardEmojiIcon: {
-    fontSize: 24,
-  },
-
-  spaceShooterIconContainer: {
-    backgroundColor: '#1E1B4B',
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#4F46E5',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.4,
-    shadowRadius: 5,
-    elevation: 4,
-  },
-  spaceShooterInnerBadge: {
-    width: 44,
-    height: 44,
-    backgroundColor: '#312E81',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  spaceShooterEmojiIcon: {
-    fontSize: 24,
-  },
-
-  // 10 New Educational Game Icons Styles
-  robotCoderIconContainer: {
-    backgroundColor: '#312E81',
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 4,
-  },
-  robotCoderInnerBadge: {
-    width: 44,
-    height: 44,
-    backgroundColor: '#4338CA',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  robotCoderEmojiIcon: {
-    fontSize: 24,
-  },
-
-  emotionGardenIconContainer: {
-    backgroundColor: '#064E3B',
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 4,
-  },
-  emotionGardenInnerBadge: {
-    width: 44,
-    height: 44,
-    backgroundColor: '#059669',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  emotionGardenEmojiIcon: {
-    fontSize: 24,
-  },
-
-  shadowMatchIconContainer: {
-    backgroundColor: '#0C4A6E',
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 4,
-  },
-  shadowMatchInnerBadge: {
-    width: 44,
-    height: 44,
-    backgroundColor: '#0284C7',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  shadowMatchEmojiIcon: {
-    fontSize: 24,
-  },
-
-  spotDiffIconContainer: {
-    backgroundColor: '#78350F',
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 4,
-  },
-  spotDiffInnerBadge: {
-    width: 44,
-    height: 44,
-    backgroundColor: '#D97706',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  spotDiffEmojiIcon: {
-    fontSize: 24,
-  },
-
-  xylophoneIconContainer: {
-    backgroundColor: '#831843',
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 4,
-  },
-  xylophoneInnerBadge: {
-    width: 44,
-    height: 44,
-    backgroundColor: '#DB2777',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  xylophoneEmojiIcon: {
-    fontSize: 24,
-  },
-
-  gardenerIconContainer: {
-    backgroundColor: '#14532D',
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 4,
-  },
-  gardenerInnerBadge: {
-    width: 44,
-    height: 44,
-    backgroundColor: '#16A34A',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  gardenerEmojiIcon: {
-    fontSize: 24,
-  },
-
-  weatherDressIconContainer: {
-    backgroundColor: '#C2410C',
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 4,
-  },
-  weatherDressInnerBadge: {
-    width: 44,
-    height: 44,
-    backgroundColor: '#EA580C',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  weatherDressEmojiIcon: {
-    fontSize: 24,
-  },
-
-  balanceScaleIconContainer: {
-    backgroundColor: '#1E293B',
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 4,
-  },
-  balanceScaleInnerBadge: {
-    width: 44,
-    height: 44,
-    backgroundColor: '#334155',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  balanceScaleEmojiIcon: {
-    fontSize: 24,
-  },
-
-  solarSystemIconContainer: {
-    backgroundColor: '#0F172A',
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 4,
-  },
-  solarSystemInnerBadge: {
-    width: 44,
-    height: 44,
-    backgroundColor: '#1E293B',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  solarSystemEmojiIcon: {
-    fontSize: 24,
-  },
-
-  dentalHabitsIconContainer: {
-    backgroundColor: '#155E75',
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 4,
-  },
-  dentalHabitsInnerBadge: {
-    width: 44,
-    height: 44,
-    backgroundColor: '#0891B2',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  dentalHabitsEmojiIcon: {
-    fontSize: 24,
-  },
-  petCareIconContainer: {
-    backgroundColor: '#92400E',
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 4,
-  },
-  petCareInnerBadge: {
-    width: 44,
-    height: 44,
-    backgroundColor: '#FDE68A',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  petCareEmojiIcon: {
-    fontSize: 24,
-  },
-  fourSeasonsIconContainer: {
-    backgroundColor: '#2E7D32',
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 4,
-  },
-  fourSeasonsInnerBadge: {
-    width: 44,
-    height: 44,
-    backgroundColor: '#C8E6C9',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  fourSeasonsEmojiIcon: {
-    fontSize: 24,
-  },
-  continentExplorerIconContainer: {
-    backgroundColor: '#1B4F72',
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 4,
-  },
-  continentExplorerInnerBadge: {
-    width: 44,
-    height: 44,
-    backgroundColor: '#AED6F1',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  continentExplorerEmojiIcon: {
-    fontSize: 24,
-  },
-  natureExplorerIconContainer: {
-    backgroundColor: '#145A32',
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 4,
-  },
-  natureExplorerInnerBadge: {
-    width: 44,
-    height: 44,
-    backgroundColor: '#A9DFBF',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  natureExplorerEmojiIcon: {
-    fontSize: 24,
-  },
-
-  appIconPlaceholder: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  placeholderChar: {
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-  appLabel: {
-    fontSize: 12,
-    textAlign: 'center',
-    paddingHorizontal: 4,
-    textShadowColor: 'rgba(255, 255, 255, 0.95)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
-    lineHeight: 16,
-    maxWidth: 90,
-  },
-
   emptyContainer: {
-    paddingTop: 80,
+    padding: 30,
     alignItems: 'center',
-    paddingHorizontal: 30,
+    justifyContent: 'center',
   },
   emptyIcon: {
     fontSize: 48,
-    marginBottom: 12,
+    marginBottom: 8,
   },
   emptyTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
-    marginBottom: 8,
     textAlign: 'center',
-  },
-  emptySubtitle: {
-    fontSize: 13,
-    textAlign: 'center',
-    lineHeight: 18,
   },
 });
