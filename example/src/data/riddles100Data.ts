@@ -2152,14 +2152,14 @@ export function getRiddleById(id: string): RiddleItem | undefined {
 export function createSyntheticVocabCard(option: RiddleOption3D): VocabCard {
   return {
     id: option.wordId,
-    word: option.label,
+    english: option.label,
     vietnamese: option.label,
     emoji: option.emoji,
     category: 'animals',
-    level: 1,
+    color: '#3B82F6',
     ipa: '',
-    phonetic: '',
-    exampleSentence: '',
+    exampleEn: '',
+    exampleVi: '',
     funFact: '',
   };
 }
