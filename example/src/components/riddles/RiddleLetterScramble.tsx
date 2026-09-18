@@ -7,6 +7,7 @@ import {
   Dimensions,
   Animated,
 } from 'react-native';
+import { riddleSoundService } from '../../services/riddleSoundService';
 
 const { width } = Dimensions.get('window');
 
@@ -65,6 +66,8 @@ export const RiddleLetterScramble: React.FC<RiddleLetterScrambleProps> = ({
     const emptyIndex = filledChars.findIndex((c) => c === null);
     if (emptyIndex === -1) return;
 
+    riddleSoundService.playPop();
+
     const newFilled = [...filledChars];
     newFilled[emptyIndex] = char;
     const newUsed = [...usedScrambleIndices, scrambleIndex];
@@ -83,6 +86,8 @@ export const RiddleLetterScramble: React.FC<RiddleLetterScrambleProps> = ({
   const handleRemoveLetter = (slotIndex: number) => {
     const charToRemove = filledChars[slotIndex];
     if (!charToRemove) return;
+
+    riddleSoundService.playPop();
 
     const newFilled = [...filledChars];
     newFilled[slotIndex] = null;

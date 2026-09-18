@@ -25,6 +25,8 @@ import { RiddleLetterScramble } from '../components/riddles/RiddleLetterScramble
 import { RiddleWorldMapModal } from '../components/riddles/RiddleWorldMapModal';
 import { RiddleTreasureModal } from '../components/riddles/RiddleTreasureModal';
 import { VocabCard3DStage } from '../components/VocabCard3DStage';
+import { SoundPlayer } from '../components/SoundPlayer';
+import { riddleSoundService } from '../services/riddleSoundService';
 
 const { width } = Dimensions.get('window');
 
@@ -85,6 +87,13 @@ export const RiddlesGameScreen: React.FC<RiddlesGameScreenProps> = ({ onClose })
     riddleService.setPreferredMode(mode);
   };
 
+  // Dừng âm thanh khi rời màn hình
+  useEffect(() => {
+    return () => {
+      riddleSoundService.stop();
+    };
+  }, []);
+
   // Hiệu ứng đọc thơ
   const handleReadPoem = () => {
     setIsReadingPoem(true);
@@ -102,9 +111,10 @@ export const RiddlesGameScreen: React.FC<RiddlesGameScreenProps> = ({ onClose })
     ]).start();
 
     setMascotMessage(`"${currentRiddle.poem.join(' / ')}"`);
+    riddleSoundService.speakPoem(currentRiddle.poem);
     setTimeout(() => {
       setIsReadingPoem(false);
-    }, 2500);
+    }, 3500);
   };
 
   // 1. Xử lý chọn đáp án ở chế độ Mầm Non
@@ -117,6 +127,7 @@ export const RiddlesGameScreen: React.FC<RiddlesGameScreenProps> = ({ onClose })
     if (option.isCorrect) {
       handleSuccess();
     } else {
+      riddleSoundService.playWrong();
       setMascotMessage('Chưa đúng rồi bé ơi! Bé thử suy nghĩ lại hoặc bấm gợi ý nhé! 💡');
       setTimeout(() => {
         setIsAnswerChecked(false);
@@ -130,6 +141,7 @@ export const RiddlesGameScreen: React.FC<RiddlesGameScreenProps> = ({ onClose })
     if (isCorrect) {
       handleSuccess();
     } else {
+      riddleSoundService.playWrong();
       setMascotMessage('Chữ cái chưa đúng thứ tự rồi bé ơi! Bé thử xếp lại nhé!');
     }
   };
@@ -146,12 +158,14 @@ export const RiddlesGameScreen: React.FC<RiddlesGameScreenProps> = ({ onClose })
     setProgress(updated);
     setMascotMessage('🎉 XUẤT SẮC QUÁ BÉ ƠI! Bé đã giải đúng rồi!');
     setShowSuccessModal(true);
+    riddleSoundService.playSuccessReward(currentRiddle);
 
     if (chestUnlockedJustNow) {
       setTimeout(() => {
         setShowSuccessModal(false);
         setShowTreasureModal(true);
-      }, 2000);
+        riddleSoundService.playTreasureChest();
+      }, 2500);
     }
   };
 
@@ -161,6 +175,8 @@ export const RiddlesGameScreen: React.FC<RiddlesGameScreenProps> = ({ onClose })
 
     setIsHintShown(true);
     setHintsUsedCount((prev) => prev + 1);
+    riddleSoundService.playMagicHint();
+    riddleSoundService.speakHint(currentRiddle.hintPoem);
 
     if (gameMode === 'preschool') {
       // Loại bỏ 2 đáp án sai
@@ -556,6 +572,9 @@ export const RiddlesGameScreen: React.FC<RiddlesGameScreenProps> = ({ onClose })
           setCurrentIndexInWorld(1);
         }}
       />
+
+      {/* 10. Sound Player Fallback Engine */}
+      <SoundPlayer />
     </SafeAreaView>
   );
 };

@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { RiddleOption3D, createSyntheticVocabCard } from '../../data/riddles100Data';
 import { VocabCard3DStage } from '../VocabCard3DStage';
+import { riddleSoundService } from '../../services/riddleSoundService';
 
 const { width } = Dimensions.get('window');
 const GRID_ITEM_WIDTH = (width - 48) / 2;
@@ -65,7 +66,10 @@ export const Riddle3DStageGrid: React.FC<Riddle3DStageGridProps> = ({
               key={option.id || `opt_${idx}`}
               activeOpacity={isEliminated ? 1 : 0.8}
               disabled={isEliminated || isAnswerChecked}
-              onPress={() => onSelectOption(option)}
+              onPress={() => {
+                riddleSoundService.playPop();
+                onSelectOption(option);
+              }}
               style={[
                 styles.cardItem,
                 {
