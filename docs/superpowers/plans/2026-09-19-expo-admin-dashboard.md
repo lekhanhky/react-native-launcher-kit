@@ -35,11 +35,11 @@
 - Consumes: Node.js, npm/yarn
 - Produces: Project Expo có thể chạy lệnh `npx expo start` và hỗ trợ Tailwind CSS qua NativeWind.
 
-- [ ] **Step 1: Tạo thư mục `admin-app` và khởi tạo file cấu hình package.json & app.json**
-- [ ] **Step 2: Cài đặt dependencies (Expo, Expo Router, NativeWind, Supabase, AsyncStorage, Lucide, Expo AV)**
-- [ ] **Step 3: Cấu hình Metro và Tailwind cho NativeWind v4**
-- [ ] **Step 4: Cấu hình TypeScript và tạo `.env` với các Supabase keys**
-- [ ] **Step 5: Kiểm tra `npx tsc --noEmit` và xác nhận môi trường sẵn sàng**
+- [x] **Step 1: Tạo thư mục `admin-app` và khởi tạo file cấu hình package.json & app.json**
+- [x] **Step 2: Cài đặt dependencies (Expo, Expo Router, NativeWind, Supabase, AsyncStorage, Lucide, Expo AV)**
+- [x] **Step 3: Cấu hình Metro và Tailwind cho NativeWind v4**
+- [x] **Step 4: Cấu hình TypeScript và tạo `.env` với các Supabase keys**
+- [x] **Step 5: Kiểm tra `npx tsc --noEmit` và xác nhận môi trường sẵn sàng**
 
 ---
 
@@ -55,11 +55,11 @@
 - Consumes: `@supabase/supabase-js`, `@react-native-async-storage/async-storage`
 - Produces: `useAuth()` hook cung cấp `user`, `session`, `isLoading`, `signOut()`; `supabase` client cấu hình AsyncStorage.
 
-- [ ] **Step 1: Định nghĩa types trong `src/types/index.ts` (AnimalItem, CategoryItem, MathQuestion, AppCatalogItem, YouTubeChannel, DashboardMetrics)**
-- [ ] **Step 2: Viết `src/lib/supabase.ts` kết nối Supabase kèm cấu hình AsyncStorage**
-- [ ] **Step 3: Viết `src/context/AuthContext.tsx` quản lý phiên đăng nhập và phân quyền Super Admin**
-- [ ] **Step 4: Viết `app/_layout.tsx` bọc `AuthProvider` và thiết lập theme / SafeAreaProvider**
-- [ ] **Step 5: Kiểm tra type check với `npx tsc --noEmit`**
+- [x] **Step 1: Định nghĩa types trong `src/types/index.ts` (AnimalItem, CategoryItem, MathQuestion, AppCatalogItem, YouTubeChannel, DashboardMetrics)**
+- [x] **Step 2: Viết `src/lib/supabase.ts` kết nối Supabase kèm cấu hình AsyncStorage**
+- [x] **Step 3: Viết `src/context/AuthContext.tsx` quản lý phiên đăng nhập và phân quyền Super Admin**
+- [x] **Step 4: Viết `app/_layout.tsx` bọc `AuthProvider` và thiết lập theme / SafeAreaProvider**
+- [x] **Step 5: Kiểm tra type check với `npx tsc --noEmit`**
 
 ---
 
@@ -73,10 +73,10 @@
 - Consumes: `useAuth()`, `supabase.auth.signInWithPassword`
 - Produces: Giao diện đăng nhập Super Admin, kiểm tra tài khoản và tự động chuyển hướng vào `(dashboard)/index` khi thành công.
 
-- [ ] **Step 1: Tạo layout `app/(auth)/_layout.tsx`**
-- [ ] **Step 2: Xây dựng màn hình `app/(auth)/login.tsx` với logo Admin Studio 🛠️, ô nhập Email, Mật khẩu, hiển thị thông báo lỗi thân thiện**
-- [ ] **Step 3: Thêm nút đăng nhập nhanh cho tài khoản test Super Admin nếu ở chế độ dev**
-- [ ] **Step 4: Xác minh luồng login và redirect tự động khi trạng thái session thay đổi**
+- [x] **Step 1: Tạo layout `app/(auth)/_layout.tsx`**
+- [x] **Step 2: Xây dựng màn hình `app/(auth)/login.tsx` với logo Admin Studio 🛠️, ô nhập Email, Mật khẩu, hiển thị thông báo lỗi thân thiện**
+- [x] **Step 3: Thêm nút đăng nhập nhanh cho tài khoản test Super Admin nếu ở chế độ dev**
+- [x] **Step 4: Xác minh luồng login và redirect tự động khi trạng thái session thay đổi**
 
 ---
 
@@ -94,11 +94,11 @@
 - Consumes: `useAuth()`, `supabase`
 - Produces: Dashboard Hub với 4 thẻ KPI số liệu thực tế, thanh nghe nhanh MP3, và lưới 6 thẻ dẫn vào 6 phân hệ con.
 
-- [ ] **Step 1: Xây dựng các component UI nền tảng (`Header.tsx`, `StatCard.tsx`, `ModuleHubCard.tsx`)**
-- [ ] **Step 2: Viết hook `useDashboardMetrics.ts` tải số lượng thống kê từ các bảng Supabase**
-- [ ] **Step 3: Xây dựng `app/(dashboard)/_layout.tsx` thiết lập stack navigation có nút Back chuẩn Native**
-- [ ] **Step 4: Hoàn thiện `app/(dashboard)/index.tsx` tích hợp KPI, Lưới Hub 6 module và Quick Animal Sound Player**
-- [ ] **Step 5: Kiểm tra hiển thị và type check**
+- [x] **Step 1: Xây dựng các component UI nền tảng (`Header.tsx`, `StatCard.tsx`, `ModuleHubCard.tsx`)**
+- [x] **Step 2: Viết hook `useDashboardMetrics.ts` tải số lượng thống kê từ các bảng Supabase**
+- [x] **Step 3: Xây dựng `app/(dashboard)/_layout.tsx` thiết lập stack navigation có nút Back chuẩn Native**
+- [x] **Step 4: Hoàn thiện `app/(dashboard)/index.tsx` tích hợp KPI, Lưới Hub 6 module và Quick Animal Sound Player**
+- [x] **Step 5: Kiểm tra hiển thị và type check**
 
 ---
 
@@ -112,11 +112,11 @@
 - Consumes: bảng `kids_animals` và danh mục từ Supabase
 - Produces: Màn hình duyệt thẻ con vật (Tên Anh/Việt, emoji, âm thanh), chuyển tab danh mục, thêm mới/sửa thẻ con vật.
 
-- [ ] **Step 1: Xây dựng giao diện danh sách thẻ con vật dạng card kèm search bar và tab chuyển đổi**
-- [ ] **Step 2: Tích hợp nút nghe phát âm tiếng Anh và tiếng kêu MP3 của từng con vật**
-- [ ] **Step 3: Xây dựng modal thêm mới / chỉnh sửa thông tin con vật (`edit-modal.tsx`)**
-- [ ] **Step 4: Tích hợp mutation thêm, sửa, xóa dữ liệu trên Supabase**
-- [ ] **Step 5: Kiểm tra xác thực CRUD con vật**
+- [x] **Step 1: Xây dựng giao diện danh sách thẻ con vật dạng card kèm search bar và tab chuyển đổi**
+- [x] **Step 2: Tích hợp nút nghe phát âm tiếng Anh và tiếng kêu MP3 của từng con vật**
+- [x] **Step 3: Xây dựng modal thêm mới / chỉnh sửa thông tin con vật (`edit-modal.tsx`)**
+- [x] **Step 4: Tích hợp mutation thêm, sửa, xóa dữ liệu trên Supabase**
+- [x] **Step 5: Kiểm tra xác thực CRUD con vật**
 
 ---
 
@@ -130,11 +130,11 @@
 - Consumes: `expo-av`, `expo-document-picker`, Supabase Storage bucket `kids-media`
 - Produces: Quản lý danh sách file MP3 trong bucket, phát âm thanh tức thì và upload file MP3 từ điện thoại.
 
-- [ ] **Step 1: Viết hook `useAudioPlayer.ts` quản lý state phát âm thanh với `expo-av` (tự ngắt âm thanh cũ khi phát âm mới)**
-- [ ] **Step 2: Xây dựng giao diện danh sách file MP3 trong bucket `kids-media/animals/sounds/`**
-- [ ] **Step 3: Tích hợp nút upload file MP3 từ điện thoại qua `expo-document-picker` và đẩy lên Supabase Storage**
-- [ ] **Step 4: Tích hợp xóa và sao chép URL công khai của file âm thanh**
-- [ ] **Step 5: Kiểm tra hoạt động phát âm thanh và upload**
+- [x] **Step 1: Viết hook `useAudioPlayer.ts` quản lý state phát âm thanh với `expo-av` (tự ngắt âm thanh cũ khi phát âm mới)**
+- [x] **Step 2: Xây dựng giao diện danh sách file MP3 trong bucket `kids-media/animals/sounds/`**
+- [x] **Step 3: Tích hợp nút upload file MP3 từ điện thoại qua `expo-document-picker` và đẩy lên Supabase Storage**
+- [x] **Step 4: Tích hợp xóa và sao chép URL công khai của file âm thanh**
+- [x] **Step 5: Kiểm tra hoạt động phát âm thanh và upload**
 
 ---
 
@@ -148,11 +148,11 @@
 - Consumes: Bảng `math_questions` trên Supabase
 - Produces: Thuật toán sinh đề toán ngẫu nhiên theo cấp độ và giao diện điều khiển sinh đề, lưu trực tiếp vào CSDL.
 
-- [ ] **Step 1: Viết `src/lib/math-engine.ts` sinh các biểu thức toán học (+, -, ×, ÷), tạo 4 lựa chọn trắc nghiệm và đánh dấu đáp án đúng**
-- [ ] **Step 2: Xây dựng UI cấu hình: Chọn phép tính, cấp độ lớp, số lượng câu (10, 20, 50 câu)**
-- [ ] **Step 3: Viết logic sinh đề hàng loạt và bulk insert vào bảng `math_questions` trên Supabase**
-- [ ] **Step 4: Hiển thị danh sách các câu hỏi đang có trong hệ thống và nút xóa câu hỏi cũ**
-- [ ] **Step 5: Kiểm thử thuật toán sinh đề đảm bảo không sinh đáp án trùng lặp**
+- [x] **Step 1: Viết `src/lib/math-engine.ts` sinh các biểu thức toán học (+, -, ×, ÷), tạo 4 lựa chọn trắc nghiệm và đánh dấu đáp án đúng**
+- [x] **Step 2: Xây dựng UI cấu hình: Chọn phép tính, cấp độ lớp, số lượng câu (10, 20, 50 câu)**
+- [x] **Step 3: Viết logic sinh đề hàng loạt và bulk insert vào bảng `math_questions` trên Supabase**
+- [x] **Step 4: Hiển thị danh sách các câu hỏi đang có trong hệ thống và nút xóa câu hỏi cũ**
+- [x] **Step 5: Kiểm thử thuật toán sinh đề đảm bảo không sinh đáp án trùng lặp**
 
 ---
 
@@ -166,11 +166,11 @@
 - Consumes: Bảng `app_catalog` và `kids_youtube_channels` trên Supabase
 - Produces: Quản lý whitelist các package Android và các kênh/video YouTube Kids được duyệt.
 
-- [ ] **Step 1: Xây dựng màn hình `app-catalog/index.tsx` hiển thị danh sách app, icon, package name và switch bật/tắt**
-- [ ] **Step 2: Tích hợp form thêm package app mới với danh sách gợi ý app trẻ em thông dụng (YouTube Kids, ScratchJr, Duolingo ABC)**
-- [ ] **Step 3: Xây dựng màn hình `youtube-curator/index.tsx` hiển thị danh sách kênh/video được duyệt**
-- [ ] **Step 4: Tích hợp tính năng thêm kênh YouTube mới và toggle trạng thái kích hoạt**
-- [ ] **Step 5: Kiểm tra tính năng toggle cập nhật ngay trên CSDL Supabase**
+- [x] **Step 1: Xây dựng màn hình `app-catalog/index.tsx` hiển thị danh sách app, icon, package name và switch bật/tắt**
+- [x] **Step 2: Tích hợp form thêm package app mới với danh sách gợi ý app trẻ em thông dụng (YouTube Kids, ScratchJr, Duolingo ABC)**
+- [x] **Step 3: Xây dựng màn hình `youtube-curator/index.tsx` hiển thị danh sách kênh/video được duyệt**
+- [x] **Step 4: Tích hợp tính năng thêm kênh YouTube mới và toggle trạng thái kích hoạt**
+- [x] **Step 5: Kiểm tra tính năng toggle cập nhật ngay trên CSDL Supabase**
 
 ---
 
@@ -183,11 +183,11 @@
 - Consumes: `expo-file-system`, `expo-sharing`, Supabase client
 - Produces: Xuất file JSON chứa toàn bộ dữ liệu hệ thống và nạp lại dữ liệu từ file backup JSON.
 
-- [ ] **Step 1: Xây dựng hàm export gộp dữ liệu từ các bảng `kids_animals`, `math_questions`, `kids_youtube_channels` thành JSON**
-- [ ] **Step 2: Tích hợp `expo-file-system` ghi file và `expo-sharing` để chia sẻ/lưu file backup ra máy**
-- [ ] **Step 3: Xây dựng tính năng Import: chọn file JSON qua `expo-document-picker`, parse và upsert dữ liệu vào Supabase**
-- [ ] **Step 4: Thêm giao diện thông báo tiến trình và cảnh báo an toàn trước khi khôi phục**
-- [ ] **Step 5: Kiểm thử quy trình Export $\rightarrow$ Import**
+- [x] **Step 1: Xây dựng hàm export gộp dữ liệu từ các bảng `kids_animals`, `math_questions`, `kids_youtube_channels` thành JSON**
+- [x] **Step 2: Tích hợp `expo-file-system` ghi file và `expo-sharing` để chia sẻ/lưu file backup ra máy**
+- [x] **Step 3: Xây dựng tính năng Import: chọn file JSON qua `expo-document-picker`, parse và upsert dữ liệu vào Supabase**
+- [x] **Step 4: Thêm giao diện thông báo tiến trình và cảnh báo an toàn trước khi khôi phục**
+- [x] **Step 5: Kiểm thử quy trình Export $\rightarrow$ Import**
 
 ---
 
@@ -201,8 +201,8 @@
 - Consumes: Toàn bộ codebase `admin-app/`
 - Produces: Ứng dụng hoàn thiện, không lỗi TypeScript, sẵn sàng chạy thử nghiệm trên Expo Go hoặc build APK.
 
-- [ ] **Step 1: Chạy kiểm tra Type toàn bộ dự án: `cd admin-app; npx tsc --noEmit`**
-- [ ] **Step 2: Chạy thử bundler Metro `npx expo start` và kiểm tra load routes**
-- [ ] **Step 3: Kiểm tra giao diện trên cả chế độ sáng (Light) và tối (Dark)**
-- [ ] **Step 4: Cập nhật tài liệu hướng dẫn khởi chạy trong `admin-app/README.md`**
-- [ ] **Step 5: Commit toàn bộ mã nguồn hoàn chỉnh vào git**
+- [x] **Step 1: Chạy kiểm tra Type toàn bộ dự án: `cd admin-app; npx tsc --noEmit`**
+- [x] **Step 2: Chạy thử bundler Metro `npx expo start` và kiểm tra load routes**
+- [x] **Step 3: Kiểm tra giao diện trên cả chế độ sáng (Light) và tối (Dark)**
+- [x] **Step 4: Cập nhật tài liệu hướng dẫn khởi chạy trong `admin-app/README.md`**
+- [x] **Step 5: Commit toàn bộ mã nguồn hoàn chỉnh vào git**
