@@ -355,6 +355,24 @@ export const INTERNAL_GAMES_REGISTRY: LauncherGameItem[] = [
 
 export const HERO_FEATURED_GAMES = [
   {
+    id: 'internal.game.shadowdetective',
+    title: 'Thám Tử Soi Đèn Pin',
+    tagline: 'Soi bóng đen 3D ma mị & giải mã 40 vụ án kỳ bí',
+    emoji: '🔦',
+    quest: 'Nhiệm vụ: Cầm đèn pin soi bóng đoán đúng 3 vụ án!',
+    badge: 'MỚI RA MẮT • 3D',
+    colors: ['#6366F1', '#4F46E5'] as [string, string],
+  },
+  {
+    id: 'internal.game.riddles100',
+    title: '100 Câu Đố Kỳ Thú',
+    tagline: 'Thơ vần lục bát, bục 3D & chế độ đấu trí 2 người',
+    emoji: '🕵️‍♂️',
+    quest: 'Nhiệm vụ: Vượt 5 câu đố để mở khóa rương hoàng kim!',
+    badge: 'ĐẤU TRÍ 2 NGƯỜI',
+    colors: ['#F59E0B', '#D97706'] as [string, string],
+  },
+  {
     id: 'internal.game.flashcards',
     title: 'Thẻ Bài 3D Đời Thật',
     tagline: 'Khám phá 500+ từ vựng & muôn loài sinh động',
