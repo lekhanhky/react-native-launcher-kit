@@ -24,6 +24,7 @@ import { Riddle3DStageGrid } from '../components/riddles/Riddle3DStageGrid';
 import { RiddleLetterScramble } from '../components/riddles/RiddleLetterScramble';
 import { RiddleWorldMapModal } from '../components/riddles/RiddleWorldMapModal';
 import { RiddleTreasureModal } from '../components/riddles/RiddleTreasureModal';
+import { RiddleVersusBattleModal } from '../components/riddles/RiddleVersusBattleModal';
 import { VocabCard3DStage } from '../components/VocabCard3DStage';
 import { SoundPlayer } from '../components/SoundPlayer';
 import { riddleSoundService } from '../services/riddleSoundService';
@@ -54,6 +55,7 @@ export const RiddlesGameScreen: React.FC<RiddlesGameScreenProps> = ({ onClose })
   const [showWorldMap, setShowWorldMap] = useState<boolean>(false);
   const [showSuccessModal, setShowSuccessModal] = useState<boolean>(false);
   const [showTreasureModal, setShowTreasureModal] = useState<boolean>(false);
+  const [showVersusBattle, setShowVersusBattle] = useState<boolean>(false);
   const [mascotMessage, setMascotMessage] = useState<string>('Bé hãy lắng nghe câu thơ đố và tìm câu trả lời nhé!');
 
   // Animation đọc thơ
@@ -362,7 +364,34 @@ export const RiddlesGameScreen: React.FC<RiddlesGameScreenProps> = ({ onClose })
               },
             ]}
           >
-            🔍 Thám Tử (Ghép Chữ)
+            🔍 Thám Tử (Chữ)
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.modeTab,
+            {
+              backgroundColor: isLight ? '#FEF3C7' : '#78350F',
+              borderColor: '#F59E0B',
+              borderWidth: 1.5,
+            },
+          ]}
+          onPress={() => {
+            riddleSoundService.playPop();
+            setShowVersusBattle(true);
+          }}
+        >
+          <Text
+            style={[
+              styles.modeTabText,
+              {
+                color: isLight ? '#B45309' : '#FDE68A',
+                fontWeight: '900',
+              },
+            ]}
+          >
+            ⚔️ Đấu Trí 2P
           </Text>
         </TouchableOpacity>
       </View>
@@ -573,7 +602,13 @@ export const RiddlesGameScreen: React.FC<RiddlesGameScreenProps> = ({ onClose })
         }}
       />
 
-      {/* 10. Sound Player Fallback Engine */}
+      {/* 10. Modal Đấu Trí 2 Người (VS Battle Arena) */}
+      <RiddleVersusBattleModal
+        visible={showVersusBattle}
+        onClose={() => setShowVersusBattle(false)}
+      />
+
+      {/* 11. Sound Player Fallback Engine */}
       <SoundPlayer />
     </SafeAreaView>
   );
