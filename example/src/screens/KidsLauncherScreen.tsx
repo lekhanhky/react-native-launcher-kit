@@ -75,6 +75,7 @@ import { FourSeasonsGameScreen } from './FourSeasonsGameScreen';
 import { ContinentExplorerGameScreen } from './ContinentExplorerGameScreen';
 import { NatureExplorerGameScreen } from './NatureExplorerGameScreen';
 import { RiddlesGameScreen } from './RiddlesGameScreen';
+import { ShadowDetectiveScreen } from './ShadowDetectiveScreen';
 
 interface KidsLauncherScreenProps {
   onResetLicense: () => void;
@@ -391,6 +392,8 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
     switch (activeAppId) {
       case 'internal.game.riddles100':
         return <RiddlesGameScreen onClose={closeActiveApp} />;
+      case 'internal.game.shadowdetective':
+        return <ShadowDetectiveScreen onClose={closeActiveApp} />;
       case 'internal.game.flashcards':
         return <FlashcardGameScreen onClose={closeActiveApp} />;
       case 'internal.game.natureexplorer':

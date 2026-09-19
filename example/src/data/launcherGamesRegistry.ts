@@ -118,6 +118,17 @@ export const INTERNAL_GAMES_REGISTRY: LauncherGameItem[] = [
     rating: 5,
   },
   {
+    id: 'internal.game.shadowdetective',
+    title: 'Soi Bóng Đen',
+    category: 'puzzle',
+    iconEmoji: '🔦',
+    gradientColors: ['#6366F1', '#4F46E5'],
+    badge: 'MỚI • 3D',
+    badgeBg: '#10B981',
+    description: 'Đèn pin ma thuật soi bóng đoán hình',
+    rating: 5,
+  },
+  {
     id: 'internal.game.spaceshooter',
     title: 'Phi Hành Gia',
     category: 'puzzle',
