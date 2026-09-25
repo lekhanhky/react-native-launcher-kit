@@ -85,9 +85,9 @@ export const LauncherGameCard: React.FC<LauncherGameCardProps> = ({
           </Text>
 
           {/* SAO ĐÁNH GIÁ NHỎ */}
-          <View style={styles.starsRow}>
+          <Text style={styles.starsRow}>
             {'★'.repeat(game.rating || 4)}
-          </View>
+          </Text>
         </TouchableOpacity>
       </Animated.View>
     );
