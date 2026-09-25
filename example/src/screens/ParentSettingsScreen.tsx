@@ -39,6 +39,8 @@ import {
   extractYoutubeId,
   CinemaEntity,
 } from '../components/explorer/NatureCinemaModal';
+import { appConfigService } from '../services/appConfigService';
+import { INTERNAL_GAMES_REGISTRY, LauncherGameItem } from '../data/launcherGamesRegistry';
 
 interface ParentSettingsScreenProps {
   allApps: AppDetail[];
@@ -92,6 +94,27 @@ export const ParentSettingsScreen: React.FC<ParentSettingsScreenProps> = ({
     }
   }, [allApps]);
   const [appSearchQuery, setAppSearchQuery] = useState<string>('');
+  // Quản lý Bật / Tắt Game nội bộ Kids Wonder Park
+  const [appSubTab, setAppSubTab] = useState<'internal' | 'external'>('internal');
+  const [disabledInternalGames, setDisabledInternalGames] = useState<string[]>(() =>
+    appConfigService.getDisabledInternalGameIds()
+  );
+  const [gameSearchQuery, setGameSearchQuery] = useState<string>('');
+
+  const handleToggleInternalGame = async (gameId: string, enabled: boolean) => {
+    await appConfigService.setInternalGameEnabled(gameId, enabled);
+    setDisabledInternalGames(appConfigService.getDisabledInternalGameIds());
+    onRefreshPolicies();
+  };
+
+  const handleToggleAllInternalGames = async (enableAll: boolean) => {
+    for (const g of INTERNAL_GAMES_REGISTRY) {
+      await appConfigService.setInternalGameEnabled(g.id, enableAll);
+    }
+    setDisabledInternalGames(appConfigService.getDisabledInternalGameIds());
+    onRefreshPolicies();
+  };
+
   const [isAdminActive, setIsAdminActive] = useState<boolean>(false);
   const [remoteLocked, setRemoteLocked] = useState<boolean>(() => parentalRealtimeService.isEmergencyLocked());
   const [currentDeviceId, setCurrentDeviceId] = useState<string>(() => parentalRealtimeService.getDeviceId() || 'Đang nạp...');
@@ -574,6 +597,17 @@ export const ParentSettingsScreen: React.FC<ParentSettingsScreenProps> = ({
 
   const allowedAppsCount = allApps.filter((a) => !blockedPackages.includes(a.packageName)).length;
 
+  // Lọc game nội bộ theo tìm kiếm
+  const filteredInternalGames = INTERNAL_GAMES_REGISTRY.filter(
+    (game) =>
+      !gameSearchQuery.trim() ||
+      game.title.toLowerCase().includes(gameSearchQuery.toLowerCase()) ||
+      game.description.toLowerCase().includes(gameSearchQuery.toLowerCase()) ||
+      game.id.toLowerCase().includes(gameSearchQuery.toLowerCase())
+  );
+  const enabledInternalGamesCount = INTERNAL_GAMES_REGISTRY.length - disabledInternalGames.length;
+  const isAllInternalAllowed = disabledInternalGames.length === 0;
+
   return (
     <SafeAreaView style={styles.safeArea}>
       {/* HEADER CHÍNH */}
@@ -792,85 +826,203 @@ export const ParentSettingsScreen: React.FC<ParentSettingsScreenProps> = ({
               )}
             </View>
 
-            {/* 1.3. DANH SÁCH ỨNG DỤNG CHO PHÉP (WHITELIST) */}
-            <View style={styles.card}>
-              <View style={styles.cardHeaderRow}>
-                <Text style={styles.cardTitle}>📱 Ứng Dụng Hiển Thị Cho Bé</Text>
-                <Text style={styles.counterText}>
-                  {allowedAppsCount}/{allApps.length} app
+            {/* 1.4. BỘ CHỌN SUB-TAB: GAME NỘI BỘ vs APP CÀI NGOÀI */}
+            <View style={styles.appSubTabRow}>
+              <TouchableOpacity
+                style={[
+                  styles.appSubTabBtn,
+                  appSubTab === 'internal' && styles.appSubTabBtnActive,
+                ]}
+                onPress={() => setAppSubTab('internal')}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.appSubTabIcon}>🎮</Text>
+                <Text
+                  style={[
+                    styles.appSubTabText,
+                    appSubTab === 'internal' && styles.appSubTabTextActive,
+                  ]}
+                >
+                  Game Nội Bộ ({enabledInternalGamesCount}/{INTERNAL_GAMES_REGISTRY.length})
                 </Text>
-              </View>
-              <Text style={styles.cardDesc}>
-                Chỉ những ứng dụng được gạt công tắc MÀU XANH mới hiển thị trên màn hình của bé.
-              </Text>
+              </TouchableOpacity>
 
-              {/* Thanh tìm kiếm app */}
-              <TextInput
-                style={styles.searchInput}
-                placeholder="🔍 Tìm kiếm ứng dụng theo tên hoặc package..."
-                value={appSearchQuery}
-                onChangeText={setAppSearchQuery}
-              />
+              <TouchableOpacity
+                style={[
+                  styles.appSubTabBtn,
+                  appSubTab === 'external' && styles.appSubTabBtnActive,
+                ]}
+                onPress={() => setAppSubTab('external')}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.appSubTabIcon}>📱</Text>
+                <Text
+                  style={[
+                    styles.appSubTabText,
+                    appSubTab === 'external' && styles.appSubTabTextActive,
+                  ]}
+                >
+                  App Cài Ngoài ({allowedAppsCount}/{allApps.length})
+                </Text>
+              </TouchableOpacity>
+            </View>
 
-              {/* TOGGLE CHO PHÉP / TẮT TẤT CẢ ỨNG DỤNG */}
-              <View style={styles.toggleAllAppsCard}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.toggleAllAppsTitle}>
-                    {isAllAppsAllowed ? 'Cho phép tất cả ứng dụng' : 'Bật / Tắt tất cả ứng dụng'}
-                  </Text>
-                  <Text style={styles.toggleAllAppsSub}>
-                    {isAllAppsAllowed
-                      ? `Đang bật tất cả (${allowedAppsCount}/${allApps.length} app)`
-                      : `Gạt công tắc để bật nhanh tất cả ứng dụng cho bé`}
+            {/* SUB-TAB 1: TRÒ CHƠI & TÍNH NĂNG NỘI BỘ (KIDS PARK) */}
+            {appSubTab === 'internal' && (
+              <View style={styles.card}>
+                <View style={styles.cardHeaderRow}>
+                  <Text style={styles.cardTitle}>🎮 Trò Chơi & Tiện Ích Nội Bộ</Text>
+                  <Text style={styles.counterText}>
+                    {enabledInternalGamesCount}/{INTERNAL_GAMES_REGISTRY.length} game
                   </Text>
                 </View>
-                <Switch
-                  value={isAllAppsAllowed}
-                  onValueChange={toggleAllApps}
-                  trackColor={{ false: '#CBD5E1', true: '#86EFAC' }}
-                  thumbColor={isAllAppsAllowed ? '#16A34A' : '#F1F5F9'}
-                />
-              </View>
+                <Text style={styles.cardDesc}>
+                  Bật/tắt từng trò chơi 3D, câu đố hoặc công cụ học tập hiển thị trên màn hình /home của bé.
+                </Text>
 
-              {filteredApps.map((app) => {
-                const isAllowed = !blockedPackages.includes(app.packageName);
-                return (
-                  <View key={app.packageName} style={styles.appRow}>
-                    {app.icon ? (
-                      <Image
-                        source={{
-                          uri:
-                            app.icon.startsWith('file://') ||
-                            app.icon.startsWith('data:') ||
-                            app.icon.startsWith('http')
-                              ? app.icon
-                              : `data:image/png;base64,${app.icon}`,
-                        }}
-                        style={styles.appSettingsIcon}
-                      />
-                    ) : (
-                      <View style={[styles.appSettingsIcon, styles.appPlaceholderIcon]}>
-                        <Text style={{ fontSize: 16 }}>📱</Text>
-                      </View>
-                    )}
-                    <View style={styles.appInfo}>
-                      <Text style={styles.appName} numberOfLines={1}>
-                        {app.label}
-                      </Text>
-                      <Text style={styles.appPackage} numberOfLines={1}>
-                        {app.packageName}
-                      </Text>
-                    </View>
-                    <Switch
-                      value={isAllowed}
-                      onValueChange={() => toggleAppVisibility(app.packageName)}
-                      trackColor={{ false: '#CBD5E1', true: '#86EFAC' }}
-                      thumbColor={isAllowed ? '#16A34A' : '#F1F5F9'}
-                    />
+                {/* Tìm kiếm Game nội bộ */}
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="🔍 Tìm kiếm game nội bộ theo tên hoặc mô tả..."
+                  value={gameSearchQuery}
+                  onChangeText={setGameSearchQuery}
+                />
+
+                {/* TOGGLE CHO PHÉP / TẮT TẤT CẢ GAME NỘI BỘ */}
+                <View style={styles.toggleAllAppsCard}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.toggleAllAppsTitle}>
+                      {isAllInternalAllowed ? 'Bật tất cả trò chơi nội bộ' : 'Bật / Tắt tất cả game nội bộ'}
+                    </Text>
+                    <Text style={styles.toggleAllAppsSub}>
+                      {isAllInternalAllowed
+                        ? `Đang bật toàn bộ (${enabledInternalGamesCount}/${INTERNAL_GAMES_REGISTRY.length} game)`
+                        : `Gạt công tắc để mở nhanh toàn bộ game nội bộ cho bé`}
+                    </Text>
                   </View>
-                );
-              })}
-            </View>
+                  <Switch
+                    value={isAllInternalAllowed}
+                    onValueChange={handleToggleAllInternalGames}
+                    trackColor={{ false: '#CBD5E1', true: '#86EFAC' }}
+                    thumbColor={isAllInternalAllowed ? '#16A34A' : '#F1F5F9'}
+                  />
+                </View>
+
+                {filteredInternalGames.map((game) => {
+                  const isAllowed = !disabledInternalGames.includes(game.id);
+                  return (
+                    <View key={game.id} style={styles.appRow}>
+                      <View style={styles.gameIconEmojiBox}>
+                        <Text style={styles.gameIconEmoji}>{game.iconEmoji || '🎮'}</Text>
+                      </View>
+                      <View style={styles.appInfo}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <Text style={styles.appName} numberOfLines={1}>
+                            {game.title}
+                          </Text>
+                          {game.badge ? (
+                            <View style={styles.gameBadgeTag}>
+                              <Text style={styles.gameBadgeTagText}>{game.badge}</Text>
+                            </View>
+                          ) : null}
+                        </View>
+                        <Text style={styles.appPackage} numberOfLines={1}>
+                          {game.description}
+                        </Text>
+                      </View>
+                      <Switch
+                        value={isAllowed}
+                        onValueChange={(val) => handleToggleInternalGame(game.id, val)}
+                        trackColor={{ false: '#CBD5E1', true: '#86EFAC' }}
+                        thumbColor={isAllowed ? '#16A34A' : '#F1F5F9'}
+                      />
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+
+            {/* SUB-TAB 2: ỨNG DỤNG ANDROID CÀI NGOÀI */}
+            {appSubTab === 'external' && (
+              <View style={styles.card}>
+                <View style={styles.cardHeaderRow}>
+                  <Text style={styles.cardTitle}>📱 Ứng Dụng Hiển Thị Cho Bé</Text>
+                  <Text style={styles.counterText}>
+                    {allowedAppsCount}/{allApps.length} app
+                  </Text>
+                </View>
+                <Text style={styles.cardDesc}>
+                  Chỉ những ứng dụng được gạt công tắc MÀU XANH mới hiển thị trên màn hình của bé.
+                </Text>
+
+                {/* Thanh tìm kiếm app */}
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="🔍 Tìm kiếm ứng dụng theo tên hoặc package..."
+                  value={appSearchQuery}
+                  onChangeText={setAppSearchQuery}
+                />
+
+                {/* TOGGLE CHO PHÉP / TẮT TẤT CẢ ỨNG DỤNG */}
+                <View style={styles.toggleAllAppsCard}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.toggleAllAppsTitle}>
+                      {isAllAppsAllowed ? 'Cho phép tất cả ứng dụng' : 'Bật / Tắt tất cả ứng dụng'}
+                    </Text>
+                    <Text style={styles.toggleAllAppsSub}>
+                      {isAllAppsAllowed
+                        ? `Đang bật tất cả (${allowedAppsCount}/${allApps.length} app)`
+                        : `Gạt công tắc để bật nhanh tất cả ứng dụng cho bé`}
+                    </Text>
+                  </View>
+                  <Switch
+                    value={isAllAppsAllowed}
+                    onValueChange={toggleAllApps}
+                    trackColor={{ false: '#CBD5E1', true: '#86EFAC' }}
+                    thumbColor={isAllAppsAllowed ? '#16A34A' : '#F1F5F9'}
+                  />
+                </View>
+
+                {filteredApps.map((app) => {
+                  const isAllowed = !blockedPackages.includes(app.packageName);
+                  return (
+                    <View key={app.packageName} style={styles.appRow}>
+                      {app.icon ? (
+                        <Image
+                          source={{
+                            uri:
+                              app.icon.startsWith('file://') ||
+                              app.icon.startsWith('data:') ||
+                              app.icon.startsWith('http')
+                               ? app.icon
+                                : `data:image/png;base64,${app.icon}`,
+                          }}
+                          style={styles.appSettingsIcon}
+                        />
+                      ) : (
+                        <View style={[styles.appSettingsIcon, styles.appPlaceholderIcon]}>
+                          <Text style={{ fontSize: 16 }}>📱</Text>
+                        </View>
+                      )}
+                      <View style={styles.appInfo}>
+                        <Text style={styles.appName} numberOfLines={1}>
+                          {app.label}
+                        </Text>
+                        <Text style={styles.appPackage} numberOfLines={1}>
+                          {app.packageName}
+                        </Text>
+                      </View>
+                      <Switch
+                        value={isAllowed}
+                        onValueChange={() => toggleAppVisibility(app.packageName)}
+                        trackColor={{ false: '#CBD5E1', true: '#86EFAC' }}
+                        thumbColor={isAllowed ? '#16A34A' : '#F1F5F9'}
+                      />
+                    </View>
+                  );
+                })}
+              </View>
+            )}
           </>
         )}
 
@@ -3068,5 +3220,66 @@ const styles = StyleSheet.create({
     marginTop: 4,
     marginBottom: 20,
     paddingHorizontal: 10,
+  },
+  /* APP SUB-TAB & GAME ROW STYLES */
+  appSubTabRow: {
+    flexDirection: 'row',
+    backgroundColor: '#F1F5F9',
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 16,
+    gap: 6,
+  },
+  appSubTabBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 10,
+    gap: 6,
+  },
+  appSubTabBtnActive: {
+    backgroundColor: '#2563EB',
+    shadowColor: '#2563EB',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  appSubTabIcon: {
+    fontSize: 16,
+  },
+  appSubTabText: {
+    fontSize: 12.5,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  appSubTabTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+  },
+  gameIconEmojiBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#EEF2FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  gameIconEmoji: {
+    fontSize: 24,
+  },
+  gameBadgeTag: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#F3E8FF',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  gameBadgeTagText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#7C3AED',
   },
 });

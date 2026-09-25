@@ -23,6 +23,7 @@ import { parentalRealtimeService } from '../services/parentalRealtimeService';
 import { ThemeConfig, themeService } from '../services/themes';
 import { KidsWallpaper, wallpaperService } from '../services/wallpapers';
 import { youtubeService } from '../services/youtubeService';
+import { appConfigService } from '../services/appConfigService';
 import { ThemeSelectorModal } from '../components/ThemeSelectorModal';
 import { LockOverlay } from '../components/LockOverlay';
 import { ParentPinModal } from '../components/ParentPinModal';
@@ -111,6 +112,11 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
 
   // Tab phân loại danh mục
   const [selectedCategory, setSelectedCategory] = useState<LauncherCategoryType>('all');
+
+  // Danh sách ID game nội bộ bị tắt
+  const [disabledInternalGameIds, setDisabledInternalGameIds] = useState<string[]>(() =>
+    appConfigService.getDisabledInternalGameIds()
+  );
 
   // Router điều hướng mở game/màn hình tập trung (Active ID Router)
   const [activeAppId, setActiveAppId] = useState<string | null>(null);
@@ -269,10 +275,16 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
       }
     );
 
+    const unsubscribeConfig = appConfigService.subscribe(() => {
+      setDisabledInternalGameIds(appConfigService.getDisabledInternalGameIds());
+      loadApps();
+    });
+
     return () => {
       clearInterval(interval);
       appStateSub.remove();
       unsubscribeRealtime();
+      unsubscribeConfig();
     };
   }, [loadApps, evaluateSchedule]);
 
@@ -323,6 +335,14 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
       return;
     }
 
+    if (!appConfigService.isItemEnabled(packageName)) {
+      Alert.alert(
+        'Tạm Khóa',
+        'Trò chơi / Ứng dụng này đang được phụ huynh tạm khóa trên màn hình chính.'
+      );
+      return;
+    }
+
     if (packageName.startsWith('internal.')) {
       setActiveAppId(packageName);
       return;
@@ -348,6 +368,10 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
     const isYouTubeAllowed = youtubeService.isYouTubeEnabled();
 
     const filteredGames = INTERNAL_GAMES_REGISTRY.filter((game) => {
+      // Ẩn nếu game bị phụ huynh tạm khóa
+      if (disabledInternalGameIds.includes(game.id)) {
+        return false;
+      }
       if (game.id === 'internal.safe.youtube' && !isYouTubeAllowed) {
         return false;
       }
@@ -369,7 +393,7 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
     }
 
     return gameItems;
-  }, [selectedCategory, allowedExternalApps]);
+  }, [selectedCategory, allowedExternalApps, disabledInternalGameIds]);
 
   // 7. Render màn hình cài đặt phụ huynh nếu đang mở
   if (showSettingsScreen) {
@@ -523,7 +547,10 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
           ListHeaderComponent={
             <View>
               {/* HERO BANNER NHIỆM VỤ HÔM NAY */}
-              <LauncherHeroBanner onLaunchGame={handleLaunchApp} />
+              <LauncherHeroBanner
+                onLaunchGame={handleLaunchApp}
+                disabledGameIds={disabledInternalGameIds}
+              />
 
               {/* THANH TAB PHÂN LOẠI DANH MỤC */}
               <LauncherCategoryTabs
@@ -567,6 +594,7 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
         <LauncherBottomDock
           onLaunchGame={handleLaunchApp}
           theme={currentTheme}
+          disabledGameIds={disabledInternalGameIds}
         />
 
         {/* MODALS BẢO MẬT & HỆ THỐNG */}

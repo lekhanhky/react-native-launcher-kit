@@ -42,9 +42,11 @@ export interface AppCatalogItem {
   package_name: string;
   app_name: string;
   icon_url?: string;
+  icon_emoji?: string;
   category: string;
   age_group?: string;
   is_enabled: boolean;
+  is_internal?: boolean;
   description?: string;
 }
 
