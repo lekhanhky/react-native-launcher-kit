@@ -273,7 +273,7 @@ export default function ParentChildrenPage() {
             </div>
 
             <p className="text-xs text-slate-600 dark:text-slate-400 mb-4">
-              Mở Launcher trên máy tính bảng bé $\rightarrow$ Cài đặt Phụ huynh $\rightarrow$ Chọn &apos;Liên Kết&apos; và quét mã QR hoặc nhập mã 6 số này:
+              Mở Launcher trên máy tính bảng bé ? Cài đặt Phụ huynh ? Chọn &apos;Liên Kết&apos; và quét mã QR hoặc nhập mã 6 số này:
             </p>
 
             <div className="p-4 rounded-2xl bg-white dark:bg-slate-950 border border-indigo-200 dark:border-indigo-500/40 text-center mb-4 shadow-sm">
