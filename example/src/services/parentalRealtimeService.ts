@@ -50,9 +50,45 @@ class ParentalRealtimeService {
         const locked = Boolean(policy.is_emergency_locked);
         const msg = policy.lock_message || this.currentLockMessage;
         this.updateLockState(locked, msg);
+      } else {
+        // Tự động tạo bản ghi ban đầu trên Supabase nếu chưa tồn tại
+        await this.registerInitialDevice();
       }
     } catch (err) {
       console.warn('[RealtimeLock] Initial check error:', err);
+    }
+  }
+
+  /**
+   * Đăng ký thiết bị ban đầu trên cơ sở dữ liệu Supabase
+   */
+  private async registerInitialDevice() {
+    if (!this.currentDeviceId) return;
+    try {
+      await supabaseClient.upsert(
+        'parental_policies',
+        {
+          device_id: this.currentDeviceId,
+          is_emergency_locked: false,
+          lock_message: this.currentLockMessage,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'device_id' }
+      );
+
+      await supabaseClient.upsert(
+        'devices',
+        {
+          device_id: this.currentDeviceId,
+          device_name: 'Máy tính bảng của Bé',
+          device_model: 'Android Tablet',
+          license_status: 'active',
+          last_sync_at: new Date().toISOString(),
+        },
+        { onConflict: 'device_id' }
+      );
+    } catch (e) {
+      console.warn('[RealtimeLock] Register initial device error:', e);
     }
   }
 
@@ -244,6 +280,18 @@ class ParentalRealtimeService {
       console.warn('[RealtimeLock] setRemoteLock error:', e);
       return false;
     }
+  }
+
+  /**
+   * Mở khóa trên thiết bị cục bộ (khi phụ huynh nhập mã PIN thành công trên máy bé)
+   * và đồng bộ trạng thái mở khóa ngược lại Supabase Realtime cho Cổng Phụ Huynh.
+   */
+  async unlockLocally(): Promise<boolean> {
+    this.updateLockState(false);
+    if (this.currentDeviceId) {
+      return this.setRemoteLock(this.currentDeviceId, false, '');
+    }
+    return true;
   }
 
   getDeviceId(): string | null {

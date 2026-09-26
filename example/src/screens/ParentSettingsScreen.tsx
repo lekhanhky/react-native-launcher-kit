@@ -713,11 +713,25 @@ export const ParentSettingsScreen: React.FC<ParentSettingsScreenProps> = ({
                   thumbColor={remoteLocked ? '#DC2626' : '#F1F5F9'}
                 />
               </View>
-              <Text style={styles.cardDesc}>
-                Mã thiết bị (Device ID): <Text style={{ fontWeight: 'bold', color: '#1E293B' }}>{currentDeviceId}</Text>
-              </Text>
-              <Text style={{ fontSize: 11, color: '#64748B', marginTop: 4 }}>
-                Khi gạt công tắc này từ App/Web Phụ huynh, máy tính bảng của bé sẽ nhận tín hiệu WebSocket và khóa màn hình ngay tức thì (&lt; 1 giây).
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 6, flexWrap: 'wrap', gap: 6 }}>
+                <Text style={styles.cardDesc}>
+                  Mã thiết bị: <Text style={{ fontWeight: 'bold', color: '#1E293B', fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace' }}>{currentDeviceId}</Text>
+                </Text>
+                <TouchableOpacity
+                  onPress={() => {
+                    Alert.alert(
+                      '📱 Kết Nối Cổng Phụ Huynh',
+                      `Mã thiết bị của bé:\n👉 ${currentDeviceId}\n\nCách dùng:\n1. Mở Cổng Phụ Huynh trên trình duyệt máy tính/điện thoại (http://localhost:3001/parent/dashboard)\n2. Chọn hoặc nhập mã thiết bị trên.\n3. Nhấn "KHÓA MÁY KHẨN CẤP" để khóa máy bé ngay tức thì qua Realtime WebSocket (< 1s)!`
+                    );
+                  }}
+                  style={{ backgroundColor: '#EEF2FF', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, borderWidth: 1, borderColor: '#C7D2FE' }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: '#4F46E5' }}>📋 Hướng Dẫn Ghép Đôi</Text>
+                </TouchableOpacity>
+              </View>
+              <Text style={{ fontSize: 11, color: '#64748B', marginTop: 6 }}>
+                Khi nhấn "KHÓA MÁY KHẨN CẤP" từ Web Cổng Phụ Huynh, thiết bị của bé sẽ nhận tín hiệu WebSocket và hiển thị màn hình khóa bảo vệ ngay tức thì (&lt; 1 giây).
               </Text>
             </View>
 

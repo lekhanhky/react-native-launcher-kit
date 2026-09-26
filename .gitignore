@@ -79,3 +79,13 @@ dist/
 /*.png
 example/*.png
 
+# Next.js build output & cache
+.next/
+web-portal/.next/
+out/
+
+# Agent local files
+.agents/
+
+
+

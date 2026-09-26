@@ -357,6 +357,8 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
     if (pinAction === 'unlock_temp') {
       setIsTempUnlocked(true);
       setIsLocked(false);
+      // Đồng bộ trạng thái mở khóa ngược lại Supabase Realtime cho Cổng Phụ Huynh
+      parentalRealtimeService.unlockLocally();
       Alert.alert('Thành công', 'Đã mở khóa thiết bị tạm thời cho phiên này!');
     } else {
       setShowSettingsScreen(true);
