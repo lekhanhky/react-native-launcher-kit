@@ -20,8 +20,10 @@ import {
   Check,
   X,
   Radio,
+  QrCode,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import QrScannerModal, { QrPairingPayload } from '@/components/QrScannerModal';
 
 interface DeviceItem {
   device_id: string;
@@ -43,6 +45,7 @@ export default function ParentDashboardPage() {
   // Modal đổi/nhập Device ID
   const [isDeviceModalOpen, setIsDeviceModalOpen] = useState(false);
   const [customDeviceIdInput, setCustomDeviceIdInput] = useState('');
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
 
   // 1. Tải danh sách thiết bị và ID đã lưu từ localStorage
   useEffect(() => {
@@ -232,6 +235,33 @@ export default function ParentDashboardPage() {
     setCustomDeviceIdInput('');
     setIsDeviceModalOpen(false);
     fetchDevices();
+  };
+
+  const handleScanSuccess = async (payload: QrPairingPayload) => {
+    try {
+      const res = await fetch('/api/v1/device/pair', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          device_id: payload.device_id,
+          device_name: payload.device_name || 'Máy tính bảng của Bé',
+        }),
+      });
+      const result = await res.json();
+      if (result.success) {
+        setSelectedDeviceId(payload.device_id);
+        localStorage.setItem('parent_active_device_id', payload.device_id);
+        setLockToast(`✨ Đã ghép nối và chuyển sang thiết bị: ${payload.device_name || payload.device_id}`);
+        setTimeout(() => setLockToast(null), 5000);
+        await fetchDevices();
+      } else {
+        setLockToast(`❌ Ghép nối thất bại: ${result.error || 'Lỗi không xác định'}`);
+        setTimeout(() => setLockToast(null), 5000);
+      }
+    } catch (err: any) {
+      setLockToast(`❌ Lỗi mạng: ${err.message}`);
+      setTimeout(() => setLockToast(null), 5000);
+    }
   };
 
   const currentDevice = availableDevices.find((d) => d.device_id === selectedDeviceId) || {
@@ -514,6 +544,18 @@ export default function ParentDashboardPage() {
               Chọn máy tính bảng / điện thoại của bé để gửi lệnh khóa và nhận báo cáo thời gian dùng:
             </p>
 
+            {/* Nút Quét QR kết nối thiết bị mới */}
+            <button
+              type="button"
+              onClick={() => {
+                setIsDeviceModalOpen(false);
+                setIsScannerOpen(true);
+              }}
+              className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 active:scale-[0.99] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20 transition cursor-pointer"
+            >
+              <QrCode className="w-4 h-4" /> Quét QR kết nối thiết bị mới
+            </button>
+
             {/* Danh sách thiết bị có sẵn */}
             <div className="space-y-2 max-h-56 overflow-y-auto">
               {availableDevices.map((dev) => (
@@ -561,6 +603,13 @@ export default function ParentDashboardPage() {
           </div>
         </div>
       )}
+
+      {/* QR SCANNER MODAL */}
+      <QrScannerModal
+        isOpen={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+        onScanSuccess={handleScanSuccess}
+      />
     </div>
   );
 }
