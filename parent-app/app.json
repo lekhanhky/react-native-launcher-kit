@@ -1,0 +1,38 @@
+{
+  "expo": {
+    "name": "Kids Launcher Phụ Huynh",
+    "slug": "kids-launcher-parent",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "kidsparentapp",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#0f172a"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Ứng dụng cần quyền sử dụng camera để quét mã QR liên kết thiết bị của bé."
+      }
+    },
+    "android": {
+      "package": "com.kidslauncher.parent",
+      "permissions": [
+        "CAMERA"
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Cho phép ứng dụng sử dụng Camera để quét mã QR kết nối máy của bé."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
