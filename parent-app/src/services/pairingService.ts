@@ -7,24 +7,36 @@ export function parseQrCode(rawText: string): QrPairingPayload | null {
 
   try {
     const parsed = JSON.parse(trimmed);
-    if (parsed && parsed.deviceId && parsed.type === 'KIDS_LAUNCHER_PAIRING') {
-      return {
-        type: 'KIDS_LAUNCHER_PAIRING',
-        deviceId: String(parsed.deviceId).trim(),
-        deviceName: parsed.deviceName ? String(parsed.deviceName).trim() : 'Máy tính bảng của Bé',
-        timestamp: parsed.timestamp || Date.now(),
-      };
+    if (parsed && typeof parsed === 'object') {
+      const resolvedDeviceId = parsed.deviceId || parsed.device_id;
+      const isActionValid =
+        parsed.type === 'KIDS_LAUNCHER_PAIRING' ||
+        parsed.action === 'KIDS_LAUNCHER_PAIR' ||
+        Boolean(resolvedDeviceId);
+
+      if (resolvedDeviceId && isActionValid) {
+        return {
+          type: 'KIDS_LAUNCHER_PAIRING',
+          deviceId: String(resolvedDeviceId).trim(),
+          deviceName: (parsed.deviceName || parsed.device_name)
+            ? String(parsed.deviceName || parsed.device_name).trim()
+            : 'Máy tính bảng của Bé',
+          timestamp: parsed.timestamp || parsed.created_at || Date.now(),
+        };
+      }
     }
   } catch {
-    // Fallback: nếu quét trúng chuỗi plain deviceId hợp lệ (dev_... hoặc chuỗi id)
-    if (trimmed.startsWith('dev_') || (trimmed.length >= 6 && /^[a-zA-Z0-9_-]+$/.test(trimmed))) {
-      return {
-        type: 'KIDS_LAUNCHER_PAIRING',
-        deviceId: trimmed,
-        deviceName: 'Máy tính bảng của Bé',
-        timestamp: Date.now(),
-      };
-    }
+    // Không phải JSON, tiếp tục kiểm tra fallback chuỗi
+  }
+
+  // Fallback: nếu quét hoặc nhập trúng chuỗi plain deviceId / mã 6 số hợp lệ
+  if (trimmed.length >= 4 && /^[a-zA-Z0-9_\-\.:]+$/.test(trimmed)) {
+    return {
+      type: 'KIDS_LAUNCHER_PAIRING',
+      deviceId: trimmed,
+      deviceName: 'Máy tính bảng của Bé',
+      timestamp: Date.now(),
+    };
   }
 
   return null;

@@ -24,6 +24,29 @@ describe('Pairing Service QR Decoding', () => {
     expect(result?.type).toBe('KIDS_LAUNCHER_PAIRING');
   });
 
+  it('should parse tablet LicenseActivationScreen QR format (action and device_id)', () => {
+    const tabletPayload = JSON.stringify({
+      action: 'KIDS_LAUNCHER_PAIR',
+      v: 1,
+      device_id: 'DEV-A9B2-C3D4',
+      device_name: 'Galaxy Tab của Bé',
+      created_at: 1727448888000,
+    });
+
+    const result = parseQrCode(tabletPayload);
+    expect(result).not.toBeNull();
+    expect(result?.deviceId).toBe('DEV-A9B2-C3D4');
+    expect(result?.deviceName).toBe('Galaxy Tab của Bé');
+    expect(result?.type).toBe('KIDS_LAUNCHER_PAIRING');
+  });
+
+  it('should parse direct 6-digit or alphanumeric manual code', () => {
+    const manualCode = '784920';
+    const result = parseQrCode(manualCode);
+    expect(result).not.toBeNull();
+    expect(result?.deviceId).toBe('784920');
+  });
+
   it('should return null for invalid non-launcher payload', () => {
     const randomUrl = 'https://google.com';
     const result = parseQrCode(randomUrl);

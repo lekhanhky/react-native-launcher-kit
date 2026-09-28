@@ -81,7 +81,7 @@ export default function PairDeviceModal() {
     try {
       const payload = parseQrCode(trimmed) || {
         type: 'KIDS_LAUNCHER_PAIRING' as const,
-        deviceId: trimmed.startsWith('dev_') ? trimmed : `dev_${trimmed}`,
+        deviceId: trimmed,
         deviceName: 'Máy tính bảng của Bé',
         timestamp: Date.now(),
       };
