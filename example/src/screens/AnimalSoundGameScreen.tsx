@@ -22,6 +22,8 @@ import {
   QuizType,
 } from '../services/animalSoundService';
 import { SoundPlayer, soundManager } from '../components/SoundPlayer';
+import { AnimalImage } from '../components/AnimalImage';
+import { animalLibrary } from '../libraries/animalLibrary';
 
 interface AnimalSoundGameScreenProps {
   theme?: ThemeConfig;
@@ -468,9 +470,16 @@ export const AnimalSoundGameScreen: React.FC<AnimalSoundGameScreenProps> = ({ on
                   onPress={() => triggerSoundAnimation(currentAnimal.sound_mp3_url, currentAnimal.sound_text_vi)}
                   activeOpacity={0.85}
                 >
-                  <Text style={styles.speakerIcon}>
-                    {quizType === 'sound' ? '📢' : currentAnimal.emoji}
-                  </Text>
+                  {quizType === 'sound' ? (
+                    <Text style={styles.speakerIcon}>📢</Text>
+                  ) : (
+                    <AnimalImage
+                      id={currentAnimal.id}
+                      size={84}
+                      rounded
+                      style={{ marginBottom: 6 }}
+                    />
+                  )}
                   <Text style={styles.tapToHearText}>
                     {quizType === 'sound' ? 'Chạm nghe lại' : 'Nhấn để nghe'}
                   </Text>
@@ -562,7 +571,12 @@ export const AnimalSoundGameScreen: React.FC<AnimalSoundGameScreenProps> = ({ on
                       onPress={() => handleSelectOption(animalOpt)}
                       disabled={isAnswering && isCorrect === true}
                     >
-                      <Text style={styles.choiceEmoji}>{animalOpt.emoji}</Text>
+                      <AnimalImage
+                        id={animalOpt.id}
+                        size={58}
+                        rounded
+                        style={{ marginBottom: 6 }}
+                      />
                       <Text style={styles.choiceName} numberOfLines={2}>
                         {renderAnimalName(animalOpt)}
                       </Text>
@@ -729,7 +743,12 @@ export const AnimalSoundGameScreen: React.FC<AnimalSoundGameScreenProps> = ({ on
                       setDetailAnimal(item);
                     }}
                   >
-                    <Text style={styles.explorerEmoji}>{item.emoji}</Text>
+                    <AnimalImage
+                      id={item.id}
+                      size={68}
+                      rounded
+                      style={{ marginBottom: 8 }}
+                    />
                     <Text style={styles.explorerName} numberOfLines={1}>
                       {languageMode === 'en' ? item.name_en : item.name_vi}
                     </Text>
@@ -774,7 +793,13 @@ export const AnimalSoundGameScreen: React.FC<AnimalSoundGameScreenProps> = ({ on
                 <Text style={styles.detailCloseBtnText}>✕</Text>
               </TouchableOpacity>
 
-              <Text style={styles.detailEmoji}>{detailAnimal.emoji}</Text>
+              <AnimalImage
+                id={detailAnimal.id}
+                size={110}
+                rounded
+                style={{ marginBottom: 12, alignSelf: 'center' }}
+                showSoundButton
+              />
               <Text style={styles.detailTitleVi}>{detailAnimal.name_vi}</Text>
               <Text style={styles.detailTitleEn}>
                 {detailAnimal.name_en} <Text style={styles.detailIpa}>{detailAnimal.phonetic_en}</Text>

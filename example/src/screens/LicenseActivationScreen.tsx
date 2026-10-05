@@ -39,15 +39,12 @@ export const LicenseActivationScreen: React.FC<LicenseActivationScreenProps> = (
     licenseService.getDeviceUniqueId().then(setDeviceId);
   }, []);
 
-  // 2. Chuẩn bị QR Payload chuẩn JSON
+  // 2. Chuẩn bị QR Payload chuẩn JSON (ngắn gọn để điểm ảnh to rõ, bắt nét tức thì)
   const qrPayload = useMemo(() => {
     if (!deviceId) return '';
     return JSON.stringify({
       action: 'KIDS_LAUNCHER_PAIR',
-      v: 1,
       device_id: deviceId,
-      device_name: 'Galaxy Tab của Bé',
-      created_at: createdAtRef.current,
     });
   }, [deviceId]);
 

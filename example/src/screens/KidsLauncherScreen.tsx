@@ -196,13 +196,16 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
 
   // 2. Đánh giá giờ chơi và thời gian còn lại
   const evaluateSchedule = useCallback(() => {
-    if (isTempUnlocked) {
-      setIsLocked(false);
+    // ƯU TIÊN SỐ 1: Lệnh khóa từ xa của phụ huynh luôn có hiệu lực tối thượng
+    if (parentalRealtimeService.isEmergencyLocked()) {
+      setIsLocked(true);
+      setLockReason(parentalRealtimeService.getLockMessage());
       return;
     }
 
-    if (parentalRealtimeService.isEmergencyLocked()) {
-      setIsLocked(true);
+    // ƯU TIÊN SỐ 2: Mở khóa tạm thời bằng mã PIN (chỉ có tác dụng với khóa lịch trình)
+    if (isTempUnlocked) {
+      setIsLocked(false);
       return;
     }
 
@@ -267,9 +270,11 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
     const unsubscribeRealtime = parentalRealtimeService.subscribeToRemoteLock(
       (emergencyLocked, message) => {
         if (emergencyLocked) {
+          setIsTempUnlocked(false);
           setIsLocked(true);
-          setLockReason(message || 'Lệnh khóa khẩn cấp từ phụ huynh.');
+          setLockReason(message || parentalRealtimeService.getLockMessage());
         } else {
+          setIsTempUnlocked(false);
           evaluateSchedule();
         }
       }
@@ -592,12 +597,14 @@ export const KidsLauncherScreen: React.FC<KidsLauncherScreenProps> = ({
           }
         />
 
-        {/* 5. QUICK BOTTOM DOCK CỐ ĐỊNH */}
-        <LauncherBottomDock
-          onLaunchGame={handleLaunchApp}
-          theme={currentTheme}
-          disabledGameIds={disabledInternalGameIds}
-        />
+        {/* 5. QUICK BOTTOM DOCK CỐ ĐỊNH (ẨN KHI ĐANG KHÓA) */}
+        {!isLocked && (
+          <LauncherBottomDock
+            onLaunchGame={handleLaunchApp}
+            theme={currentTheme}
+            disabledGameIds={disabledInternalGameIds}
+          />
+        )}
 
         {/* MODALS BẢO MẬT & HỆ THỐNG */}
         <ThemeSelectorModal

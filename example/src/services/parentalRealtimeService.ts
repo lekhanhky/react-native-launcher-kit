@@ -4,6 +4,7 @@
  */
 import { SUPABASE_URL, SUPABASE_ANON_KEY, supabaseClient } from './supabaseClient';
 import { licenseService } from './licenseService';
+import { storage, STORAGE_KEYS } from './storage';
 
 export type LockListener = (isLocked: boolean, lockMessage?: string) => void;
 
@@ -14,8 +15,10 @@ class ParentalRealtimeService {
   private reconnectTimer: NodeJS.Timeout | null = null;
   private listeners: Set<LockListener> = new Set();
   private currentDeviceId: string | null = null;
-  private currentLockedState = false;
-  private currentLockMessage = 'Ba mẹ đã tạm khóa thiết bị từ xa. Bé hãy nghỉ ngơi nhé!';
+  private currentLockedState = storage.getBoolean(STORAGE_KEYS.IS_EMERGENCY_LOCKED) || false;
+  private currentLockMessage =
+    storage.getString(STORAGE_KEYS.EMERGENCY_LOCK_MESSAGE) ||
+    'Ba mẹ đã tạm khóa thiết bị từ xa. Bé hãy nghỉ ngơi nhé!';
   private refCounter = 1;
 
   constructor() {
@@ -50,8 +53,8 @@ class ParentalRealtimeService {
         const locked = Boolean(policy.is_emergency_locked);
         const msg = policy.lock_message || this.currentLockMessage;
         this.updateLockState(locked, msg);
-      } else {
-        // Tự động tạo bản ghi ban đầu trên Supabase nếu chưa tồn tại
+      } else if (!res.error && res.data && res.data.length === 0) {
+        // Tự động tạo bản ghi ban đầu trên Supabase CHỈ KHI chắc chắn chưa có bản ghi
         await this.registerInitialDevice();
       }
     } catch (err) {
@@ -65,11 +68,21 @@ class ParentalRealtimeService {
   private async registerInitialDevice() {
     if (!this.currentDeviceId) return;
     try {
+      // Kiểm tra lại lần nữa để tuyệt đối không ghi đè nếu bản ghi đã tồn tại
+      const checkRes = await supabaseClient.from('parental_policies', {
+        filter: { device_id: this.currentDeviceId },
+      });
+      if (checkRes.data && checkRes.data.length > 0) {
+        const policy = checkRes.data[0];
+        this.updateLockState(Boolean(policy.is_emergency_locked), policy.lock_message);
+        return;
+      }
+
       await supabaseClient.upsert(
         'parental_policies',
         {
           device_id: this.currentDeviceId,
-          is_emergency_locked: false,
+          is_emergency_locked: this.currentLockedState,
           lock_message: this.currentLockMessage,
           updated_at: new Date().toISOString(),
         },
@@ -226,8 +239,10 @@ class ParentalRealtimeService {
 
   private updateLockState(isLocked: boolean, message?: string) {
     this.currentLockedState = isLocked;
-    if (message) {
+    storage.set(STORAGE_KEYS.IS_EMERGENCY_LOCKED, isLocked);
+    if (message !== undefined) {
       this.currentLockMessage = message;
+      storage.set(STORAGE_KEYS.EMERGENCY_LOCK_MESSAGE, message);
     }
     this.listeners.forEach((listener) => {
       try {
@@ -244,7 +259,7 @@ class ParentalRealtimeService {
   subscribeToRemoteLock(listener: LockListener): () => void {
     this.listeners.add(listener);
     // Gửi ngay trạng thái hiện tại
-    listener(this.currentLockedState, this.currentLockMessage);
+    listener(this.isEmergencyLocked(), this.getLockMessage());
 
     return () => {
       this.listeners.delete(listener);
@@ -255,7 +270,7 @@ class ParentalRealtimeService {
    * Giả lập hoặc kích hoạt lệnh khóa từ xa (dùng cho test hoặc gọi từ App Phụ Huynh)
    */
   async setRemoteLock(deviceId: string, isLocked: boolean, message?: string): Promise<boolean> {
-    const lockMsg = message || 'Ba mẹ đã tạm khóa thiết bị từ xa. Bé hãy nghỉ ngơi nhé!';
+    const lockMsg = message !== undefined ? message : 'Ba mẹ đã tạm khóa thiết bị từ xa. Bé hãy nghỉ ngơi nhé!';
     try {
       // 1. Cập nhật lên Supabase
       await supabaseClient.upsert(
@@ -299,7 +314,15 @@ class ParentalRealtimeService {
   }
 
   isEmergencyLocked(): boolean {
-    return this.currentLockedState;
+    return this.currentLockedState || storage.getBoolean(STORAGE_KEYS.IS_EMERGENCY_LOCKED);
+  }
+
+  getLockMessage(): string {
+    return (
+      this.currentLockMessage ||
+      storage.getString(STORAGE_KEYS.EMERGENCY_LOCK_MESSAGE) ||
+      'Ba mẹ đã tạm khóa thiết bị từ xa. Bé hãy nghỉ ngơi nhé!'
+    );
   }
 }
 

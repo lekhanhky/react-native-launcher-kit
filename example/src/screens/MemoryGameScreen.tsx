@@ -12,6 +12,8 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { ThemeConfig } from '../services/themes';
+import { AnimalImage } from '../components/AnimalImage';
+import { animalLibrary } from '../libraries/animalLibrary';
 
 interface MemoryCard {
   id: string;
@@ -19,6 +21,7 @@ interface MemoryCard {
   name: string;
   matched: boolean;
   flipped: boolean;
+  animalId?: string;
 }
 
 interface MemoryGameScreenProps {
@@ -29,19 +32,23 @@ interface MemoryGameScreenProps {
 type GameThemeType = 'animals' | 'fruits' | 'vehicles';
 type GameDifficulty = 'easy' | 'medium' | 'hard';
 
-const THEME_DATA: Record<GameThemeType, { label: string; icon: string; items: { emoji: string; name: string }[] }> = {
+const THEME_DATA: Record<GameThemeType, { label: string; icon: string; items: { emoji: string; name: string; animalId?: string }[] }> = {
   animals: {
-    label: 'Động Vật',
-    icon: '🐾',
+    label: 'Động Vật 3D',
+    icon: '🦁',
     items: [
-      { emoji: '🐶', name: 'Cún Con' },
-      { emoji: '🐱', name: 'Mèo Con' },
-      { emoji: '🐼', name: 'Gấu Trúc' },
-      { emoji: '🦁', name: 'Sư Tử' },
-      { emoji: '🐰', name: 'Thỏ Trắng' },
-      { emoji: '🦄', name: 'Kỳ Lân' },
-      { emoji: '🦊', name: 'Cáo Đỏ' },
-      { emoji: '🐵', name: 'Khỉ Vàng' },
+      { emoji: '🐶', name: 'Cún Con', animalId: 'dog' },
+      { emoji: '🐱', name: 'Mèo Con', animalId: 'cat' },
+      { emoji: '🦁', name: 'Sư Tử', animalId: 'lion' },
+      { emoji: '🐯', name: 'Hổ Vằn', animalId: 'tiger' },
+      { emoji: '🐮', name: 'Bò Sữa', animalId: 'cow' },
+      { emoji: '🐼', name: 'Gấu Trúc', animalId: 'panda' },
+      { emoji: '🐵', name: 'Khỉ Vàng', animalId: 'monkey' },
+      { emoji: '🐬', name: 'Cá Heo', animalId: 'dolphin' },
+      { emoji: '🐷', name: 'Heo Con', animalId: 'pig' },
+      { emoji: '🐑', name: 'Cừu Bông', animalId: 'sheep' },
+      { emoji: '🐰', name: 'Thỏ Trắng', animalId: 'rabbit' },
+      { emoji: '🐧', name: 'Cánh Cụt', animalId: 'penguin' },
     ],
   },
   fruits: {
@@ -113,6 +120,7 @@ export const MemoryGameScreen: React.FC<MemoryGameScreenProps> = ({ onClose }) =
         id: `${item.name}-1-${index}`,
         emoji: item.emoji,
         name: item.name,
+        animalId: item.animalId,
         matched: false,
         flipped: false,
       });
@@ -120,6 +128,7 @@ export const MemoryGameScreen: React.FC<MemoryGameScreenProps> = ({ onClose }) =
         id: `${item.name}-2-${index}`,
         emoji: item.emoji,
         name: item.name,
+        animalId: item.animalId,
         matched: false,
         flipped: false,
       });
@@ -184,6 +193,9 @@ export const MemoryGameScreen: React.FC<MemoryGameScreenProps> = ({ onClose }) =
 
       if (firstCard.emoji === secondCard.emoji) {
         // GHÉP ĐÚNG CẶP 🎉
+        if (firstCard.animalId) {
+          animalLibrary.playSound(firstCard.animalId, 'sfx');
+        }
         setTimeout(() => {
           const updatedCards = [...newCards];
           updatedCards[firstIdx].matched = true;
@@ -351,7 +363,16 @@ export const MemoryGameScreen: React.FC<MemoryGameScreenProps> = ({ onClose }) =
                 >
                   {isFlipped ? (
                     <View style={styles.cardFrontContent}>
-                      <Text style={styles.cardEmoji}>{card.emoji}</Text>
+                      {card.animalId ? (
+                        <AnimalImage
+                          id={card.animalId}
+                          size={Math.max(38, Math.min(cardSize * 0.56, 56))}
+                          rounded
+                          style={styles.cardAnimalImage}
+                        />
+                      ) : (
+                        <Text style={styles.cardEmoji}>{card.emoji}</Text>
+                      )}
                       <Text style={styles.cardName} numberOfLines={1}>
                         {card.name}
                       </Text>
@@ -678,6 +699,9 @@ const styles = StyleSheet.create({
   },
   cardEmoji: {
     fontSize: 34,
+    marginBottom: 4,
+  },
+  cardAnimalImage: {
     marginBottom: 4,
   },
   cardName: {

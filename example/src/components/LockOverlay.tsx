@@ -64,6 +64,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 24,
     zIndex: 999,
+    elevation: 1000,
   },
   icon: {
     fontSize: 56,

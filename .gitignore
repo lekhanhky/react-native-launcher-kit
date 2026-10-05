@@ -87,5 +87,12 @@ out/
 # Agent local files
 .agents/
 
+# Binary build outputs & APKs
+*.apk
+apks/
+
+# Temporary data backups
+web-portal/backups/
+
 
 

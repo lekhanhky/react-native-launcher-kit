@@ -52,9 +52,10 @@ export const QrScannerView: React.FC<QrScannerViewProps> = ({ onScanned, isScann
         barcodeScannerSettings={{
           barcodeTypes: ['qr'],
         }}
-        onBarcodeScanned={({ data }) => {
-          if (isScanning && data) {
-            onScanned(data);
+        onBarcodeScanned={(result) => {
+          const raw = result?.data || (result as any)?.raw || (result as any)?.rawValue;
+          if (isScanning && raw) {
+            onScanned(raw);
           }
         }}
       >

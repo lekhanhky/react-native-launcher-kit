@@ -26,6 +26,8 @@ export const STORAGE_KEYS = {
   SHADOW_DETECTIVE_PROGRESS: 'SHADOW_DETECTIVE_PROGRESS',
   DISABLED_INTERNAL_GAMES: 'DISABLED_INTERNAL_GAMES',
   APP_CATALOG_CONFIG: 'APP_CATALOG_CONFIG',
+  IS_EMERGENCY_LOCKED: 'IS_EMERGENCY_LOCKED',
+  EMERGENCY_LOCK_MESSAGE: 'EMERGENCY_LOCK_MESSAGE',
 };
 
 // Cấu hình Supabase (Tự động đọc từ .env hoặc fallback cấu hình mặc định)
@@ -83,8 +85,7 @@ export const storage = new StorageEngine();
 
 // Khởi tạo các giá trị mặc định cho ứng dụng
 if (storage.getString(STORAGE_KEYS.IS_LICENSED) === undefined) {
-  storage.set(STORAGE_KEYS.IS_LICENSED, true);
-  storage.set(STORAGE_KEYS.LICENSE_KEY, 'LCK-DEMO');
+  storage.set(STORAGE_KEYS.IS_LICENSED, false);
 }
 
 if (!storage.getString(STORAGE_KEYS.PARENT_PIN)) {
